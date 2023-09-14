@@ -1,0 +1,6 @@
+ROOT/*.BIN
+*.PRG
+*.map
+*.sym
+obj/
+sdcard.img
