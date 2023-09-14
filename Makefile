@@ -40,7 +40,7 @@ $(SDCARD): $(EXE)
 
 .PHONY: clean run
 clean:
-	$(RM) $(EXE) $(OBJS) $(SDCARD) $(MAPFILE) $(SYMFILE)
+	$(RM) $(EXE) $(OBJS) $(SDCARD) $(MAPFILE) $(SYMFILE) ROOT/*.BIN ROOT/*.PRG
 
 box: $(EXE) $(SDCARD)
 	box16 -sdcard $(SDCARD) -prg $(EXE) -run -ram 1024

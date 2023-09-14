@@ -33,8 +33,10 @@ SCENE = $4800
 .proc main
 	jsr setup_zsmkit
 	jsr setup_irq_handler
-	LOADFILE "MUSIC1.ZSM", SONG_BANK, $a000
-	LOADFILE "TITLE.BIN", 0, SCENE
+	LOADFILE "INTRO.BIN", 0, SCENE
+	jsr SCENE
+	LOADFILE "MUSIC2.ZSM", SONG_BANK, $a000
+	LOADFILE "HEDRON.BIN", 0, SCENE
 	jsr play_song
 	jsr SCENE
 
