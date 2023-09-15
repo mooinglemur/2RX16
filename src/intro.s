@@ -1,10 +1,15 @@
 .include "x16.inc"
 .include "macros.inc"
 
+.import setup_palette_fade
+.import apply_palette_fade_step
+.import flush_palette
+
+.import target_palette
+
 .segment "INTRO"
 entry:
 	jmp titlecard
-
 
 
 .proc titlecard
@@ -38,7 +43,7 @@ whitepal:
 	sta Vera::Reg::Ctrl
 	lda #21
 	sta Vera::Reg::DCVStart
-	lda #($f0 - 21)
+	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
 
 	; set bitmap mode for layer 0
@@ -50,7 +55,7 @@ whitepal:
 
 	; load static image
 	LOADFILE "TITLECARD.VBM", 0, $0000, 0
-	LOADFILE "TITLECARD.PAL", 0, $0400 ; put palette in golden RAM
+	LOADFILE "TITLECARD.PAL", 0, target_palette
 
 	; show bitmap layers
 	stz Vera::Reg::Ctrl
@@ -59,102 +64,25 @@ whitepal:
 	ora #$10
 	sta Vera::Reg::DCVideo
 
-	; split xRGB values out of the first 64 palette entries
-	ldx #0
-	ldy #0
-palexpand:
-	lda $0400,x
-	and #$0f
-	sta $0600,y
-	iny
-	lda $0400,x
-	lsr
-	lsr
-	lsr
-	lsr
-	sta $0600,y
-	inx
-	iny
-	bne palexpand
-
-	; make the palette shadow all F's
-	ldx #0
-palshadow:
-	lda #$f0
-	sta $0700,x
-	inx
-	sta $0700,x
-	inx
-	sta $0700,x
-	inx
-	stz $0700,x
-	inx
-	bne palshadow
-
-
 	lda #16
 	sta paliter
-	; fade palette in
-palloop:
-	; subtract 1/16 the difference from white from the shadow
-	ldx #0
-	ldy #0
-innerpal:
-	lda #$0f
-	sec
-	sbc $0600,x
-	sta DT1
 
-	lda $0700,x
-	sbc #$ff
-DT1 = * - 1
-	sta $0700,x
-	lsr
-	lsr
-	lsr
-	lsr
-	sta $0400,y
-	inx
+	lda #0 ; set up first 64 palette entries to fade
+	jsr setup_palette_fade
+	
+pal_loop:
+	jsr apply_palette_fade_step
 
-	; skip high nibble in palette word
-	tya
-	lsr
-	bcs nohigh
-
-	lda #$0f
-	sec
-	sbc $0600,x
-	sta DT2
-
-	lda $0700,x
-	sbc #$ff
-DT2 = * - 1
-	sta $0700,x
-	and #$f0
-	ora $0400,y
-	sta $0400,y
-nohigh:
-	iny
-	inx
-	bne innerpal
-
-	lda #4
+	; this many VSYNCs in between palette fade updates
+	lda #6
 	sta vsync_count
 :	WAITVSYNC
 	dec vsync_count
 	bne :-
 
-	; write palette shadow to VERA
-	VERA_SET_ADDR $1FA00, 1
-	ldx #128
-shadowpal:
-	lda $0400-128,x
-	sta Vera::Reg::Data0
-	inx
-	bne shadowpal
-
+	jsr flush_palette
 	dec paliter
-	bne palloop
+	bne pal_loop
 
 
 	lda #0

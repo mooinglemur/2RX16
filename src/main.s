@@ -1,3 +1,5 @@
+.export syncval
+
 .segment "LOADADDR"
 	.word $0801
 .segment "BASICSTUB"
@@ -175,7 +177,7 @@ via_timer_loops = * - 1
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
 	pla
-	lda Vera::Reg::FXCtrl
+	sta Vera::Reg::FXCtrl
 	pla
 	stz Vera::Reg::Ctrl	
 endirq:
