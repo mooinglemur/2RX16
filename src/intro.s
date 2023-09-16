@@ -14,15 +14,37 @@ entry:
 
 .proc titlecard
 	; write all Fs to first 64 of palette
-	VERA_SET_ADDR $1FA00, 1
-	ldx #64
-	lda #$ff
-	ldy #$0f
+	ldx #128
+	
+	
 whitepal:
-	sta Vera::Reg::Data0
-	sty Vera::Reg::Data0
-	dex
+	lda #$ff
+	sta target_palette-128,x
+	inx
+	lda #$0f
+	sta target_palette-128,x
+	inx
 	bne whitepal
+
+	lda #0
+	jsr setup_palette_fade
+
+	lda #16
+	sta FW
+
+	; this doesn't fade correctly in current ROM (R44)
+	; if it's the beginning of the demo because
+	; the VERA palette and backing VRAM are divergent
+fadetowhite:
+	WAITVSYNC
+	WAITVSYNC
+	WAITVSYNC
+	jsr apply_palette_fade_step
+	jsr flush_palette
+	dec FW
+	lda #$ff
+FW = * - 1
+	bne fadetowhite
 
 	; show no layers
 	stz Vera::Reg::Ctrl
