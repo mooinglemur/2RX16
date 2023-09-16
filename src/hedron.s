@@ -79,13 +79,14 @@ wipeloop:
     lda #$30
     sta Vera::Reg::AddrH
 
-    lda topwipe
-    cmp #$80
+    ldx topwipe
+    cpx #$80
     bcs done_wiping
-    jsr pos_addr_row
 
-    ; write 160 times to clear 2 lines
-    ldx #160
+    POS_ADDR_ROW_4BIT
+
+    ; write 80 times to clear 2 lines
+    ldx #80
 :   stz Vera::Reg::Data0
     dex
     bne :-
@@ -93,11 +94,12 @@ wipeloop:
     inc topwipe
     inc topwipe
 
-    lda bottomwipe
-    jsr pos_addr_row
+    ldx bottomwipe
 
-    ; write 80 times to clear 1 line
-    ldx #80
+    POS_ADDR_ROW_4BIT
+
+    ; write 40 times to clear 1 line
+    ldx #40
 :   stz Vera::Reg::Data0
     dex
     bne :-
@@ -133,8 +135,10 @@ done_wiping:
     tsb Vera::Reg::FXCtrl
 
     stz Vera::Reg::Ctrl ; ADDR0
-    lda #128
-    jsr pos_addr_row
+    ldx #128
+
+    POS_ADDR_ROW_4BIT
+
     lda #$30
     sta Vera::Reg::AddrH ; increment 4, chessboard edge drawn here
 
@@ -175,8 +179,8 @@ done_wiping:
     ; 1 frame falling
     ; done
 
-    CHESSBOARD_ACCEL = $02
-    MAX_INCREMENT = $98
+    CHESSBOARD_ACCEL = $01
+    MAX_INCREMENT = $96
 
     stz momentum_sign
     stz velocity
@@ -245,32 +249,31 @@ bounce_cont:
 
     lda #1
     sta Vera::Reg::Ctrl ; position addr1
-    lda #0
-    jsr pos_addr_row
+    ldx #0
+
+    POS_ADDR_ROW_4BIT
+
     lda #$11
     sta Vera::Reg::AddrH
     stz Vera::Reg::Ctrl
 
 
-    lda #128
-    sta line_iter
-    jsr pos_addr_row
+    ldx #128
+    stx line_iter
+
+    POS_ADDR_ROW_4BIT
+
     lda #$30
     sta Vera::Reg::AddrH
 
     ; write 24 lines of blank
     ldy #24
 blankouter:
-    ldx #10
+    ldx #5
 blankloop:
+.repeat 8
     stz Vera::Reg::Data0
-    stz Vera::Reg::Data0
-    stz Vera::Reg::Data0
-    stz Vera::Reg::Data0
-    stz Vera::Reg::Data0
-    stz Vera::Reg::Data0
-    stz Vera::Reg::Data0
-    stz Vera::Reg::Data0
+.endrepeat
     dex
     bne blankloop
 
@@ -280,8 +283,9 @@ blankloop:
     sta line_iter_frac
     bcc :+
     inc line_iter
-:   lda line_iter
-    jsr pos_addr_row ; trashes X
+:   ldx line_iter
+
+    POS_ADDR_ROW_4BIT
 
     dey
     bne blankouter
@@ -289,7 +293,7 @@ blankloop:
     ; write perspective chessboard, 100 lines
     ldy #100
 boardouter:
-    ldx #10
+    ldx #5
 boardloop:
 .repeat 8
     lda Vera::Reg::Data1
@@ -308,10 +312,11 @@ boardloop:
     sta line_iter_frac
     bcc :+
     inc line_iter
-:   lda line_iter
-    cmp #200
+:   ldx line_iter
+    cpx #200
     jcs end_bounce_loop
-    jsr pos_addr_row ; trashes X
+
+    POS_ADDR_ROW_4BIT
 
     dey
     jne boardouter
@@ -319,7 +324,7 @@ boardloop:
     ; finish the chessboard edge
     ldy #10
 edgeouter:
-    ldx #10
+    ldx #5
 edgeloop:
 .repeat 8
     lda Vera::Reg::Data1
@@ -352,7 +357,7 @@ edgeloop:
     ; write up to 12 lines of blankness
     ldy #12
 bottom_blank_outer:
-    ldx #10
+    ldx #5
 bottom_blank_loop:
 .repeat 8
     stz Vera::Reg::Data0
@@ -392,21 +397,23 @@ momentum_sign:
 bounce_count:
     .byte 0
 upward_momenta:
-    .byte 24,16,10,4,0
+    .byte 12,8,5,2,0
 .endproc
 
 .proc draw_chessboard_edge
     lda #1 ; ADDR1
     sta Vera::Reg::Ctrl
     
-    lda #100
-    jsr pos_addr_row
+    ldx #100
+
+    POS_ADDR_ROW_4BIT
+
     lda #$11
     sta Vera::Reg::AddrH ; increment 1, chessboard edge here
 
-    ; draw 10 lines, which is 80 writes per row, so 800.
-    ldx #<800
-    ldy #(>800)+1 ; the +1 to allow the loop to end when reaching 0
+    ; draw 10 lines, which is 40 writes per row, so 400.
+    ldx #<400
+    ldy #(>400)+1 ; the +1 to allow the loop to end when reaching 0
 edgeloop:
     lda Vera::Reg::Data1
     lda Vera::Reg::Data1
@@ -421,43 +428,3 @@ edgeloop:
     rts
 .endproc
 
-.proc pos_addr_row
-    tax
-
-    ror
-    ror
-    ror
-    and #$c0
-    sta Vera::Reg::AddrL
-    lda addrm_per_row,x
-    sta Vera::Reg::AddrM
-    rts
-.endproc
-
-addrm_per_row:
-    .byte $00,$01,$02,$03,$05,$06,$07,$08
-    .byte $0a,$0b,$0c,$0d,$0f,$10,$11,$12
-    .byte $14,$15,$16,$17,$19,$1a,$1b,$1c
-    .byte $1e,$1f,$20,$21,$23,$24,$25,$26
-    .byte $28,$29,$2a,$2b,$2d,$2e,$2f,$30
-    .byte $32,$33,$34,$35,$37,$38,$39,$3a
-    .byte $3c,$3d,$3e,$3f,$41,$42,$43,$44
-    .byte $46,$47,$48,$49,$4b,$4c,$4d,$4e
-    .byte $50,$51,$52,$53,$55,$56,$57,$58
-    .byte $5a,$5b,$5c,$5d,$5f,$60,$61,$62
-    .byte $64,$65,$66,$67,$69,$6a,$6b,$6c
-    .byte $6e,$6f,$70,$71,$73,$74,$75,$76
-    .byte $78,$79,$7a,$7b,$7d,$7e,$7f,$80
-    .byte $82,$83,$84,$85,$87,$88,$89,$8a
-    .byte $8c,$8d,$8e,$8f,$91,$92,$93,$94
-    .byte $96,$97,$98,$99,$9b,$9c,$9d,$9e
-    .byte $a0,$a1,$a2,$a3,$a5,$a6,$a7,$a8
-    .byte $aa,$ab,$ac,$ad,$af,$b0,$b1,$b2
-    .byte $b4,$b5,$b6,$b7,$b9,$ba,$bb,$bc
-    .byte $be,$bf,$c0,$c1,$c3,$c4,$c5,$c6
-    .byte $c8,$c9,$ca,$cb,$cd,$ce,$cf,$d0
-    .byte $d2,$d3,$d4,$d5,$d7,$d8,$d9,$da
-    .byte $dc,$dd,$de,$df,$e1,$e2,$e3,$e4
-    .byte $e6,$e7,$e8,$e9,$eb,$ec,$ed,$ee
-    .byte $f0,$f1,$f2,$f3,$f5,$f6,$f7,$f8
-    .byte $fa,$fb,$fc,$fd,$ff

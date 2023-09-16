@@ -1,4 +1,12 @@
+.ifndef macros_inc
+macros_inc = 1
+
 .include "x16.inc"
+
+.import addrl_per_row_4bit
+.import addrm_per_row_4bit
+.import addrl_per_row_8bit
+.import addrm_per_row_8bit
 
 .macro LOADFILE name, bank, addr, vbank
 .local fn
@@ -43,3 +51,21 @@ endless:
 FRC = * -1
 	beq endless
 .endmacro
+
+
+.macro POS_ADDR_ROW_4BIT
+    lda addrl_per_row_4bit,x
+    sta Vera::Reg::AddrL
+    lda addrm_per_row_4bit,x
+    sta Vera::Reg::AddrM
+.endmacro
+
+
+.macro POS_ADDR_ROW_8BIT
+    lda addrl_per_row_8bit,x
+    sta Vera::Reg::AddrL
+    lda addrm_per_row_8bit,x
+    sta Vera::Reg::AddrM
+.endmacro
+
+.endif

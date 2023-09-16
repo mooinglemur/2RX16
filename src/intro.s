@@ -68,22 +68,22 @@ FW = * - 1
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
 
-	; set bitmap mode for layer 0
-	lda #%00000111
-	sta Vera::Reg::L0Config
+	; set bitmap mode for layer 1
+	lda #%00000110 ; 4bpp
+	sta Vera::Reg::L1Config
 	lda #(($00000 >> 11) << 2) | 0 ; 320
-	sta Vera::Reg::L0TileBase
-	stz Vera::Reg::L0HScrollH ; palette offset
+	sta Vera::Reg::L1TileBase
+	stz Vera::Reg::L1HScrollH ; palette offset
 
 	; load static image
 	LOADFILE "TITLECARD.VBM", 0, $0000, 0
 	LOADFILE "TITLECARD.PAL", 0, target_palette
 
-	; show bitmap layers
+	; show bitmap layer
 	stz Vera::Reg::Ctrl
 	lda Vera::Reg::DCVideo
 	and #$0f
-	ora #$10
+	ora #$20
 	sta Vera::Reg::DCVideo
 
 	lda #16
