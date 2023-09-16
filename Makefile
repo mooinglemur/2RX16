@@ -23,10 +23,10 @@ all: $(EXE)
 
 $(EXE): $(OBJS) $(CONFIG)
 	$(LD) $(LDFLAGS) $(OBJS) -m $(MAPFILE) -Ln $(SYMFILE) extern/zsmkit.lib -o $@ 
+	cp -v $(EXE) ROOT/
 
 $(OBJ)/%.o: $(SRC)/%.s | $(OBJ)
 	$(AS) $(ASFLAGS) $< -o $@
-	cp -v $(EXE) ROOT/
 
 $(OBJ):
 	$(MKDIR) $@
