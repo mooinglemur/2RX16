@@ -3,3 +3,15 @@ These are the sync codes that are embedded in the music to help sync the demo to
 $00 = start value for the demo
 
 $10 = trigger transition from title card to chessboard
+$20 = trigger transition to tunnel scene
+$30 = trigger transition to circles scene
+$40 = trigger transition to moire scene
+$41 = 1/4 swipe start
+$42 = 2/4 swipe start
+$43 = 3/4 swipe start
+$44 = 4/4 swipe start
+$45 = show moire effect
+$4A = end of moire effect (transition off screen)
+$4C = slide static image on screen
+$4E = trigger CRT off effect
+$50 = MUSIC2 end, cue to load MUSIC3 and scroller scene

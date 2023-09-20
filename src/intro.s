@@ -91,21 +91,8 @@ FW = * - 1
 
 	lda #0 ; set up first 64 palette entries to fade
 	jsr setup_palette_fade
-	
-pal_loop:
-	jsr apply_palette_fade_step
 
-	; this many VSYNCs in between palette fade updates
-	lda #6
-	sta vsync_count
-:	WAITVSYNC
-	dec vsync_count
-	bne :-
-
-	jsr flush_palette
-	dec paliter
-	bne pal_loop
-
+	PALETTE_FADE 6	
 
 	lda #0
 	sta X16::Reg::ROMBank

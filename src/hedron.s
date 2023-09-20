@@ -36,12 +36,7 @@ fill_grey:
     jsr setup_palette_fade
 
     ; wait for syncval to hit #$10
-sync10loop:
-    wai
-    lda syncval
-    cmp #$10
-    bne sync10loop
-
+    MUSIC_SYNC $10
 
     ; set FX cache to all zeroes
     lda #(6 << 1)
@@ -376,6 +371,30 @@ end_bounce_loop:
 bounce_done:
     ; then convert the static chessboard to tiles
     ; and replace the bitmap with a tilemap
+
+    ; set up DCSEL=2
+    lda #(2 << 1)
+    sta Vera::Reg::Ctrl
+
+    ; set FX off
+    stz Vera::Reg::FXCtrl
+    stz Vera::Reg::Ctrl
+
+    MUSIC_SYNC $20
+
+
+    ldx #32
+:   stz target_palette-1,x
+    dex
+    bne :-
+
+    lda target_palette
+
+    lda #0
+    jsr setup_palette_fade
+
+    PALETTE_FADE 1
+
 
     rts
 line_iter:

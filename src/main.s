@@ -41,6 +41,14 @@ SCENE = $4800
 	LOADFILE "HEDRON.BIN", 0, SCENE
 	jsr play_song
 	jsr SCENE
+	LOADFILE "TUNNEL.BIN", 0, SCENE
+	jsr SCENE
+	LOADFILE "CIRCLES.BIN", 0, SCENE
+	jsr SCENE
+	LOADFILE "MOIRE.BIN", 0, SCENE ; also includes the four column swipe to the beat
+	jsr SCENE
+
+
 
 @1:	jmp @1
 	jsr clear_irq_handler
