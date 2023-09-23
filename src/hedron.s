@@ -4,7 +4,6 @@
 
 .import target_palette
 
-.import syncval
 
 .macpack longbranch
 

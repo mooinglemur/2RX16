@@ -7,6 +7,9 @@ macros_inc = 1
 .import addrm_per_row_4bit
 .import addrl_per_row_8bit
 .import addrm_per_row_8bit
+.ifndef syncval
+.import syncval
+.endif
 
 .macro LOADFILE name, bank, addr, vbank
 .local fn

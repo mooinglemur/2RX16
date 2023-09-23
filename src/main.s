@@ -35,10 +35,36 @@ SCENE = $4800
 .proc main
 	jsr setup_zsmkit
 	jsr setup_irq_handler
+
+	; set up 50 Hz VIA timer
+	lda #50
+	jsr setup_via_timer
+	; tell ZSMKit about the 50 Hz timer
+	lda #50
+	ldy #0
+	jsr zsmkit::zsm_set_int_rate
+
+	LOADFILE "MUSIC1.ZSM", SONG_BANK, $a000
+	jsr play_song
+
 	LOADFILE "INTRO.BIN", 0, SCENE
 	jsr SCENE
+
+	; stop song
+	ldx #0
+	jsr zsmkit::zsm_close
+
 	LOADFILE "MUSIC2.ZSM", SONG_BANK, $a000
 	LOADFILE "HEDRON.BIN", 0, SCENE
+
+	; set up 52 Hz VIA timer
+	lda #52
+	jsr setup_via_timer
+	; tell ZSMKit about the 52 Hz timer
+	lda #52
+	ldy #0
+	jsr zsmkit::zsm_set_int_rate
+
 	jsr play_song
 	jsr SCENE
 	LOADFILE "TUNNEL.BIN", 0, SCENE
@@ -80,9 +106,6 @@ end:
 .proc setup_zsmkit
 	lda #ZSMKIT_BANK ; ZSMKit gets bank 1 for itself
 	jsr zsmkit::zsm_init_engine
-	lda #52
-	ldy #0
-	jsr zsmkit::zsm_set_int_rate
 	stz syncval
 	lda #2
 	sta X16::Reg::RAMBank ; for setcb
@@ -123,10 +146,6 @@ setup_irq_handler:
 	stz irqsub+1
 
 	cli
-
-	; set up 52 Hz VIA timer
-	lda #52
-	jsr setup_via_timer
 
 	rts
 handler:

@@ -4,8 +4,6 @@
 
 .import target_palette
 
-.import syncval
-
 .macpack longbranch
 
 
@@ -26,12 +24,16 @@ entry:
 
     MUSIC_SYNC $40
 
-    ldx #32
-:   stz target_palette-1,x
+    ; fade to white (except for index 0)
+
+    ldx #30
+:   lda #$0f
+    sta target_palette+1,x
+    dex
+    lda #$ff
+    sta target_palette+1,x
     dex
     bne :-
-
-    lda target_palette
 
     lda #0
     jsr setup_palette_fade

@@ -1,7 +1,19 @@
 These are the sync codes that are embedded in the music to help sync the demo to the music.  The value can be polled by importing the label and reading from `syncval`.  A callback from the music will change this value at the appropriate time in playback
 
 $00 = start value for the demo
-
+$03 = show equivalent to "A Future Crew Production"
+$04 = show equivalent to "First Presented at Assembly 93"
+$05 = "in DOLBY SURROUND"
+$06 = Fade in background tilemap
+$07 = "Graphics Marvel Pixel"
+$08 = "Music Purple Motion Skaven"
+$09 = "Code Psi Trug Wildfire"
+$0A = "Additional Design Abyss Gore"
+$0B = Ship flies into the distance
+$0C = Torpedoes fly in
+$0D = Praxis explosion
+$0E = fade to white 
+$0F = the end of song 1
 $10 = trigger transition from title card to chessboard
 $20 = trigger transition to tunnel scene
 $30 = trigger transition to circles scene
