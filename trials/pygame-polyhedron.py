@@ -4,6 +4,7 @@ import pygame
 from pygame.locals import *
 import math
 from enum import Enum
+import copy
 
 # Initialize Pygame
 pygame.init()
@@ -101,8 +102,8 @@ center_offset = (width // 2, height // 2)
 # Define rotation parameters
 angle_x = 0
 angle_y = 1
-rotation_speed_x = 0.017
-rotation_speed_y = -0.051
+rotation_speed_x = math.pi/185
+rotation_speed_y = -(math.pi/65)
 squishy_phase = 0
 squishy_increment = 0.18
 squishy_max_amplitude = 0.30
@@ -118,6 +119,9 @@ camera = (0, 0, 6)
 def face_sorter(item):
     return zees[item[0]]+zees[item[1]]+zees[item[2]]
 
+def y_sorter(item):
+    return rotated_vertices[item][1]
+
 def advance_cube():
     global angle_x
     global angle_y
@@ -125,6 +129,7 @@ def advance_cube():
     global squishy_amplitude
     global squishy_max_amplitude
     global zees
+    global rotated_vertices
 
     # Apply rotation
     angle_x += rotation_speed_x
@@ -168,7 +173,7 @@ def advance_cube():
         x_proj = new_x * scale + center_offset[0]
         y_proj = new_y * scale + center_offset[1]
 
-        rotated_vertices.append((x_proj, y_proj))
+        rotated_vertices.append((round(x_proj), round(y_proj)))
         
         zees.append(new_z)
     
@@ -178,6 +183,92 @@ def advance_cube():
     for face in sorted_faces[12:24]:
         color_idx = face[3]
         pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face[0:3]], 0)
+        # Triangle type (bit 0 is X high bit)
+        #  $00 - two part, change X1
+        #  $40 - two part, change X2
+        #  $80 - part 1 only
+        #  $C0 - part 2 only
+        #     bit 1 is X2 high bit
+        #  $FF - end of triangle list for this frame
+        
+        # Triangle type 00
+        # 
+        # 01 - Y
+        # 02 - X
+        # 03 - X1 inc low
+        # 04 - X1 inc high
+        # 05 - X2 inc low
+        # 06 - X2 inc high
+        # 07 - color index
+        # 08 - row count part 1
+        # 09 - new X1 inc low
+        # 0a - new X1 inc high
+        # 0b - row count part 2
+
+        # Triangle type 40
+        # 
+        # 01 - Y
+        # 02 - X
+        # 03 - X1 inc low
+        # 04 - X1 inc high
+        # 05 - X2 inc low
+        # 06 - X2 inc high
+        # 07 - color index
+        # 08 - row count part 1
+        # 09 - new X2 inc low
+        # 0a - new X2 inc high
+        # 0b - row count part 2
+
+        # Triangle type 80
+        # 
+        # 01 - Y
+        # 02 - X
+        # 03 - X1 inc low
+        # 04 - X1 inc high
+        # 05 - X2 inc low
+        # 06 - X2 inc high
+        # 07 - color index
+        # 08 - row count
+
+        # Triangle type c0
+        # 
+        # 01 - Y
+        # 02 - X
+        # 03 - X2
+        # 04 - X1 inc low
+        # 05 - X1 inc high
+        # 06 - X2 inc low
+        # 07 - X2 inc high
+        # 08 - color index
+        # 09 - row count
+
+        # find top two points of triangle
+        sorted_points = sorted(face[0:3], key=y_sorter, reverse=False)
+
+        v0 = list(copy.deepcopy(rotated_vertices[sorted_points[0]]))
+        v1 = list(copy.deepcopy(rotated_vertices[sorted_points[1]]))
+        v2 = list(copy.deepcopy(rotated_vertices[sorted_points[2]]))
+
+        if v2[1] < 0:
+            print("Fully offscreen")
+            continue # fully offscreen
+
+        if v1[1] < 0:
+            v1[1] = 0
+
+        if v0[1] < 0:
+            v0[1] = 0
+
+        if (v0[1] == v1[1]): # Part 2 only
+            print("Part 2 only")
+        elif (v1[1] == v2[1]): # Part 1 only
+            print("Part 1 only")
+        elif (v0[0] < v1[0]): # Two part, change X2
+            print("Two part change X2")
+        else: # Two part, change X1
+            print("Two part change X1")
+
+
 
 
 States = Enum('States', ['FALLING', 'SQUISHING', 'BOUNCING', 'RISING', 'STEADY'])

@@ -206,7 +206,7 @@ via_timer_loops = * - 1
 	pla
 	sta Vera::Reg::FXCtrl
 	pla
-	stz Vera::Reg::Ctrl	
+	sta Vera::Reg::Ctrl	
 endirq:
     pla
     sta X16::Reg::RAMBank

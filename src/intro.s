@@ -7,6 +7,9 @@
 
 .import target_palette
 
+.macpack longbranch
+.feature string_escapes
+
 .segment "INTRO"
 entry:
 	jmp titlecard
@@ -27,7 +30,9 @@ blackpal:
 
 	; load BG tiles
 	LOADFILE "TITLEBG.VTS", 0, $0000, 0
-	LOADFILE "TITLEBG.PAL", 0, target_palette
+
+	; load title font
+	LOADFILE "TITLEFONT.VTS", 0, $0000, 1
 
 	; show no layers 
 	stz Vera::Reg::Ctrl
@@ -60,7 +65,6 @@ blackpal:
 	; mapbase is at $0D000
 	lda #($0D000 >> 9)
 	sta Vera::Reg::L0MapBase
-
 
 	; put the tiles in place
 	VERA_SET_ADDR $D000, 1
@@ -111,7 +115,7 @@ tbgtloop3:
 	bne tbgtloop3
 	bra tbgtloop0
 tbgtloop4:
-
+	DISABLE_SPRITES
 
 	WAITVSYNC ; prevent showing glitched previous state of layer
 
@@ -124,8 +128,91 @@ tbgtloop4:
 
 	; first few text cards go here
 
-	MUSIC_SYNC $06
+	lda syncval
+	sta lastsync
+prebgloop:
+	WAITVSYNC
+	inc frameno
+	lda syncval
+	cmp lastsync
+	jeq nosync
+	
+	sta lastsync
+	cmp #3
+	beq card1
+	cmp #4
+	beq card2
+	cmp #5
+	jeq card3
+	cmp #6
+	jeq sync6
+	jmp nosync
+card1:
+	SPRITE_TEXT 1, 40, 80, 1, "Lorem ipsum dolor"
+	SPRITE_TEXT 18, 110, 100, 1, "sit amet"
+	jmp docolor
+card2:
+	SPRITE_TEXT 1, 94, 80, 1, "consectetur"
+	SPRITE_TEXT 18, 76, 100, 1, "adipiscing elit"
+	bra docolor
+card3:
+	SPRITE_TEXT 1, 150, 70, 1, "in"
+	SPRITE_TEXT 18, 50, 100, 1, "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e"
+	bra docolor
+docolor:
+	lda #$55
+	sta target_palette+2
+	lda #$05
+	sta target_palette+3
+	lda #$aa
+	sta target_palette+4
+	lda #$0a
+	sta target_palette+5
+	lda #$ff
+	sta target_palette+6
+	lda #$0f
+	sta target_palette+7
+	lda #16
+	jsr setup_palette_fade
+	lda #160
+	sta text_linger
+nosync:
+	lda frameno
+	and #1
+	jne prebgloop
+	jsr apply_palette_fade_step
+	jsr flush_palette
 
+	lda text_linger
+	jeq prebgloop
+	cmp #16
+	beq text_fadeout
+	dec text_linger
+	jne prebgloop
+
+	; we just faded out.  Hide sprites
+	DISABLE_SPRITES
+	jmp prebgloop
+text_fadeout:
+	dec text_linger
+	; switch to fading it out
+	lda #$11
+	sta target_palette+2
+	stz target_palette+4
+	stz target_palette+6
+	lda #$01
+	sta target_palette+3
+	sta target_palette+5
+	sta target_palette+7
+
+	lda #16
+	jsr setup_palette_fade
+
+	jmp prebgloop
+
+
+sync6:
+	LOADFILE "TITLEBG.PAL", 0, target_palette
 	lda #0
 	jsr setup_palette_fade
 
@@ -158,13 +245,101 @@ doscroll:
 	bne noscroll
 	inc Vera::Reg::L0HScrollH
 noscroll:
-
-
 	lda syncval
-	cmp #$0e 	
-	bne tbgscrollloop
-	; MUSIC_SYNC $0E
+	cmp lastsync
+	jeq nosync1
+	
+	sta lastsync
 
+	cmp #7
+	beq card4
+	cmp #8
+	jeq card5
+	cmp #9
+	jeq card6
+	cmp #$0a
+	jeq card7
+	cmp #$0e
+	bne tbgscrollloop
+	jmp synce
+card4:
+	SPRITE_TEXT 1, 66, 80, 1, "sed do eiusmod"
+	SPRITE_TEXT 18, 50, 100, 1, "tempor incididunt"
+	jmp docolor1
+card5:
+	SPRITE_TEXT 1, 157, 60, 1, "ut"
+	SPRITE_TEXT 3, 130, 80, 1, "labore"
+	SPRITE_TEXT 10, 157, 100, 1, "et"
+	SPRITE_TEXT 13, 130, 120, 1, "dolore"
+	jmp docolor1
+card6:
+	SPRITE_TEXT 1, 130, 80, 1, "magna"
+	SPRITE_TEXT 18, 133, 100, 1, "aliqua"
+	bra docolor1
+card7:
+	SPRITE_TEXT 1, 100, 60, 1,   "Inspired by"
+	SPRITE_TEXT 18, 80, 100, 1, "Second Reality"
+	SPRITE_TEXT 37, 70, 140, 1, "by Future Crew"
+	bra docolor1
+docolor1:
+	lda #$55
+	sta target_palette+2
+	lda #$05
+	sta target_palette+3
+	lda #$aa
+	sta target_palette+4
+	lda #$0a
+	sta target_palette+5
+	lda #$ff
+	sta target_palette+6
+	lda #$0f
+	sta target_palette+7
+	lda #16
+	jsr setup_palette_fade
+	lda #160
+	sta text_linger
+nosync1:
+	lda frameno
+	and #3
+	cmp #1
+	jne skippal
+
+	jsr apply_palette_fade_step
+	jsr flush_palette
+
+skippal:
+	lda frameno
+	and #1
+	jne tbgscrollloop
+
+	lda text_linger
+	jeq tbgscrollloop
+	cmp #16
+	beq text_fadeout1
+	dec text_linger
+	jne tbgscrollloop
+
+	; we just faded out.  Hide sprites
+	DISABLE_SPRITES
+	jmp tbgscrollloop
+text_fadeout1:
+	dec text_linger
+	; switch to fading it out
+	lda #$11
+	sta target_palette+2
+	stz target_palette+4
+	stz target_palette+6
+	lda #$01
+	sta target_palette+3
+	sta target_palette+5
+	sta target_palette+7
+
+	lda #16
+	jsr setup_palette_fade
+
+	jmp tbgscrollloop
+
+synce:
 	; write all Fs to first 64 of palette
 	ldx #128
 	
@@ -198,7 +373,7 @@ FW = * - 1
 	bne fadetowhite
 
 	MUSIC_SYNC $0F
-
+syncf:
 	; set bitmap mode for layer 1
 	lda #%00000110 ; 4bpp
 	sta Vera::Reg::L1Config
@@ -226,5 +401,9 @@ FW = * - 1
 tileno:
 	.res 2
 frameno:
-	.res 0
+	.res 1
+lastsync:
+	.res 1
+text_linger:
+	.res 1
 .endproc

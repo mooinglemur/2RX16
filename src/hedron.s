@@ -197,7 +197,6 @@ bounce_loop:
     lda #$ff
     sta momentum_sign
     ldx bounce_count
-    lda velocity
     lda upward_momenta,x
     sta velocity
     inx

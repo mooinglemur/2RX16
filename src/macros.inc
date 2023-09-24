@@ -10,6 +10,8 @@ macros_inc = 1
 .ifndef syncval
 .import syncval
 .endif
+.import sprite_text_pos
+.import sprite_text_do
 
 .macro LOADFILE name, bank, addr, vbank
 .local fn
@@ -106,5 +108,34 @@ syncloop:
     cmp #val
     bne syncloop
 .endmacro
+
+.macro DISABLE_SPRITES
+.local sp
+    VERA_SET_ADDR (Vera::VRAM_sprattr+6), 4 ; stride 4, auto-inc 8
+    ldy #128
+sp:
+    stz Vera::Reg::Data0
+    dey
+    bne sp
+.endmacro
+
+.macro SPRITE_TEXT spridx, xpos, ypos, palidx, text
+.local sprtxt
+.local cont
+    lda #spridx
+    ldx #xpos
+    ldy #ypos
+    jsr sprite_text_pos
+    lda #palidx
+    ldx #<sprtxt
+    ldy #>sprtxt
+    jsr sprite_text_do
+    bra cont
+sprtxt:
+    .byte text,0
+cont:
+.endmacro
+
+
 
 .endif
