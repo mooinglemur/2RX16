@@ -1,6 +1,8 @@
 .include "x16.inc"
 .include "macros.inc"
 
+.include "flow.inc"
+
 .import setup_palette_fade
 .import apply_palette_fade_step
 .import flush_palette
@@ -125,7 +127,9 @@ tbgtloop4:
 	ora #$50
 	sta Vera::Reg::DCVideo
 
-
+.ifdef SKIP_SONG1
+	jmp syncf ; jump ahead to song 2 if set in main
+.endif
 	; first few text cards go here
 
 	lda syncval

@@ -31,6 +31,7 @@ SONG_BANK = 2
 
 SCENE = $4800
 
+; see flow.inc for short-circuiting the demo while testing
 
 .proc main
 	jsr setup_zsmkit
