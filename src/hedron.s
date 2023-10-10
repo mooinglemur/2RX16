@@ -15,6 +15,7 @@
 entry:
 	jsr chessboard_in
 	jsr chessboard_to_tiles
+	jsr polyhedron
 	jsr waitfornext
 	rts
 
@@ -559,6 +560,13 @@ point_data1:
 	.byte 0
 @tmp2:
 	.byte 0
+.endproc
+
+
+.proc polyhedron
+	; load the triangle list
+;	LOADFILE "HEDRONTRILIST1.BIN", $20, $a000
+	rts
 .endproc
 
 .proc waitfornext

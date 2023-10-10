@@ -116,6 +116,20 @@ gravity = 0.001
 
 camera = (0, 0, 6)
 
+def slope2bytes(slope):
+    x1 = (slope / 2)
+    x32 = 0x00
+    if x1 >= 64 or x1 <= -64:
+        x1 /= 32
+        x32 = 0x80
+    x1 *= 512 # subpixels to whole number
+    print(int(x1))
+    b1 = bytearray(int(x1).to_bytes(2, 'little', signed=True))
+    b1[1] &= 0x7f
+    b1[1] |= x32
+    return b1
+
+
 def face_sorter(item):
     return zees[item[0]]+zees[item[1]]+zees[item[2]]
 
@@ -123,6 +137,7 @@ def y_sorter(item):
     return rotated_vertices[item][1]
 
 def advance_cube():
+    global f
     global angle_x
     global angle_y
     global squishy_phase
@@ -253,22 +268,129 @@ def advance_cube():
             print("Fully offscreen")
             continue # fully offscreen
 
-        if v1[1] < 0:
-            v1[1] = 0
+#        if v1[1] < 0:
+#            v1[1] = 0
 
-        if v0[1] < 0:
-            v0[1] = 0
+#        if v0[1] < 0:
+#            v0[1] = 0
 
         if (v0[1] == v1[1]): # Part 2 only
             print("Part 2 only")
+            dx_1 = v2[0] - v0[0]
+            dy_1 = v2[1] - v0[1]
+            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
+            dx_2 = v2[0] - v1[0]
+            dy_2 = v2[1] - v1[1]
+            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
+            rowcount = v2[1] - v1[1]
+            if v0[0] < v1[0]:
+                slope_x1 = slope_1
+                slope_x2 = slope_2
+                x1 = v0[0]
+                x2 = v1[0]
+            else:
+                slope_x1 = slope_2
+                slope_x2 = slope_1
+                x1 = v1[0]
+                x2 = v0[0]
+            yy = v0[1]
+            print(f"Y {yy} X1 {x1} X2 {x2} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount}")
+            f.write(b'\xc0')                  # 00 - type C0
+            if (yy < 0):
+                f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
+            else:
+                f.write(yy.to_bytes(1, 'little')) # 01 - Y
+            f.write(x1.to_bytes(1, 'little')) # 02 - X1
+            f.write(x2.to_bytes(1, 'little')) # 03 - X1
+            f.write(slope2bytes(slope_x1))    # 04-05 - X1 inc
+            f.write(slope2bytes(slope_x2))    # 06-07 - X2 inc
+            f.write(color_idx.to_bytes(1, 'little')) # 08 color index
+            f.write(rowcount.to_bytes(1, 'little')) # 09 row count
         elif (v1[1] == v2[1]): # Part 1 only
             print("Part 1 only")
+            dx_1 = v1[0] - v0[0]
+            dy_1 = v1[1] - v0[1]
+            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
+            dx_2 = v2[0] - v0[0]
+            dy_2 = v2[1] - v0[1]
+            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
+            rowcount = v1[1] - v0[1]
+            if v1[0] < v2[0]:
+                slope_x1 = slope_1
+                slope_x2 = slope_2
+            else:
+                slope_x1 = slope_2
+                slope_x2 = slope_1
+            xx = v0[0]
+            yy = v0[1]
+            print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount}")
+            f.write(b'\x80')                  # 00 - type 80
+            if (yy < 0):
+                f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
+            else:
+                f.write(yy.to_bytes(1, 'little')) # 01 - Y
+            f.write(xx.to_bytes(1, 'little')) # 02 - X
+            f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
+            f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
+            f.write(color_idx.to_bytes(1, 'little')) # 07 color index
+            f.write(rowcount.to_bytes(1, 'little')) # 08 row count
+
         elif (v0[0] < v1[0]): # Two part, change X2
             print("Two part change X2")
+            dx_x1 = v2[0] - v0[0]
+            dy_x1 = v2[1] - v0[1]
+            slope_x1 = dx_x1 / dy_x1 if dy_x1 != 0 else 0
+            dx_x2 = v1[0] - v0[0]
+            dy_x2 = v1[1] - v0[1]
+            slope_x2 = dx_x2 / dy_x2 if dy_x2 != 0 else 0
+            rowcount1 = v1[1] - v0[1]
+            dx_x2_new = v2[0] - v1[0]
+            dy_x2_new = v2[1] - v1[1]
+            slope_x2_new = dx_x2_new / dy_x2_new if dy_x2_new != 0 else 0
+            rowcount2 = v2[1] - v1[1]
+            xx = v0[0]
+            yy = v0[1]
+            print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount1} New X2 {slope_x2_new} Count {rowcount2}")
+            f.write(b'\x40')                  # 00 - type 40
+            if (yy < 0):
+                f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
+            else:
+                f.write(yy.to_bytes(1, 'little')) # 01 - Y
+            f.write(xx.to_bytes(1, 'little')) # 02 - X
+            f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
+            f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
+            f.write(color_idx.to_bytes(1, 'little')) # 07 color index
+            f.write(rowcount1.to_bytes(1, 'little')) # 08 row count 1
+            f.write(slope2bytes(slope_x2_new)) # 09-0a - new X2 inc
+            f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
         else: # Two part, change X1
             print("Two part change X1")
-
-
+            dx_x1 = v1[0] - v0[0]
+            dy_x1 = v1[1] - v0[1]
+            slope_x1 = dx_x1 / dy_x1 if dy_x1 != 0 else 0
+            dx_x2 = v2[0] - v0[0]
+            dy_x2 = v2[1] - v0[1]
+            slope_x2 = dx_x2 / dy_x2 if dy_x2 != 0 else 0
+            rowcount1 = v1[1] - v0[1]
+            dx_x1_new = v2[0] - v1[0]
+            dy_x1_new = v2[1] - v1[1]
+            slope_x1_new = dx_x1_new / dy_x1_new if dy_x1_new != 0 else 0
+            rowcount2 = v2[1] - v1[1]
+            xx = v0[0]
+            yy = v0[1]
+            print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount1} New X1 {slope_x1_new} Count {rowcount2}")
+            f.write(b'\x00')                  # 00 - type 00
+            if (yy < 0):
+                f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
+            else:
+                f.write(yy.to_bytes(1, 'little')) # 01 - Y
+            f.write(xx.to_bytes(1, 'little')) # 02 - X
+            f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
+            f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
+            f.write(color_idx.to_bytes(1, 'little')) # 07 color index
+            f.write(rowcount1.to_bytes(1, 'little')) # 08 row count 1
+            f.write(slope2bytes(slope_x1_new)) # 09-0a - new X1 inc
+            f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
 
 
 States = Enum('States', ['FALLING', 'SQUISHING', 'BOUNCING', 'RISING', 'STEADY'])
@@ -278,6 +400,8 @@ running = True
 hedron_state = States.FALLING
 
 bounces = 0
+
+f = open("trilist.bin", "wb")
 
 while running:
     for event in pygame.event.get():
@@ -324,6 +448,8 @@ while running:
 
     screen.fill(BLACK)
     advance_cube()
+
+    f.write(b'\xff') # end of frame
 
     pygame.display.flip()
     clock.tick(60)
