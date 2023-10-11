@@ -1,4 +1,5 @@
 .export syncval
+.exportzp ptr1, pstart, pend
 
 .segment "LOADADDR"
 	.word $0801
@@ -13,6 +14,15 @@ start:
 .segment "BSS"
 syncval:
 	.res 1
+
+.segment "ZEROPAGE"
+ptr1:
+	.res 2
+pstart:
+	.res 1
+pend:
+	.res 1
+
 .segment "CODE"
 
 .include "x16.inc"

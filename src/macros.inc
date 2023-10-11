@@ -65,6 +65,12 @@ FRC = * -1
     sta Vera::Reg::AddrM
 .endmacro
 
+.macro POS_ADDR_ROW_4BIT_AH
+    adc addrm_per_row_4bit,x
+    sta Vera::Reg::AddrM
+    lda addrl_per_row_4bit,x
+    sta Vera::Reg::AddrL
+.endmacro
 
 .macro POS_ADDR_ROW_8BIT
     lda addrl_per_row_8bit,x
@@ -136,6 +142,18 @@ sprtxt:
 cont:
 .endmacro
 
-
+.macro INCPTR1
+.local @1
+    inc ptr1
+    bne @1
+    lda ptr1+1
+    inc
+    cmp #$c0
+    bcc @1
+    sbc #$20
+    sta ptr1+1
+    inc X16::Reg::RAMBank
+@1:
+.endmacro
 
 .endif

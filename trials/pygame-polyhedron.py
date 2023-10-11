@@ -96,7 +96,7 @@ faces = [
 
 
 # Define the size and position of the polyhedron
-scale = 20
+scale = 30
 center_offset = (width // 2, height // 2)
 
 # Define rotation parameters
@@ -116,15 +116,17 @@ gravity = 0.001
 
 camera = (0, 0, 6)
 
+tris_seen = False
+
 def slope2bytes(slope):
     x1 = (slope / 2)
     x32 = 0x00
-    if x1 >= 64 or x1 <= -64:
+    if x1 >= 32 or x1 < -32:
         x1 /= 32
         x32 = 0x80
-    x1 *= 512 # subpixels to whole number
-    print(int(x1))
-    b1 = bytearray(int(x1).to_bytes(2, 'little', signed=True))
+    x1 *= 512 # move significant fractional part to whole number
+    print(round(x1))
+    b1 = bytearray(round(x1).to_bytes(2, 'little', signed=True))
     b1[1] &= 0x7f
     b1[1] |= x32
     return b1
@@ -145,6 +147,7 @@ def advance_cube():
     global squishy_max_amplitude
     global zees
     global rotated_vertices
+    global tris_seen
 
     # Apply rotation
     angle_x += rotation_speed_x
@@ -274,6 +277,8 @@ def advance_cube():
 #        if v0[1] < 0:
 #            v0[1] = 0
 
+        tris_seen = True
+
         if (v0[1] == v1[1]): # Part 2 only
             print("Part 2 only")
             dx_1 = v2[0] - v0[0]
@@ -393,7 +398,7 @@ def advance_cube():
             f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
 
 
-States = Enum('States', ['FALLING', 'SQUISHING', 'BOUNCING', 'RISING', 'STEADY'])
+States = Enum('States', ['FALLING', 'SQUISHING', 'BOUNCING', 'RISING', 'STEADY', 'LOOPING'])
 
 # Main game loop
 running = True
@@ -411,7 +416,7 @@ while running:
     if hedron_state == States.FALLING:
         momentum += gravity
         vertical_offset += momentum
-        if vertical_offset >= 2:
+        if vertical_offset >= 1.6:
             print("SQUISHING")
             hedron_state = States.SQUISHING
 
@@ -425,9 +430,9 @@ while running:
     elif hedron_state == States.BOUNCING:
         hedron_state = States.RISING
         if bounces >= 3:
-            momentum = 0.075
+            momentum = 0.068
         else:
-            momentum = 0.12
+            momentum = 0.1
         print("RISING")
         
     elif hedron_state == States.RISING:
@@ -442,14 +447,38 @@ while running:
                 print("FALLING")
         vertical_offset -= momentum
 
+    elif hedron_state == States.STEADY:
+        if squishy_amplitude == 0:
+            if scale > 20:
+                scale -= 0.08
+            if scale < 20: # in case we overshot on the same frame
+                scale = 20
+                hedron_state = States.LOOPING
+                print("LOOPING")
+                f.write(b'\xfe') # end of list
+                f.close()
+                f = open("trilist2.bin", "wb")
+                rotation_speed_x = math.pi/180
+                rotation_speed_y = -(math.pi/90)
+                loop_x_start = round(math.cos(angle_x),3)
+                loop_y_start = round(math.sin(angle_y),3)
+        else:
+            scale -= 0.06
 
+    elif hedron_state == States.LOOPING:
+        if loop_x_start == round(math.cos(angle_x),3) and loop_y_start == round(math.sin(angle_y),3):
+            print("DONE")
+            print(f"X {loop_x_start} {round(math.cos(angle_x),3)}")
+            print(f"Y {loop_y_start} {round(math.sin(angle_y),3)}")
+            f.write(b'\xfe') # end of list
+            break
 
 
 
     screen.fill(BLACK)
     advance_cube()
-
-    f.write(b'\xff') # end of frame
+    if tris_seen:
+        f.write(b'\xff') # end of frame
 
     pygame.display.flip()
     clock.tick(60)

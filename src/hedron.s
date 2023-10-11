@@ -4,6 +4,8 @@
 
 .import target_palette
 
+.importzp ptr1
+.importzp pstart, pend
 
 .macpack longbranch
 
@@ -564,9 +566,1121 @@ point_data1:
 
 
 .proc polyhedron
-	; load the triangle list
-;	LOADFILE "HEDRONTRILIST1.BIN", $20, $a000
+	; load the triangle lists
+	LOADFILE "HEDRONTRILIST1.DAT", $20, $a000
+	LOADFILE "HEDRONTRILIST2.DAT", $30, $a000
+
+	lda #$20
+	sta X16::Reg::RAMBank
+
+	stz ptr1	
+	lda #$a0
+	sta ptr1+1
+
+	; clear bitmap area completely
+
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	lda #$40
+	sta Vera::Reg::FXCtrl
+
+	lda #(6 << 1)
+	sta Vera::Reg::Ctrl
+	stz $9f29
+	stz $9f2a
+	stz $9f2b
+	stz $9f2c
+	stz Vera::Reg::Ctrl
+
+	stz Vera::Reg::AddrL
+	stz Vera::Reg::AddrM
+	lda #$30
+	sta Vera::Reg::AddrH
+
+	ldy #64 ; 64kB
+	ldx #0  ; 1kB per loop (256 * 4 w/ cache)
+fullclearloop:
+	stz Vera::Reg::Data0
+	dex
+	bne fullclearloop
+	dey
+	bne fullclearloop
+
+	; set bitmap mode for layer 1
+	lda #%00000110 ; 4bpp
+	sta Vera::Reg::L1Config
+	lda #(($00000 >> 11) << 2) | 0 ; 320
+	sta Vera::Reg::L1TileBase
+	lda #1
+	sta Vera::Reg::L1HScrollH ; palette offset
+
+	WAITVSYNC
+
+	; show bitmap layer
+	stz Vera::Reg::Ctrl
+	lda Vera::Reg::DCVideo
+	and #$0f
+	ora #$20
+	sta Vera::Reg::DCVideo
+
+
+	; wait for music cue XXX
+
+main_loop:
+	WAITVSYNC
+
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	lda #$40
+	sta Vera::Reg::FXCtrl
+
+	lda #(6 << 1)
+	sta Vera::Reg::Ctrl
+	stz $9f29
+	stz $9f2a
+	stz $9f2b
+	stz $9f2c
+	stz Vera::Reg::Ctrl
+
+	; double buffer flip
+
+	; flip it
+	lda MADDRM
+	eor #$80
+	sta MADDRM
+
+	stz Vera::Reg::AddrL
+	lda #$00
+MADDRM = * - 1
+	sta Vera::Reg::AddrM
+	lda #$30
+	sta Vera::Reg::AddrH
+
+	; repoint L1 bitmap
+	lda Vera::Reg::L1TileBase
+	eor #$40
+	sta Vera::Reg::L1TileBase
+
+	; double buffer flip complete
+
+	; clear draw buffer
+
+	ldy #4 ; 32kB
+	ldx #0  ; 8kB per loop (256 * 32 w/ cache)
+clearloop:
+.repeat 8
+	stz Vera::Reg::Data0
+.endrepeat
+	dex
+	bne clearloop
+	dey
+	bne clearloop
+
+	; enter polygon filler mode (with cache writes, 4-bit mode)
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	lda #$46
+	sta Vera::Reg::FXCtrl
+
+
+triloop:
+	; now read the triangle list
+
+	lda (ptr1)
+	jmi msinglepart
+	jvs mchangex2
+mchangex1:
+	INCPTR1
+
+	; Y coordinate: will set ADDR0 to column 0 of this coordinate
+	lda (ptr1)
+	tax ; we'll leave this coordinate in X for use later in case we start offscreen
+
+	INCPTR1
+
+	lda #(4 << 1) | 1           ; DCSEL=4, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+	; X coordinate: set X1 and X2 to this value
+	lda (ptr1)
+
+	sta $9f29 ; X1L
+	sta $9f2b ; X2L
+
+	stz $9f2a ; X1H
+	stz $9f2c ; X2H
+
+	lda #$30 ; +4 INCR on ADDR1
+	sta Vera::Reg::AddrH
+
+	lda #(3 << 1)               ; DCSEL=4
+    sta Vera::Reg::Ctrl
+
+	; X1 and X2 increments, low and high bytes
+	; These should already be cooked inside the bin
+	INCPTR1
+	lda (ptr1)
+	sta $9f29
+	INCPTR1
+	lda (ptr1)
+	sta $9f2a
+	INCPTR1
+	lda (ptr1)
+	sta $9f2b
+	INCPTR1
+	lda (ptr1)
+	sta $9f2c
+
+	lda #(6 << 1)               ; DCSEL=6
+    sta Vera::Reg::Ctrl
+
+	; Color index
+	INCPTR1
+	lda (ptr1)
+	sta $9f29
+	sta $9f2a
+	sta $9f2b
+	sta $9f2c
+
+	; row count
+	INCPTR1
+	lda (ptr1)
+	tay
+
+@offscloop:
+	cpx #200 ; above 200 treat as offscreen
+	bcc @onsc
+	lda Vera::Reg::Data1 ; advance X1/X2
+	inx
+	dey
+	bne @offscloop
+	; entire top part was offscreen
+	bra @part2_offsc_check
+@onsc:
+	; X should be positive (0-199)
+	; set positions
+	clc
+	lda MADDRM
+	POS_ADDR_ROW_4BIT_AH
+	lda #$d0 ; + 160 INCR
+	sta Vera::Reg::AddrH
+
+	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+@mloop1:
+	lda Vera::Reg::Data1 ; advances X1/X2
+	ldx $9f2b
+	jsr poly_fill_do_row ; optimized procs to draw the entire row
+	lda Vera::Reg::Data0 ; advances Y
+	dey
+	bne @mloop1
+	bra @part2
+@part2_offsc_check:
+	cpx #200 ; above 200 treat as offscreen
+	bcc @part2_position
+	lda Vera::Reg::Data1 ; advance X1/X2
+	inx
+	dey
+	bne @part2_offsc_check
+	; entire top part was offscreen
+@part2_position:
+	clc
+	lda MADDRM
+	POS_ADDR_ROW_4BIT_AH
+	lda #$d0 ; + 160 INCR
+	sta Vera::Reg::AddrH
+@part2:
+
+	lda #(3 << 1)               ; DCSEL=4
+    sta Vera::Reg::Ctrl
+
+	; X1 increment, low and high bytes
+	INCPTR1
+	lda (ptr1)
+	sta $9f29
+	INCPTR1
+	lda (ptr1)
+	sta $9f2a
+
+	; part 2 row count
+	INCPTR1
+	lda (ptr1)
+	tay
+
+	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+@mloop2:
+	lda Vera::Reg::Data1 ; advances X1/X2
+	ldx $9f2b
+	jsr poly_fill_do_row ; optimized procs to draw the entire row
+	lda Vera::Reg::Data0 ; advances Y
+	dey
+	bne @mloop2
+
+	jmp endoftri
+
+
+mchangex2:
+.repeat 11
+	INCPTR1
+.endrepeat
+	jmp endoftri
+
+msinglepart:
+	jvs mpart2only
+mpart1only:
+.repeat 8
+	INCPTR1
+.endrepeat
+	jmp endoftri
+
+mpart2only:
+; but also could be end of frame
+	cmp #$ff
+	jeq endofframe
+	cmp #$fe
+	jeq end ; end of data
+.repeat 9
+	INCPTR1
+.endrepeat
+	jmp endoftri
+
+endoftri:
+	INCPTR1
+	jmp triloop
+endofframe:
+	INCPTR1
+	jmp main_loop
+
+end:
 	rts
+.endproc
+
+.proc poly_fill_do_row
+	jmp (poly_jt,x)
+poly_jt:
+	.word poly_noop, poly_pix1_pos0, poly_pix2_pos0, poly_pix3_pos0
+	.word poly_pix4_pos0, poly_pix5_pos0, poly_pix6_pos0, poly_pix7_pos0
+
+	.word poly_noop, poly_pix1_pos4, poly_pix2_pos4, poly_pix2_pos4
+	.word poly_pix4_pos4, poly_pix5_pos4, poly_pix6_pos4, poly_pix7_pos4
+
+	.word poly_noop, poly_pix1_pos1, poly_pix2_pos1, poly_pix2_pos1
+	.word poly_pix4_pos1, poly_pix5_pos1, poly_pix6_pos1, poly_pix7_pos1
+
+	.word poly_noop, poly_pix1_pos5, poly_pix2_pos5, poly_pix2_pos5
+	.word poly_pix4_pos5, poly_pix5_pos5, poly_pix6_pos5, poly_pix7_pos5
+
+	.word poly_noop, poly_pix1_pos2, poly_pix2_pos2, poly_pix3_pos2
+	.word poly_pix4_pos2, poly_pix5_pos2, poly_pix6_pos2, poly_pix7_pos2
+
+	.word poly_noop, poly_pix1_pos6, poly_pix2_pos6, poly_pix2_pos6
+	.word poly_pix4_pos6, poly_pix5_pos6, poly_pix6_pos6, poly_pix7_pos6
+
+	.word poly_noop, poly_pix1_pos3, poly_pix2_pos3, poly_pix2_pos3
+	.word poly_pix4_pos3, poly_pix5_pos3, poly_pix6_pos3, poly_pix7_pos3
+
+	.word poly_noop, poly_pix1_pos7, poly_pix2_pos7, poly_pix2_pos7
+	.word poly_pix4_pos7, poly_pix5_pos7, poly_pix6_pos7, poly_pix7_pos7
+
+
+	.word poly_pix8p0_pos0, poly_pix8p1_pos0, poly_pix8p2_pos0, poly_pix8p3_pos0
+	.word poly_pix8p4_pos0, poly_pix8p5_pos0, poly_pix8p6_pos0, poly_pix8p7_pos0
+
+	.word poly_pix8p0_pos4, poly_pix8p1_pos4, poly_pix8p2_pos4, poly_pix8p2_pos4
+	.word poly_pix8p4_pos4, poly_pix8p5_pos4, poly_pix8p6_pos4, poly_pix8p7_pos4
+
+	.word poly_pix8p0_pos1, poly_pix8p1_pos1, poly_pix8p2_pos1, poly_pix8p2_pos1
+	.word poly_pix8p4_pos1, poly_pix8p5_pos1, poly_pix8p6_pos1, poly_pix8p7_pos1
+
+	.word poly_pix8p0_pos5, poly_pix8p1_pos5, poly_pix8p2_pos5, poly_pix8p2_pos5
+	.word poly_pix8p4_pos5, poly_pix8p5_pos5, poly_pix8p6_pos5, poly_pix8p7_pos5
+
+	.word poly_pix8p0_pos2, poly_pix8p1_pos2, poly_pix8p2_pos2, poly_pix8p3_pos2
+	.word poly_pix8p4_pos2, poly_pix8p5_pos2, poly_pix8p6_pos2, poly_pix8p7_pos2
+
+	.word poly_pix8p0_pos6, poly_pix8p1_pos6, poly_pix8p2_pos6, poly_pix8p2_pos6
+	.word poly_pix8p4_pos6, poly_pix8p5_pos6, poly_pix8p6_pos6, poly_pix8p7_pos6
+
+	.word poly_pix8p0_pos3, poly_pix8p1_pos3, poly_pix8p2_pos3, poly_pix8p2_pos3
+	.word poly_pix8p4_pos3, poly_pix8p5_pos3, poly_pix8p6_pos3, poly_pix8p7_pos3
+
+	.word poly_pix8p0_pos7, poly_pix8p1_pos7, poly_pix8p2_pos7, poly_pix8p2_pos7
+	.word poly_pix8p4_pos7, poly_pix8p5_pos7, poly_pix8p6_pos7, poly_pix8p7_pos7
+
+poly_noop:
+	rts
+
+poly_pix1_pos0:
+	lda #%11111101
+	sta Vera::Reg::Data1
+	rts
+poly_pix1_pos1:
+	lda #%11111110
+	sta Vera::Reg::Data1
+	rts
+poly_pix1_pos2:
+	lda #%11110111
+	sta Vera::Reg::Data1
+	rts
+poly_pix1_pos3:
+	lda #%11111011
+	sta Vera::Reg::Data1
+	rts
+poly_pix1_pos4:
+	lda #%11011111
+	sta Vera::Reg::Data1
+	rts
+poly_pix1_pos5:
+	lda #%11101111
+	sta Vera::Reg::Data1
+	rts
+poly_pix1_pos6:
+	lda #%01111111
+	sta Vera::Reg::Data1
+	rts
+poly_pix1_pos7:
+	lda #%10111111
+	sta Vera::Reg::Data1
+	rts
+
+poly_pix2_pos0:
+	lda #%11111100
+	sta Vera::Reg::Data1
+	rts
+poly_pix2_pos1:
+	lda #%11110110
+	sta Vera::Reg::Data1
+	rts
+poly_pix2_pos2:
+	lda #%11110011
+	sta Vera::Reg::Data1
+	rts
+poly_pix2_pos3:
+	lda #%11011011
+	sta Vera::Reg::Data1
+	rts
+poly_pix2_pos4:
+	lda #%11001111
+	sta Vera::Reg::Data1
+	rts
+poly_pix2_pos5:
+	lda #%01101111
+	sta Vera::Reg::Data1
+	rts
+poly_pix2_pos6:
+	lda #%00111111
+	sta Vera::Reg::Data1
+	rts
+poly_pix2_pos7:
+	lda #%10111111
+	sta Vera::Reg::Data1
+	lda #%11111101
+	sta Vera::Reg::Data1
+	rts
+
+poly_pix3_pos0:
+	lda #%11110100
+	sta Vera::Reg::Data1
+	rts
+poly_pix3_pos1:
+	lda #%11110010
+	sta Vera::Reg::Data1
+	rts
+poly_pix3_pos2:
+	lda #%11010011
+	sta Vera::Reg::Data1
+	rts
+poly_pix3_pos3:
+	lda #%11001011
+	sta Vera::Reg::Data1
+	rts
+poly_pix3_pos4:
+	lda #%01001111
+	sta Vera::Reg::Data1
+	rts
+poly_pix3_pos5:
+	lda #%00101111
+	sta Vera::Reg::Data1
+	rts
+poly_pix3_pos6:
+	lda #%00111111
+	sta Vera::Reg::Data1
+	lda #%11111101
+	sta Vera::Reg::Data1
+	rts
+poly_pix3_pos7:
+	lda #%10111111
+	sta Vera::Reg::Data1
+	lda #%11111100
+	sta Vera::Reg::Data1
+	rts
+
+poly_pix4_pos0:
+	lda #%11110000
+	sta Vera::Reg::Data1
+	rts
+poly_pix4_pos1:
+	lda #%11010010
+	sta Vera::Reg::Data1
+	rts
+poly_pix4_pos2:
+	lda #%11000011
+	sta Vera::Reg::Data1
+	rts
+poly_pix4_pos3:
+	lda #%01001011
+	sta Vera::Reg::Data1
+	rts
+poly_pix4_pos4:
+	lda #%00001111
+	sta Vera::Reg::Data1
+	rts
+poly_pix4_pos5:
+	lda #%00101111
+	sta Vera::Reg::Data1
+	lda #%11111101
+	sta Vera::Reg::Data1
+	rts
+poly_pix4_pos6:
+	lda #%00111111
+	sta Vera::Reg::Data1
+	lda #%11111100
+	sta Vera::Reg::Data1
+	rts
+poly_pix4_pos7:
+	lda #%10111111
+	sta Vera::Reg::Data1
+	lda #%11110100
+	sta Vera::Reg::Data1
+	rts
+
+poly_pix5_pos0:
+	lda #%11010000
+	sta Vera::Reg::Data1
+	rts
+poly_pix5_pos1:
+	lda #%11000010
+	sta Vera::Reg::Data1
+	rts
+poly_pix5_pos2:
+	lda #%01000011
+	sta Vera::Reg::Data1
+	rts
+poly_pix5_pos3:
+	lda #%00001011
+	sta Vera::Reg::Data1
+	rts
+poly_pix5_pos4:
+	lda #%00001111
+	sta Vera::Reg::Data1
+	lda #%11111101
+	sta Vera::Reg::Data1
+	rts
+poly_pix5_pos5:
+	lda #%00101111
+	sta Vera::Reg::Data1
+	lda #%11111100
+	sta Vera::Reg::Data1
+	rts
+poly_pix5_pos6:
+	lda #%00111111
+	sta Vera::Reg::Data1
+	lda #%11110100
+	sta Vera::Reg::Data1
+	rts
+poly_pix5_pos7:
+	lda #%10111111
+	sta Vera::Reg::Data1
+	lda #%11110000
+	sta Vera::Reg::Data1
+	rts
+
+poly_pix6_pos0:
+	lda #%11000000
+	sta Vera::Reg::Data1
+	rts
+poly_pix6_pos1:
+	lda #%01000010
+	sta Vera::Reg::Data1
+	rts
+poly_pix6_pos2:
+	lda #%00000011
+	sta Vera::Reg::Data1
+	rts
+poly_pix6_pos3:
+	lda #%00001011
+	sta Vera::Reg::Data1
+	lda #%11111101
+	sta Vera::Reg::Data1
+	rts
+poly_pix6_pos4:
+	lda #%00001111
+	sta Vera::Reg::Data1
+	lda #%11111100
+	sta Vera::Reg::Data1
+	rts
+poly_pix6_pos5:
+	lda #%00101111
+	sta Vera::Reg::Data1
+	lda #%11110100
+	sta Vera::Reg::Data1
+	rts
+poly_pix6_pos6:
+	lda #%00111111
+	sta Vera::Reg::Data1
+	lda #%11110000
+	sta Vera::Reg::Data1
+	rts
+poly_pix6_pos7:
+	lda #%10111111
+	sta Vera::Reg::Data1
+	lda #%11010000
+	sta Vera::Reg::Data1
+	rts
+
+
+poly_pix7_pos0:
+	lda #%01000000
+	sta Vera::Reg::Data1
+	rts
+poly_pix7_pos1:
+	lda #%00000010
+	sta Vera::Reg::Data1
+	rts
+poly_pix7_pos2:
+	lda #%00000011
+	sta Vera::Reg::Data1
+	lda #%11111101
+	sta Vera::Reg::Data1
+	rts
+poly_pix7_pos3:
+	lda #%00001011
+	sta Vera::Reg::Data1
+	lda #%11111100
+	sta Vera::Reg::Data1
+	rts
+poly_pix7_pos4:
+	lda #%00001111
+	sta Vera::Reg::Data1
+	lda #%11110100
+	sta Vera::Reg::Data1
+	rts
+poly_pix7_pos5:
+	lda #%00101111
+	sta Vera::Reg::Data1
+	lda #%11110000
+	sta Vera::Reg::Data1
+	rts
+poly_pix7_pos6:
+	lda #%00111111
+	sta Vera::Reg::Data1
+	lda #%11010000
+	sta Vera::Reg::Data1
+	rts
+poly_pix7_pos7:
+	lda #%10111111
+	sta Vera::Reg::Data1
+	lda #%11000000
+	sta Vera::Reg::Data1
+	rts
+
+poly_pix8p0_pos0: ; fully aligned multiple of 8
+	lda $9f2c
+	cmp #$c0
+	bcs @end
+	lsr
+@loop:
+	stz Vera::Reg::Data1
+	dec
+	bne @loop
+@end:
+	rts
+
+poly_pix8p0_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p0_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p0_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p0_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p0_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p0_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p0_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p1_pos0:
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p_eo
+
+poly_pix8p1_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p1_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p1_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p1_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p1_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p1_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p1_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%00000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p2_pos0:
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p_eo
+
+poly_pix8p2_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p2_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p2_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p2_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p2_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p2_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%00000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p2_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p3_pos0:
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p_eo
+
+poly_pix8p3_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p3_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p3_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p3_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p3_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%00000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p3_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p3_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p4_pos0:
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p_eo
+
+poly_pix8p4_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p4_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p4_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p4_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%00000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p4_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p4_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p4_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p5_pos0:
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p_eo
+
+poly_pix8p5_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p5_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p5_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%00000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p5_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p5_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p5_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p5_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p6_pos0:
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p_eo
+
+poly_pix8p6_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p6_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%00000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p6_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p6_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p6_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p6_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p6_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p7_pos0:
+	lda #%01000000
+	sta pend
+	jmp poly_pix8p_eo
+
+poly_pix8p7_pos1:
+	lda #%00000010
+	sta pstart
+	lda #%00000000
+	sta pend
+	jmp poly_pix8p
+
+poly_pix8p7_pos2:
+	lda #%00000011
+	sta pstart
+	lda #%11111101
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p7_pos3:
+	lda #%00001011
+	sta pstart
+	lda #%11111100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p7_pos4:
+	lda #%00001111
+	sta pstart
+	lda #%11110100
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p7_pos5:
+	lda #%00101111
+	sta pstart
+	lda #%11110000
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p7_pos6:
+	lda #%00111111
+	sta pstart
+	lda #%11010000
+	sta pend
+	jmp poly_pix8p_ec
+
+poly_pix8p7_pos7:
+	lda #%10111111
+	sta pstart
+	lda #%11000000
+	sta pend
+	jmp poly_pix8p_ec
+
+
+poly_pix8p:
+	lda $9f2c
+	cmp #$c0
+	bcs @end
+	ldx pstart
+	stx Vera::Reg::Data1
+	lsr
+	dec
+	beq @final
+@loop:
+	stz Vera::Reg::Data1
+	dec
+	bne @loop
+@final:
+	lda pend
+	sta Vera::Reg::Data1
+@end:
+	rts
+
+poly_pix8p_ec:
+	lda $9f2c
+	cmp #$c0
+	bcs @end
+	ldx pstart
+	stx Vera::Reg::Data1
+	lsr
+@loop:
+	stz Vera::Reg::Data1
+	dec
+	bne @loop
+@final:
+	lda pend
+	sta Vera::Reg::Data1
+@end:
+	rts
+
+
+poly_pix8p_eo:
+	lda $9f2c
+	cmp #$c0
+	bcs @end
+	lsr
+@loop:
+	stz Vera::Reg::Data1
+	dec
+	bne @loop
+@final:
+	lda pend
+	sta Vera::Reg::Data1
+@end:
+	rts
+
+
+
 .endproc
 
 .proc waitfornext
