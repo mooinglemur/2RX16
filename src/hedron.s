@@ -755,8 +755,12 @@ mchangex1:
 	dey
 	bne @offscloop
 	; entire top part was offscreen
-	bra @part2_offsc_check
+	lda #$e0 ; CPX
+	sta @do_offsc2 ; self-mod so that part 2 offscreen check isn't skipped
+	bra @part2
 @onsc:
+	lda #$80 ; BRA
+	sta @do_offsc2 ; self-mod to skip part 2 offscreen check
 	; X should be positive (0-199)
 	; set positions
 	clc
@@ -775,23 +779,7 @@ mchangex1:
 	lda Vera::Reg::Data0 ; advances Y
 	dey
 	bne @mloop1
-	bra @part2
-@part2_offsc_check:
-	cpx #200 ; above 200 treat as offscreen
-	bcc @part2_position
-	lda Vera::Reg::Data1 ; advance X1/X2
-	inx
-	dey
-	bne @part2_offsc_check
-	; entire top part was offscreen
-@part2_position:
-	clc
-	lda MADDRM
-	POS_ADDR_ROW_4BIT_AH
-	lda #$d0 ; + 160 INCR
-	sta Vera::Reg::AddrH
 @part2:
-
 	lda #(3 << 1)               ; DCSEL=4
     sta Vera::Reg::Ctrl
 
@@ -808,6 +796,24 @@ mchangex1:
 	lda (ptr1)
 	tay
 
+@do_offsc2:
+	bra @part2_cont
+@part2_offsc_check:
+	cpx #200 ; above 200 treat as offscreen
+	bcc @part2_position
+	lda Vera::Reg::Data1 ; advance X1/X2
+	inx
+	dey
+	bne @part2_offsc_check
+	; entire top part was offscreen
+@part2_position:
+	clc
+	lda MADDRM
+	POS_ADDR_ROW_4BIT_AH
+	lda #$d0 ; + 160 INCR
+	sta Vera::Reg::AddrH
+
+@part2_cont:
 	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
     sta Vera::Reg::Ctrl
 

@@ -260,6 +260,8 @@ def advance_cube():
         # 08 - color index
         # 09 - row count
 
+        color_idx_out = (color_idx+1) | ((color_idx+1)*16)
+
         # find top two points of triangle
         sorted_points = sorted(face[0:3], key=y_sorter, reverse=False)
 
@@ -309,7 +311,7 @@ def advance_cube():
             f.write(x2.to_bytes(1, 'little')) # 03 - X1
             f.write(slope2bytes(slope_x1))    # 04-05 - X1 inc
             f.write(slope2bytes(slope_x2))    # 06-07 - X2 inc
-            f.write(color_idx.to_bytes(1, 'little')) # 08 color index
+            f.write(color_idx_out.to_bytes(1, 'little')) # 08 color index
             f.write(rowcount.to_bytes(1, 'little')) # 09 row count
         elif (v1[1] == v2[1]): # Part 1 only
             print("Part 1 only")
@@ -337,7 +339,7 @@ def advance_cube():
             f.write(xx.to_bytes(1, 'little')) # 02 - X
             f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
             f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
-            f.write(color_idx.to_bytes(1, 'little')) # 07 color index
+            f.write(color_idx_out.to_bytes(1, 'little')) # 07 color index
             f.write(rowcount.to_bytes(1, 'little')) # 08 row count
 
         elif (v0[0] < v1[0]): # Two part, change X2
@@ -364,7 +366,7 @@ def advance_cube():
             f.write(xx.to_bytes(1, 'little')) # 02 - X
             f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
             f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
-            f.write(color_idx.to_bytes(1, 'little')) # 07 color index
+            f.write(color_idx_out.to_bytes(1, 'little')) # 07 color index
             f.write(rowcount1.to_bytes(1, 'little')) # 08 row count 1
             f.write(slope2bytes(slope_x2_new)) # 09-0a - new X2 inc
             f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
@@ -392,7 +394,7 @@ def advance_cube():
             f.write(xx.to_bytes(1, 'little')) # 02 - X
             f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
             f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
-            f.write(color_idx.to_bytes(1, 'little')) # 07 color index
+            f.write(color_idx_out.to_bytes(1, 'little')) # 07 color index
             f.write(rowcount1.to_bytes(1, 'little')) # 08 row count 1
             f.write(slope2bytes(slope_x1_new)) # 09-0a - new X1 inc
             f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
