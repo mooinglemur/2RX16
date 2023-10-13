@@ -144,16 +144,17 @@ cont:
 
 .macro INCPTR1
 .local @1
+.local @2
     inc ptr1
-    bne @1
+    bne @2
     lda ptr1+1
     inc
     cmp #$c0
     bcc @1
     sbc #$20
-    sta ptr1+1
     inc X16::Reg::RAMBank
-@1:
+@1: sta ptr1+1
+@2:
 .endmacro
 
 .endif

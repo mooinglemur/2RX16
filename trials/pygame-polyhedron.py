@@ -5,6 +5,7 @@ from pygame.locals import *
 import math
 from enum import Enum
 import copy
+import time
 
 # Initialize Pygame
 pygame.init()
@@ -273,13 +274,47 @@ def advance_cube():
             print("Fully offscreen")
             continue # fully offscreen
 
-#        if v1[1] < 0:
-#            v1[1] = 0
-
-#        if v0[1] < 0:
-#            v0[1] = 0
 
         tris_seen = True
+
+        if v1[1] <= 0 and v0[1] < 0:
+            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
+
+            dx_1 = v1[0] - v0[0]
+            dy_1 = v1[1] - v0[1]
+            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
+            dx_2 = v2[0] - v0[0]
+            dy_2 = v2[1] - v0[1]
+            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
+            v0[0] = round(v0[0] + (slope_2 * dy_1))
+            v0[1] = v1[1]
+
+            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
+
+            dx_1 = v2[0] - v0[0]
+            dy_1 = v2[1] - v0[1]
+            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
+            dx_2 = v2[0] - v1[0]
+            dy_2 = v2[1] - v1[1]
+            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
+            d0 = 0 - v0[1]
+
+            v0[0] = round(v0[0] + (slope_1 * d0))
+            v1[0] = round(v1[0] + (slope_2 * d0))
+
+            v0[1] = 0
+            v1[1] = 0
+
+            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
+            print(f"v2 {v2[0]} {v2[1]}")
+            #time.sleep(2)
+
+        if v2[1] == v1[1] and v1[1] == v0[1]:
+            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
+            print(f"v2 {v2[0]} {v2[1]}")
+            #time.sleep(10)
+            continue
+
 
         if (v0[1] == v1[1]): # Part 2 only
             print("Part 2 only")
@@ -304,6 +339,7 @@ def advance_cube():
             print(f"Y {yy} X1 {x1} X2 {x2} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount}")
             f.write(b'\xc0')                  # 00 - type C0
             if (yy < 0):
+                assert y > -55
                 f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
             else:
                 f.write(yy.to_bytes(1, 'little')) # 01 - Y
@@ -331,8 +367,12 @@ def advance_cube():
             xx = v0[0]
             yy = v0[1]
             print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount}")
+            if v0[0] == v1[0]:
+                #time.sleep(5)
+                pass
             f.write(b'\x80')                  # 00 - type 80
             if (yy < 0):
+                assert y > -55
                 f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
             else:
                 f.write(yy.to_bytes(1, 'little')) # 01 - Y
@@ -360,6 +400,7 @@ def advance_cube():
             print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount1} New X2 {slope_x2_new} Count {rowcount2}")
             f.write(b'\x40')                  # 00 - type 40
             if (yy < 0):
+                assert y > -55
                 f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
             else:
                 f.write(yy.to_bytes(1, 'little')) # 01 - Y
@@ -388,6 +429,7 @@ def advance_cube():
             print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount1} New X1 {slope_x1_new} Count {rowcount2}")
             f.write(b'\x00')                  # 00 - type 00
             if (yy < 0):
+                assert y > -55
                 f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
             else:
                 f.write(yy.to_bytes(1, 'little')) # 01 - Y

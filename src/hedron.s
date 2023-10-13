@@ -17,6 +17,7 @@
 entry:
 	jsr chessboard_in
 	jsr chessboard_to_tiles
+	jsr polyhedron_palette1
 	jsr polyhedron
 	jsr waitfornext
 	rts
@@ -564,11 +565,31 @@ point_data1:
 	.byte 0
 .endproc
 
+.proc polyhedron_palette1
+	stz Vera::Reg::Ctrl
+	VERA_SET_ADDR (32 + Vera::VRAM_palette), 1
+	ldx #0
+:	lda pal,x
+	sta Vera::Reg::Data0
+	inx
+	cpx #32
+	bne :-
+	rts
+pal:
+	.word $0000,$000f,$0fff,$00f0,$0fff,$0f00,$0fff,$00ff
+	.word $0fff,$0f0f,$0fff,$0ff0,$0fff,$000f,$0fff,$000f
+.endproc
+
 
 .proc polyhedron
 	; load the triangle lists
 	LOADFILE "HEDRONTRILIST1.DAT", $20, $a000
-	LOADFILE "HEDRONTRILIST2.DAT", $30, $a000
+;	LOADFILE "HEDRONTRILIST2.DAT", $30, $a000
+
+	; initialize indirects
+	lda #$9f
+	sta xlow+1
+	sta xhigh+1
 
 	lda #$20
 	sta X16::Reg::RAMBank
@@ -609,18 +630,18 @@ fullclearloop:
 	; set bitmap mode for layer 1
 	lda #%00000110 ; 4bpp
 	sta Vera::Reg::L1Config
-	lda #(($00000 >> 11) << 2) | 0 ; 320
+	lda #(($08000 >> 11) << 2) | 0 ; 320
 	sta Vera::Reg::L1TileBase
 	lda #1
 	sta Vera::Reg::L1HScrollH ; palette offset
 
 	WAITVSYNC
 
-	; show bitmap layer
+	; show bitmap layer + layer 0
 	stz Vera::Reg::Ctrl
 	lda Vera::Reg::DCVideo
 	and #$0f
-	ora #$20
+	ora #$30
 	sta Vera::Reg::DCVideo
 
 
@@ -685,11 +706,23 @@ clearloop:
 
 triloop:
 	; now read the triangle list
-
+	stz skip2 ; reset the branch
 	lda (ptr1)
 	jmi msinglepart
-	jvs mchangex2
+	bit #$40
+	bne mchangex2
 mchangex1:
+	lda #$29
+	sta xlow
+	lda #$2a
+	sta xhigh
+	bra mchange
+mchangex2:
+	lda #$2b
+	sta xlow
+	lda #$2c
+	sta xhigh
+mchange:
 	INCPTR1
 
 	; Y coordinate: will set ADDR0 to column 0 of this coordinate
@@ -707,13 +740,14 @@ mchangex1:
 	sta $9f29 ; X1L
 	sta $9f2b ; X2L
 
+c0entry:
 	stz $9f2a ; X1H
 	stz $9f2c ; X2H
 
 	lda #$30 ; +4 INCR on ADDR1
 	sta Vera::Reg::AddrH
 
-	lda #(3 << 1)               ; DCSEL=4
+	lda #(3 << 1)               ; DCSEL=3
     sta Vera::Reg::Ctrl
 
 	; X1 and X2 increments, low and high bytes
@@ -747,20 +781,17 @@ mchangex1:
 	lda (ptr1)
 	tay
 
-@offscloop:
+offscloop:
 	cpx #200 ; above 200 treat as offscreen
-	bcc @onsc
+	bcc onsc
 	lda Vera::Reg::Data1 ; advance X1/X2
+	lda Vera::Reg::Data1 ; advance X1/X2 (needed twice) since we're not writing the row
 	inx
 	dey
-	bne @offscloop
-	; entire top part was offscreen
-	lda #$e0 ; CPX
-	sta @do_offsc2 ; self-mod so that part 2 offscreen check isn't skipped
-	bra @part2
-@onsc:
-	lda #$80 ; BRA
-	sta @do_offsc2 ; self-mod to skip part 2 offscreen check
+	bne offscloop
+	; entire top part was offscreen (should never happen)
+	stp
+onsc:
 	; X should be positive (0-199)
 	; set positions
 	clc
@@ -772,75 +803,55 @@ mchangex1:
 	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
     sta Vera::Reg::Ctrl
 
-@mloop1:
+mloop1:
 	lda Vera::Reg::Data1 ; advances X1/X2
 	ldx $9f2b
 	jsr poly_fill_do_row ; optimized procs to draw the entire row
 	lda Vera::Reg::Data0 ; advances Y
 	dey
-	bne @mloop1
-@part2:
-	lda #(3 << 1)               ; DCSEL=4
+	bne mloop1
+	lda #$00
+skip2 = * - 1
+	jne endoftri
+part2:
+	lda #(3 << 1)               ; DCSEL=3
     sta Vera::Reg::Ctrl
 
-	; X1 increment, low and high bytes
+	; change X1 or X2 increment, low and high bytes
 	INCPTR1
 	lda (ptr1)
-	sta $9f29
+	sta $9fff
+xlow = * - 2
 	INCPTR1
 	lda (ptr1)
-	sta $9f2a
+	sta $9fff
+xhigh = * - 2
 
 	; part 2 row count
 	INCPTR1
 	lda (ptr1)
 	tay
 
-@do_offsc2:
-	bra @part2_cont
-@part2_offsc_check:
-	cpx #200 ; above 200 treat as offscreen
-	bcc @part2_position
-	lda Vera::Reg::Data1 ; advance X1/X2
-	inx
-	dey
-	bne @part2_offsc_check
-	; entire top part was offscreen
-@part2_position:
-	clc
-	lda MADDRM
-	POS_ADDR_ROW_4BIT_AH
-	lda #$d0 ; + 160 INCR
-	sta Vera::Reg::AddrH
-
-@part2_cont:
 	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
     sta Vera::Reg::Ctrl
 
-@mloop2:
+mloop2:
 	lda Vera::Reg::Data1 ; advances X1/X2
 	ldx $9f2b
 	jsr poly_fill_do_row ; optimized procs to draw the entire row
 	lda Vera::Reg::Data0 ; advances Y
 	dey
-	bne @mloop2
+	bne mloop2
 
 	jmp endoftri
 
-
-mchangex2:
-.repeat 11
-	INCPTR1
-.endrepeat
-	jmp endoftri
 
 msinglepart:
-	jvs mpart2only
+	bit #$40
+	bne mpart2only
 mpart1only:
-.repeat 8
-	INCPTR1
-.endrepeat
-	jmp endoftri
+	inc skip2
+	jmp mchange
 
 mpart2only:
 ; but also could be end of frame
@@ -848,10 +859,33 @@ mpart2only:
 	jeq endofframe
 	cmp #$fe
 	jeq end ; end of data
-.repeat 9
+
+	INCPTR1
+
+	; Y coordinate: will set ADDR0 to column 0 of this coordinate
+	lda (ptr1)
+	tax ; we'll leave this coordinate in X for use later in case we start offscreen
+
+	lda #(4 << 1) | 1           ; DCSEL=4, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+	INCPTR1
+
+	; X1 coordinate: set X1
+	lda (ptr1)
+	sta $9f29 ; X1L
+
+	INCPTR1
+
+	; X2 coordinate: set X2
+	lda (ptr1)
+	sta $9f2b ; X2L
+
+	inc skip2
+	jmp c0entry
+.repeat 6
 	INCPTR1
 .endrepeat
-	jmp endoftri
 
 endoftri:
 	INCPTR1
@@ -859,8 +893,15 @@ endoftri:
 endofframe:
 	INCPTR1
 	jmp main_loop
-
 end:
+	; set up DCSEL=2
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	; set FX off
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
 	rts
 .endproc
 
@@ -870,50 +911,50 @@ poly_jt:
 	.word poly_noop, poly_pix1_pos0, poly_pix2_pos0, poly_pix3_pos0
 	.word poly_pix4_pos0, poly_pix5_pos0, poly_pix6_pos0, poly_pix7_pos0
 
-	.word poly_noop, poly_pix1_pos4, poly_pix2_pos4, poly_pix2_pos4
+	.word poly_noop, poly_pix1_pos4, poly_pix2_pos4, poly_pix3_pos4
 	.word poly_pix4_pos4, poly_pix5_pos4, poly_pix6_pos4, poly_pix7_pos4
 
-	.word poly_noop, poly_pix1_pos1, poly_pix2_pos1, poly_pix2_pos1
+	.word poly_noop, poly_pix1_pos1, poly_pix2_pos1, poly_pix3_pos1
 	.word poly_pix4_pos1, poly_pix5_pos1, poly_pix6_pos1, poly_pix7_pos1
 
-	.word poly_noop, poly_pix1_pos5, poly_pix2_pos5, poly_pix2_pos5
+	.word poly_noop, poly_pix1_pos5, poly_pix2_pos5, poly_pix3_pos5
 	.word poly_pix4_pos5, poly_pix5_pos5, poly_pix6_pos5, poly_pix7_pos5
 
 	.word poly_noop, poly_pix1_pos2, poly_pix2_pos2, poly_pix3_pos2
 	.word poly_pix4_pos2, poly_pix5_pos2, poly_pix6_pos2, poly_pix7_pos2
 
-	.word poly_noop, poly_pix1_pos6, poly_pix2_pos6, poly_pix2_pos6
+	.word poly_noop, poly_pix1_pos6, poly_pix2_pos6, poly_pix3_pos6
 	.word poly_pix4_pos6, poly_pix5_pos6, poly_pix6_pos6, poly_pix7_pos6
 
-	.word poly_noop, poly_pix1_pos3, poly_pix2_pos3, poly_pix2_pos3
+	.word poly_noop, poly_pix1_pos3, poly_pix2_pos3, poly_pix3_pos3
 	.word poly_pix4_pos3, poly_pix5_pos3, poly_pix6_pos3, poly_pix7_pos3
 
-	.word poly_noop, poly_pix1_pos7, poly_pix2_pos7, poly_pix2_pos7
+	.word poly_noop, poly_pix1_pos7, poly_pix2_pos7, poly_pix3_pos7
 	.word poly_pix4_pos7, poly_pix5_pos7, poly_pix6_pos7, poly_pix7_pos7
 
 
 	.word poly_pix8p0_pos0, poly_pix8p1_pos0, poly_pix8p2_pos0, poly_pix8p3_pos0
 	.word poly_pix8p4_pos0, poly_pix8p5_pos0, poly_pix8p6_pos0, poly_pix8p7_pos0
 
-	.word poly_pix8p0_pos4, poly_pix8p1_pos4, poly_pix8p2_pos4, poly_pix8p2_pos4
+	.word poly_pix8p0_pos4, poly_pix8p1_pos4, poly_pix8p2_pos4, poly_pix8p3_pos4
 	.word poly_pix8p4_pos4, poly_pix8p5_pos4, poly_pix8p6_pos4, poly_pix8p7_pos4
 
-	.word poly_pix8p0_pos1, poly_pix8p1_pos1, poly_pix8p2_pos1, poly_pix8p2_pos1
+	.word poly_pix8p0_pos1, poly_pix8p1_pos1, poly_pix8p2_pos1, poly_pix8p3_pos1
 	.word poly_pix8p4_pos1, poly_pix8p5_pos1, poly_pix8p6_pos1, poly_pix8p7_pos1
 
-	.word poly_pix8p0_pos5, poly_pix8p1_pos5, poly_pix8p2_pos5, poly_pix8p2_pos5
+	.word poly_pix8p0_pos5, poly_pix8p1_pos5, poly_pix8p2_pos5, poly_pix8p3_pos5
 	.word poly_pix8p4_pos5, poly_pix8p5_pos5, poly_pix8p6_pos5, poly_pix8p7_pos5
 
 	.word poly_pix8p0_pos2, poly_pix8p1_pos2, poly_pix8p2_pos2, poly_pix8p3_pos2
 	.word poly_pix8p4_pos2, poly_pix8p5_pos2, poly_pix8p6_pos2, poly_pix8p7_pos2
 
-	.word poly_pix8p0_pos6, poly_pix8p1_pos6, poly_pix8p2_pos6, poly_pix8p2_pos6
+	.word poly_pix8p0_pos6, poly_pix8p1_pos6, poly_pix8p2_pos6, poly_pix8p3_pos6
 	.word poly_pix8p4_pos6, poly_pix8p5_pos6, poly_pix8p6_pos6, poly_pix8p7_pos6
 
-	.word poly_pix8p0_pos3, poly_pix8p1_pos3, poly_pix8p2_pos3, poly_pix8p2_pos3
+	.word poly_pix8p0_pos3, poly_pix8p1_pos3, poly_pix8p2_pos3, poly_pix8p3_pos3
 	.word poly_pix8p4_pos3, poly_pix8p5_pos3, poly_pix8p6_pos3, poly_pix8p7_pos3
 
-	.word poly_pix8p0_pos7, poly_pix8p1_pos7, poly_pix8p2_pos7, poly_pix8p2_pos7
+	.word poly_pix8p0_pos7, poly_pix8p1_pos7, poly_pix8p2_pos7, poly_pix8p3_pos7
 	.word poly_pix8p4_pos7, poly_pix8p5_pos7, poly_pix8p6_pos7, poly_pix8p7_pos7
 
 poly_noop:
