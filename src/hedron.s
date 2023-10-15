@@ -644,8 +644,7 @@ fullclearloop:
 	ora #$30
 	sta Vera::Reg::DCVideo
 
-
-	; wait for music cue XXX
+	MUSIC_SYNC $11
 
 main_loop:
 	WAITVSYNC
@@ -712,14 +711,12 @@ triloop:
 	bit #$40
 	bne mchangex2
 mchangex1:
-	DEBUGMSG "CHANGE X1"
 	lda #$29
 	sta xlow
 	lda #$2a
 	sta xhigh
 	bra mchange
 mchangex2:
-	DEBUGMSG "CHANGE X2"
 	lda #$2b
 	sta xlow
 	lda #$2c
@@ -782,7 +779,6 @@ c0entry:
 	INCPTR1
 	lda (ptr1)
 	tay
-	sty $9fb9
 
 offscloop:
 	cpx #200 ; above 200 treat as offscreen
@@ -793,7 +789,6 @@ offscloop:
 	dey
 	bne offscloop
 	; entire top part was offscreen (should never happen)
-	stp
 onsc:
 	; X should be positive (0-199)
 	; set positions
@@ -834,7 +829,6 @@ xhigh = * - 2
 	INCPTR1
 	lda (ptr1)
 	tay
-	sty $9fb9
 
 	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
     sta Vera::Reg::Ctrl
@@ -854,7 +848,6 @@ msinglepart:
 	bit #$40
 	bne mpart2only
 mpart1only:
-	DEBUGMSG "PART 1 ONLY"
 	inc skip2
 	jmp mchange
 
@@ -864,8 +857,6 @@ mpart2only:
 	jeq endofframe
 	cmp #$fe
 	jeq end ; end of data
-
-	DEBUGMSG "PART 2 ONLY"
 
 	INCPTR1
 
@@ -898,8 +889,6 @@ endoftri:
 	INCPTR1
 	jmp triloop
 endofframe:
-	DEBUGMSG "END OF FRAME"
-	stp
 	INCPTR1
 	jmp main_loop
 end:
