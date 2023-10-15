@@ -157,4 +157,29 @@ cont:
 @2:
 .endmacro
 
+.macro DEBUGMSG msg
+.local msgloc
+.local loop
+.local cont
+    pha
+    phx
+    ldx #0
+loop:
+    lda msgloc,x
+    beq cont
+    sta $9fbb
+    inx
+    bne loop
+    bra cont
+msgloc:
+    .byte msg
+    .byte 13,10,0
+cont:
+    plx
+    pla
+.endmacro
+
+
+
+
 .endif
