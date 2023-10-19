@@ -2,6 +2,8 @@
 .export addrm_per_row_4bit
 .export addrl_per_row_8bit
 .export addrm_per_row_8bit
+.export addrl_per_row_spr_4bit
+.export addrm_per_row_spr_4bit
 
 .segment "RODATA"
 
@@ -74,3 +76,13 @@ addrm_per_row_8bit:
     .byte $e6,$e7,$e8,$e9,$eb,$ec,$ed,$ee
     .byte $f0,$f1,$f2,$f3,$f5,$f6,$f7,$f8
     .byte $fa,$fb,$fc,$fd
+
+addrl_per_row_spr_4bit:
+.repeat 8
+    .byte $00,$20,$40,$60,$80,$a0,$c0,$e0
+.endrepeat
+
+addrm_per_row_spr_4bit:
+.repeat 8, i
+    .byte i, i, i, i, i, i, i, i
+.endrepeat

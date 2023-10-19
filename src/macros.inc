@@ -7,6 +7,9 @@ macros_inc = 1
 .import addrm_per_row_4bit
 .import addrl_per_row_8bit
 .import addrm_per_row_8bit
+.import addrl_per_row_spr_4bit
+.import addrm_per_row_spr_4bit
+
 .ifndef syncval
 .import syncval
 .endif
@@ -79,6 +82,12 @@ FRC = * -1
     sta Vera::Reg::AddrM
 .endmacro
 
+.macro POS_ADDR_SPR_ROW_4BIT_AH
+    adc addrm_per_row_spr_4bit,x
+    sta Vera::Reg::AddrM
+    lda addrl_per_row_spr_4bit,x
+    sta Vera::Reg::AddrL
+.endmacro
 
 .macro PALETTE_FADE vsyncs_per_step
 .local PALITER

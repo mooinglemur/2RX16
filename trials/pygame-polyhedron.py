@@ -7,6 +7,7 @@ from enum import Enum
 import copy
 import time
 from shapely.geometry import Polygon, GeometryCollection
+import numpy as np
 
 # Initialize Pygame
 pygame.init()
@@ -115,6 +116,9 @@ squishy_amplitude = 0
 vertical_offset = -10
 momentum = 0
 gravity = 0.0009
+sprite_mode = False
+max_x = 0
+max_y = 0
 
 camera = (0, 0, 6)
 
@@ -150,6 +154,9 @@ def advance_cube():
     global zees
     global rotated_vertices
     global tris_seen
+    global sprite_mode
+    global max_x
+    global max_y
 
     # Apply rotation
     angle_x += rotation_speed_x
@@ -295,6 +302,7 @@ def advance_cube():
 
         tris_seen = True
 
+
         if v1[1] <= 0 and v0[1] < 0:
             print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
 
@@ -332,6 +340,55 @@ def advance_cube():
             print(f"v2 {v2[0]} {v2[1]}")
             #time.sleep(10)
             continue
+
+        if sprite_mode:
+            print(f"Sprite: v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]} v2 {v2[0]} {v2[1]}")
+            assert v0[0] < 64
+            assert v0[1] < 64
+            assert v1[0] < 64
+            assert v1[1] < 64
+            assert v2[1] < 64
+            assert v2[0] < 64
+            if v0[0] > max_x:
+                max_x = v0[0]             
+            if v1[0] > max_x:
+                max_x = v1[0]             
+            if v2[0] > max_x:
+                max_x = v2[0]             
+
+            if v0[1] > max_y:
+                max_y = v0[1]
+            if v1[1] > max_y:
+                max_y = v1[1]
+            if v2[1] > max_y:
+                max_y = v2[1]
+
+            print(f"Max X {max_x} Max Y {max_y}")
+
+        # find angle relative to Z axis
+        vert1 = np.array([rotated_vertices[sorted_points[0]][0],rotated_vertices[sorted_points[0]][1],zees[sorted_points[0]]])
+        vert2 = np.array([rotated_vertices[sorted_points[1]][0],rotated_vertices[sorted_points[1]][1],zees[sorted_points[1]]])
+        vert3 = np.array([rotated_vertices[sorted_points[2]][0],rotated_vertices[sorted_points[2]][1],zees[sorted_points[2]]])
+
+        edge1 = vert2 - vert1
+        edge2 = vert3 - vert1
+
+        normal = np.cross(edge1, edge2)
+
+        camerapos = np.array([0, 0, -100])
+
+        vector_to_triangle = vert1 - camerapos
+
+        angle_rad = np.arccos(np.dot(normal, vector_to_triangle) / (np.linalg.norm(normal) * np.linalg.norm(vector_to_triangle)))
+        angle_deg = np.degrees(angle_rad)
+        if angle_deg > 90:
+            angle_deg -= 90
+
+
+        print(f"Angle relative to the camera: {angle_deg} degrees")
+        
+        color_idx_out = (color_idx % 2) + (2*int(angle_deg/15)) + 1
+        color_idx_out += 16*color_idx_out
 
 
         if (v0[1] == v1[1]): # Part 2 only
@@ -509,24 +566,30 @@ while running:
 
     elif hedron_state == States.STEADY:
         if squishy_amplitude == 0:
-            if scale > 20:
-                scale -= 0.08
-            if scale < 20: # in case we overshot on the same frame
-                scale = 20
+            if scale > 21.5:
+                scale -= 0.15
+            if scale < 21.5: # in case we overshot on the same frame
+                scale = 21.5
                 hedron_state = States.LOOPING
                 print("LOOPING")
                 f.write(b'\xfe') # end of list
                 f.close()
+                center_offset = (32,32)
+                vertical_offset = 0
+                sprite_mode = True
                 f = open("trilist2.bin", "wb")
                 rotation_speed_x = math.pi/180
                 rotation_speed_y = -(math.pi/90)
-                loop_x_start = round(math.cos(angle_x),3)
-                loop_y_start = round(math.sin(angle_y),3)
+                loop_x_start = abs(round(math.cos(angle_x),3))
+                loop_y_start = abs(round(math.sin(angle_y),3))
         else:
-            scale -= 0.06
+            scale -= 0.15
+            squishy_dampening = 0.006
+            if scale < 21.5: # in case we overshot on the same frame
+                scale = 21.5
 
     elif hedron_state == States.LOOPING:
-        if loop_x_start == round(math.cos(angle_x),3) and loop_y_start == round(math.sin(angle_y),3):
+        if loop_x_start == abs(round(math.cos(angle_x),3)) and loop_y_start == abs(round(math.sin(angle_y),3)):
             print("DONE")
             print(f"X {loop_x_start} {round(math.cos(angle_x),3)}")
             print(f"Y {loop_y_start} {round(math.sin(angle_y),3)}")

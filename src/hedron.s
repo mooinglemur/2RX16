@@ -4,11 +4,20 @@
 
 .import target_palette
 
-.importzp ptr1
+.importzp ptr1, ptr2, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp
 .importzp pstart, pend
 
 .macpack longbranch
 
+MADDRM = tmp1zp
+SPRX = tmp2zp ; with tmp3zp
+SPRY = tmp4zp ; with tmp5zp
+SPRADDR = tmp6zp
+P1BANK = tmp7zp
+P2BANK = tmp8zp
+
+POLY1TRILISTBANK = $16
+SPRITETRILISTBANK = $20
 
 .include "x16.inc"
 .include "macros.inc"
@@ -571,32 +580,32 @@ point_data1:
 	ldx #0
 :	lda pal,x
 	sta Vera::Reg::Data0
+	sta target_palette+32,x
 	inx
 	cpx #32
 	bne :-
 	rts
 pal:
-	.word $0000,$000f,$0fff,$00f0,$0fff,$0f00,$0fff,$00ff
-	.word $0fff,$0f0f,$0fff,$0ff0,$0fff,$000f,$0fff,$000f
+;	.word $0000,$000f,$0fff,$00f0,$0fff,$0f00,$0fff,$00ff
+;	.word $0fff,$0f0f,$0fff,$0ff0,$0fff,$000f,$0fff,$000f
+	.word $0000,$000f,$0fff,$000d,$0ddd,$000b,$0bbb,$0009
+	.word $0999,$0007,$0777,$0005,$0555,$0003,$0333,$0001
 .endproc
 
 
 .proc polyhedron
 	; load the triangle lists
-	LOADFILE "HEDRONTRILIST1.DAT", $20, $a000
-;	LOADFILE "HEDRONTRILIST2.DAT", $30, $a000
+	LOADFILE "HEDRONTRILIST1.DAT", POLY1TRILISTBANK, $a000
+	LOADFILE "HEDRONTRILIST2.DAT", SPRITETRILISTBANK, $a000
 
-	; initialize indirects
-	lda #$9f
-	sta xlow+1
-	sta xhigh+1
+	lda #POLY1TRILISTBANK
+	sta P1BANK
 
-	lda #$20
-	sta X16::Reg::RAMBank
-
-	stz ptr1	
+	stz ptr1
+	stz ptr2
 	lda #$a0
 	sta ptr1+1
+	sta ptr2+1
 
 	; clear bitmap area completely
 
@@ -637,20 +646,161 @@ fullclearloop:
 
 	WAITVSYNC
 
-	; show bitmap layer + layer 0
+	; show bitmap layer + layer 0 + sprites
 	stz Vera::Reg::Ctrl
 	lda Vera::Reg::DCVideo
 	and #$0f
-	ora #$30
+	ora #$70
 	sta Vera::Reg::DCVideo
+
+	lda #<321
+	sta SPRX
+	lda #>321
+	sta SPRX+1
+
+	lda #<201
+	sta SPRY
+	lda #>201
+	sta SPRY+1
 
 	MUSIC_SYNC $11
 
 main_loop:
+	jsr wait_flip_and_clear_l1
+
+	jsr fill_ptr1_poly_bmp
+	bcc main_loop
+
+	; the last read is an empty frame, don't flip it
+
+	; set up DCSEL=2
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	; set FX off
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	; set up second trilist
+	lda #SPRITETRILISTBANK
+	sta P1BANK
+
+	stz ptr1
+	lda #$a0
+	sta ptr1+1
+
+	lda #<128
+	sta SPRX
+	lda #>128
+	sta SPRX+1
+
+	lda #<66
+	sta SPRY
+	lda #>66
+	sta SPRY+1
+
+	; enter polygon filler mode (with cache writes, 4-bit mode)
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	lda #$46
+	sta Vera::Reg::FXCtrl
+
+	jsr fill_ptr1_poly_sprite
+	jsr wait_flip_and_clear_l1
+
+	; set up DCSEL=2
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	; set FX off	
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	lda #16
+	sta pfadectr
+
+	; fade some palette colors to #$000
+	ldx #(258-32)
+fill_black:
+	stz target_palette-(256-32),x
+	inx
+	stz target_palette-(256-32),x
+	inx
+	bne fill_black
+
+	; set up
+	lda #0
+	jsr setup_palette_fade
+
+fadechessloop:
+	jsr fill_ptr1_poly_sprite
+
+	; set up DCSEL=2
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	; set FX off	
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	jsr apply_palette_fade_step
+	jsr flush_palette
+
+	jsr wait_flip_and_clear_l1
+
+	dec pfadectr
+	bne fadechessloop
+	
+
+:	jsr fill_ptr1_poly_sprite
+	jsr wait_flip_and_clear_l1
+	bra :-
+
+
+
+
+
+end:
+	; set up DCSEL=2
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	; set FX off	
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	rts
+pfadectr:
+	.byte 16
+.endproc
+
+.proc wait_flip_and_clear_l1
 	WAITVSYNC
 
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
+	stz Vera::Reg::FXCtrl
+
+	; point sprite 1 to $18000 / $19000
+	VERA_SET_ADDR (8+Vera::VRAM_sprattr), 1
+	lda #<($18000 >> 5)
+	ora MADDRM
+	sta Vera::Reg::Data0
+	lda #>($18000 >> 5)
+	sta Vera::Reg::Data0
+	lda SPRX
+	sta Vera::Reg::Data0
+	lda SPRX+1
+	sta Vera::Reg::Data0
+	lda SPRY
+	sta Vera::Reg::Data0
+	lda SPRY+1
+	sta Vera::Reg::Data0
+	lda #$0c
+	sta Vera::Reg::Data0
+	lda #$f1
+	sta Vera::Reg::Data0
+
 	lda #$40
 	sta Vera::Reg::FXCtrl
 
@@ -670,9 +820,14 @@ main_loop:
 	sta MADDRM
 
 	stz Vera::Reg::AddrL
-	lda #$00
-MADDRM = * - 1
 	sta Vera::Reg::AddrM
+
+	lsr
+	lsr
+	lsr
+	ora #$80
+	sta SPRADDR
+
 	lda #$30
 	sta Vera::Reg::AddrH
 
@@ -695,6 +850,19 @@ clearloop:
 	bne clearloop
 	dey
 	bne clearloop
+	; clear sprite
+	stz Vera::Reg::AddrL
+	lda SPRADDR
+	sta Vera::Reg::AddrM
+	lda #$31
+	sta Vera::Reg::AddrH
+	ldx #64 ; 64 cycles = 2k * 8 per loop * 4 cache
+sprclearloop:
+.repeat 8
+	stz Vera::Reg::Data0
+.endrepeat
+	dex
+	bne sprclearloop
 
 	; enter polygon filler mode (with cache writes, 4-bit mode)
 	lda #(2 << 1)
@@ -702,7 +870,205 @@ clearloop:
 	lda #$46
 	sta Vera::Reg::FXCtrl
 
+	rts
+.endproc
 
+.proc fill_ptr1_poly_sprite
+	lda P1BANK
+	sta X16::Reg::RAMBank
+triloop:
+	; now read the triangle list
+	stz skip2 ; reset the branch
+	lda (ptr1)
+	jmi msinglepart
+	bit #$40
+	bne mchangex2
+mchangex1:
+	lda #$29
+	sta xlow
+	lda #$2a
+	sta xhigh
+	bra mchange
+mchangex2:
+	lda #$2b
+	sta xlow
+	lda #$2c
+	sta xhigh
+mchange:
+	INCPTR1
+
+	; Y coordinate: will set ADDR0 to column 0 of this coordinate
+	lda (ptr1)
+	tax ; we'll leave this coordinate in X for use later in case we start offscreen
+
+	INCPTR1
+
+	lda #(4 << 1) | 1           ; DCSEL=4, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+	; X coordinate: set X1 and X2 to this value
+	lda (ptr1)
+
+	sta $9f29 ; X1L
+	sta $9f2b ; X2L
+
+c0entry:
+	stz $9f2a ; X1H
+	stz $9f2c ; X2H
+
+	lda #$30 ; +4 INCR on ADDR1
+	sta Vera::Reg::AddrH
+
+	lda #(3 << 1)               ; DCSEL=3
+    sta Vera::Reg::Ctrl
+
+	; X1 and X2 increments, low and high bytes
+	; These should already be cooked inside the bin
+	INCPTR1
+	lda (ptr1)
+	sta $9f29
+	INCPTR1
+	lda (ptr1)
+	sta $9f2a
+	INCPTR1
+	lda (ptr1)
+	sta $9f2b
+	INCPTR1
+	lda (ptr1)
+	sta $9f2c
+
+	lda #(6 << 1)               ; DCSEL=6
+    sta Vera::Reg::Ctrl
+
+	; Color index
+	INCPTR1
+	lda (ptr1)
+	sta $9f29
+	sta $9f2a
+	sta $9f2b
+	sta $9f2c
+
+	; row count
+	INCPTR1
+	lda (ptr1)
+	tay
+	; no offscreen handling in sprite
+onsc:
+	; X should be positive (0-63)
+	; set positions
+	clc
+	lda SPRADDR
+
+	POS_ADDR_SPR_ROW_4BIT_AH
+	lda #$61 ; + 32 INCR
+	sta Vera::Reg::AddrH
+
+	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+mloop1:
+	lda Vera::Reg::Data1 ; advances X1/X2
+	ldx $9f2b
+	jsr poly_fill_do_row ; optimized procs to draw the entire row
+	lda Vera::Reg::Data0 ; advances Y
+	dey
+	bne mloop1
+	lda #$00
+skip2 = * - 1
+	jne endoftri
+part2:
+	lda #(3 << 1)               ; DCSEL=3
+    sta Vera::Reg::Ctrl
+
+	; change X1 or X2 increment, low and high bytes
+	INCPTR1
+	lda (ptr1)
+	sta $9fff
+xlow = * - 2
+	INCPTR1
+	lda (ptr1)
+	sta $9fff
+xhigh = * - 2
+
+	; part 2 row count
+	INCPTR1
+	lda (ptr1)
+	tay
+
+	lda #(5 << 1) | 1               ; DCSEL=5, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+mloop2:
+	lda Vera::Reg::Data1 ; advances X1/X2
+	ldx $9f2b
+	jsr poly_fill_do_row ; optimized procs to draw the entire row
+	lda Vera::Reg::Data0 ; advances Y
+	dey
+	bne mloop2
+
+	jmp endoftri
+
+
+msinglepart:
+	bit #$40
+	bne mpart2only
+mpart1only:
+	inc skip2
+	jmp mchange
+
+mpart2only:
+; but also could be end of frame
+	cmp #$ff
+	jeq endofframe
+	cmp #$fe
+	jeq end ; end of data
+
+	INCPTR1
+
+	; Y coordinate: will set ADDR0 to column 0 of this coordinate
+	lda (ptr1)
+	tax ; we'll leave this coordinate in X for use later in case we start offscreen
+
+	lda #(4 << 1) | 1           ; DCSEL=4, ADDRSEL=1
+    sta Vera::Reg::Ctrl
+
+	INCPTR1
+
+	; X1 coordinate: set X1
+	lda (ptr1)
+	sta $9f29 ; X1L
+
+	INCPTR1
+
+	; X2 coordinate: set X2
+	lda (ptr1)
+	sta $9f2b ; X2L
+
+	inc skip2
+	jmp c0entry
+
+endoftri:
+	INCPTR1
+	jmp triloop
+endofframe:
+	INCPTR1
+	lda X16::Reg::RAMBank
+	sta P1BANK
+	clc
+	rts
+end:
+	lda #$a0
+	sta ptr1+1
+	stz ptr1
+	lda #SPRITETRILISTBANK
+	sta P1BANK
+	jmp fill_ptr1_poly_sprite
+.endproc
+
+
+.proc fill_ptr1_poly_bmp
+	lda P1BANK
+	sta X16::Reg::RAMBank
 triloop:
 	; now read the triangle list
 	stz skip2 ; reset the branch
@@ -881,27 +1247,24 @@ mpart2only:
 
 	inc skip2
 	jmp c0entry
-.repeat 6
-	INCPTR1
-.endrepeat
 
 endoftri:
 	INCPTR1
 	jmp triloop
 endofframe:
 	INCPTR1
-	jmp main_loop
+	lda X16::Reg::RAMBank
+	sta P1BANK
+	clc
+	rts
 end:
-	; set up DCSEL=2
-	lda #(2 << 1)
-	sta Vera::Reg::Ctrl
-
-	; set FX off
-	stz Vera::Reg::FXCtrl
-	stz Vera::Reg::Ctrl
-
+	lda X16::Reg::RAMBank
+	sta P1BANK
+	sec
 	rts
 .endproc
+
+
 
 .proc poly_fill_do_row
 	jmp (poly_jt,x)
