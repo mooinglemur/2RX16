@@ -166,6 +166,21 @@ cont:
 @2:
 .endmacro
 
+.macro INCPTR2
+.local @1
+.local @2
+    inc ptr2
+    bne @2
+    lda ptr2+1
+    inc
+    cmp #$c0
+    bcc @1
+    sbc #$20
+    inc X16::Reg::RAMBank
+@1: sta ptr2+1
+@2:
+.endmacro
+
 .macro DEBUGMSG msg
 .local msgloc
 .local loop

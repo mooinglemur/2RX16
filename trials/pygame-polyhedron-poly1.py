@@ -28,19 +28,39 @@ ORANGE = (255, 224, 0)
 SKYBLUE = (224, 224, 255)
 GRAY = (128, 128, 128)
 
+IDX0 = (0, 0, 0)
+IDX1 = (0, 0, 255)
+IDX2 = (255, 255, 255)
+IDX3 = (0, 0, 221)
+IDX4 = (221, 221, 221)
+IDX5 = (0, 0, 187)
+IDX6 = (187, 187, 187)
+IDX7 = (0, 0, 153)
+IDX8 = (153, 153, 153)
+IDX9 = (0, 0, 119)
+IDXA = (119, 119, 119)
+IDXB = (0, 0, 85)
+IDXC = (85, 85, 85)
+IDXD = (0, 0, 51)
+IDXE = (51, 51, 51)
+IDXF = (0, 0, 0)
+
 colors = [
-    WHITE,
-    BLUE,
-    WHITE,
-    BLUE,
-    WHITE,
-    BLUE,
-    WHITE,
-    BLUE,
-    WHITE,
-    BLUE,
-    WHITE,
-    BLUE
+    IDX1,
+    IDX2,
+    IDX3,
+    IDX4,
+    IDX5,
+    IDX6,
+    IDX7,
+    IDX8,
+    IDX9,
+    IDXA,
+    IDXB,
+    IDXC,
+    IDXD,
+    IDXE,
+    IDXF
 ]
 
 
@@ -53,47 +73,47 @@ pygame.display.set_caption("Tetrakis Hexahedron")
 
 # Define the vertices of the Tetrakis hexahedron
 vertices = [
-    (   0,    0, -3/2),
-    (   0,    0,  3/2),
-    (   0, -3/2,    0),
-    (   0,  3/2,    0),
-    (-3/2,    0,    0),
-    ( 3/2,    0,    0),
-    (-1, -1, -1),
-    (-1, -1,  1),
-    (-1,  1, -1),
-    (-1,  1,  1),
-    ( 1, -1, -1),
-    ( 1, -1,  1),
-    ( 1,  1, -1),
-    ( 1,  1,  1),
+    (   0,    0, -3/2), #0
+    (   0,    0,  3/2), #1
+    (   0, -3/2,    0), #2
+    (   0,  3/2,    0), #3
+    (-3/2,    0,    0), #4
+    ( 3/2,    0,    0), #5
+    (-1, -1, -1), #6
+    (-1, -1,  1), #7
+    (-1,  1, -1), #8
+    (-1,  1,  1), #9
+    ( 1, -1, -1), #10
+    ( 1, -1,  1), #11
+    ( 1,  1, -1), #12
+    ( 1,  1,  1), #13
 ]
 
 # Define the faces by specifying the vertex indices
 faces = [
-    ( 0,  6, 10, 0), 
+    ( 0, 10,  6, 0),
     ( 1,  9, 13, 0),
-    ( 0,  8,  6, 1),
+    ( 0,  6,  8, 1),
     ( 1, 11, 13, 1),
-    ( 0, 12,  8, 2),
+    ( 0,  8, 12, 2),
     ( 1,  7, 11, 2),
-    ( 0, 10, 12, 3),
+    ( 0, 12, 10, 3),
     ( 1,  9,  7, 3),
-    ( 2,  6,  7, 4),
-    ( 3, 12, 13, 4),
-    ( 2,  7, 11, 5),
+    ( 2,  7,  6, 4),
+    ( 3, 13, 12, 4),
+    ( 2, 11,  7, 5),
     ( 3, 12,  8, 5),
     ( 2, 10, 11, 6),
     ( 3,  8,  9, 6),
-    ( 2, 10,  6, 7),
+    ( 2,  6, 10, 7),
     ( 3,  9, 13, 7),
-    ( 5, 11, 13, 8),
+    ( 5, 13, 11, 8),
     ( 4,  8,  6, 8),
-    ( 5, 10, 11, 9),
+    ( 5, 11, 10, 9),
     ( 4,  9,  8, 9),
     ( 5, 10, 12, 10),
     ( 4,  7,  9, 10),
-    ( 5, 13, 12, 11),
+    ( 5, 12, 13, 11),
     ( 4,  6,  7, 11),
 ]
 
@@ -169,6 +189,7 @@ def advance_cube():
 
 
     rotated_vertices = []
+    unscaled_rotated_vertices = []
     zees = []
     for vertex in vertices:
         x, y, z = vertex
@@ -197,10 +218,12 @@ def advance_cube():
 
         x_proj = new_x * scale + center_offset[0]
         y_proj = new_y * scale + center_offset[1]
+        z_proj = new_z * scale
 
         rotated_vertices.append((round(x_proj), round(y_proj)))
-        
-        zees.append(new_z)
+        zees.append(z_proj)
+        unscaled_rotated_vertices.append((new_x, new_y, new_z))
+
     
     sorted_faces = sorted(faces, key=face_sorter, reverse=False)
 
@@ -225,7 +248,35 @@ def advance_cube():
     sorted_visible_faces = sorted(visible_faces, key=face_sorter, reverse=True)
 
     for face in sorted_visible_faces:
-        color_idx = face[3]
+            
+        # find angle relative to Z axis
+        vert1 = np.array([unscaled_rotated_vertices[face[0]][0],unscaled_rotated_vertices[face[0]][1],unscaled_rotated_vertices[face[0]][2]])
+        vert2 = np.array([unscaled_rotated_vertices[face[1]][0],unscaled_rotated_vertices[face[1]][1],unscaled_rotated_vertices[face[1]][2]])
+        vert3 = np.array([unscaled_rotated_vertices[face[2]][0],unscaled_rotated_vertices[face[2]][1],unscaled_rotated_vertices[face[2]][2]])
+
+        edge1 = vert2 - vert1
+        edge2 = vert3 - vert1
+
+        normal = np.cross(edge1, edge2)
+
+        lightsource = np.array([100, -100, -100])
+
+        dot_product = np.dot(normal, lightsource)
+
+        angle_rad = np.arccos(dot_product / (np.linalg.norm(normal) * np.linalg.norm(lightsource)))
+
+        angle_deg = np.degrees(angle_rad)
+        if angle_deg >= 89.9:
+            angle_deg = 89.9
+
+        print(f"Angle relative to the light source: {angle_deg} degrees")
+        
+        
+        color_idx = (face[3] % 2) + (2*int(angle_deg/15))
+        color_idx_out = color_idx + 1
+        color_idx_out += 16*color_idx_out
+
+
         pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face[0:3]], 0)
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
@@ -299,7 +350,6 @@ def advance_cube():
             print("Fully offscreen")
             continue # fully offscreen
 
-
         tris_seen = True
 
 
@@ -364,32 +414,6 @@ def advance_cube():
                 max_y = v2[1]
 
             print(f"Max X {max_x} Max Y {max_y}")
-
-        # find angle relative to Z axis
-        vert1 = np.array([rotated_vertices[sorted_points[0]][0],rotated_vertices[sorted_points[0]][1],zees[sorted_points[0]]])
-        vert2 = np.array([rotated_vertices[sorted_points[1]][0],rotated_vertices[sorted_points[1]][1],zees[sorted_points[1]]])
-        vert3 = np.array([rotated_vertices[sorted_points[2]][0],rotated_vertices[sorted_points[2]][1],zees[sorted_points[2]]])
-
-        edge1 = vert2 - vert1
-        edge2 = vert3 - vert1
-
-        normal = np.cross(edge1, edge2)
-
-        camerapos = np.array([0, 0, -100])
-
-        vector_to_triangle = vert1 - camerapos
-
-        angle_rad = np.arccos(np.dot(normal, vector_to_triangle) / (np.linalg.norm(normal) * np.linalg.norm(vector_to_triangle)))
-        angle_deg = np.degrees(angle_rad)
-        if angle_deg > 90:
-            angle_deg -= 90
-
-
-        print(f"Angle relative to the camera: {angle_deg} degrees")
-        
-        color_idx_out = (color_idx % 2) + (2*int(angle_deg/15)) + 1
-        color_idx_out += 16*color_idx_out
-
 
         if (v0[1] == v1[1]): # Part 2 only
             print("Part 2 only")

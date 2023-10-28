@@ -1,5 +1,5 @@
 .export syncval
-.exportzp ptr1, ptr2, pstart, pend, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp
+.exportzp ptr1, ptr2, pstart, pend, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp
 
 .segment "LOADADDR"
 	.word $0801
@@ -39,6 +39,8 @@ tmp6zp:
 tmp7zp:
 	.res 1
 tmp8zp:
+	.res 1
+tmp9zp:
 	.res 1
 
 .segment "CODE"
