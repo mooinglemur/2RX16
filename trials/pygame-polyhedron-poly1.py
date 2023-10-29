@@ -92,7 +92,7 @@ vertices = [
 # Define the faces by specifying the vertex indices
 faces = [
     ( 0, 10,  6, 0),
-    ( 1,  9, 13, 0),
+    ( 1, 13,  9, 0),
     ( 0,  6,  8, 1),
     ( 1, 11, 13, 1),
     ( 0,  8, 12, 2),
@@ -248,7 +248,9 @@ def advance_cube():
     sorted_visible_faces = sorted(visible_faces, key=face_sorter, reverse=True)
 
     for face in sorted_visible_faces:
-            
+#        if face[3] != 0:
+#            continue
+
         # find angle relative to Z axis
         vert1 = np.array([unscaled_rotated_vertices[face[0]][0],unscaled_rotated_vertices[face[0]][1],unscaled_rotated_vertices[face[0]][2]])
         vert2 = np.array([unscaled_rotated_vertices[face[1]][0],unscaled_rotated_vertices[face[1]][1],unscaled_rotated_vertices[face[1]][2]])

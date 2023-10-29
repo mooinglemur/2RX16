@@ -124,7 +124,7 @@ faces = [
 
 
 # Define the size and position of the polyhedron
-scale = 3
+scale = 22
 center_offset = (width // 2, height // 2)
 
 # Define rotation parameters

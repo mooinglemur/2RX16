@@ -609,8 +609,8 @@ pal:
 	bne :-
 	rts
 pal:
-	.word $0000,$030a,$0baa,$0309,$0999,$0308,$0988,$0307
-	.word $0777,$0206,$0655,$0103,$0433,$0102,$0111,$0000
+	.word $0000,$010c,$0ccc,$010b,$0baa,$010a,$0988,$0109
+	.word $0777,$0107,$0655,$0104,$0433,$0102,$0111,$0000
 	.word $0000,$0c00,$0c00,$0722,$0a22,$0f00,$0300,$0000
 	.word $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 .endproc
@@ -789,6 +789,7 @@ fadechessloop:
 	sta Vera::Reg::L1HScrollH ; palette offset
 
 	jsr polyhedron_palette2
+	lda #0
 	jsr setup_palette_fade
 
 redloopfade:
@@ -813,6 +814,7 @@ switch_to_red2:
 	lda #REDTRILIST2BANK
 	sta P2BANK
 redloop:
+	lda #0
 	jsr advance_sprite_pos
 	jsr fill_ptr1_poly_sprite
 	jsr fill_ptr2_poly_bmp
@@ -820,10 +822,56 @@ redloop:
 	bcs switch_to_red2
 	jsr wait_flip_and_clear_sprite1
 	jsr flip_and_clear_l1
+	lda syncval
+	cmp #$1F
+	beq redtransition
 	bra redloop
 redworksplit:
 	jsr wait_flip_and_clear_sprite1
 	bra redloop
+
+redtransition:
+	ldx #0
+:	stz target_palette,x
+	inx
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+	lda #16
+	sta pfadectr
+	bra redtransloop
+
+
+switch_to_red2_trans:
+	stz ptr2
+	lda #$a0
+	sta ptr2+1
+	lda #REDTRILIST2BANK
+	sta P2BANK
+redtransloop:
+	lda spradv
+	lsr
+	lsr
+	lsr
+	jsr advance_sprite_pos
+	inc spradv
+	jsr fill_ptr1_poly_sprite
+	jsr fill_ptr2_poly_bmp
+	beq redtransworksplit
+	bcs switch_to_red2_trans
+	jsr wait_flip_and_clear_sprite1
+	stz Vera::Reg::FXCtrl ; above routine should return with Ctrl at DCSEL=2
+	jsr apply_palette_fade_step
+	jsr flush_palette
+	jsr flip_and_clear_l1
+	dec pfadectr
+	bne redtransloop
+	bra end
+redtransworksplit:
+	jsr wait_flip_and_clear_sprite1
+	bra redtransloop
+
 
 
 end:
@@ -835,17 +883,28 @@ end:
 	stz Vera::Reg::FXCtrl
 	stz Vera::Reg::Ctrl
 
+	; hide sprite 1
+	VERA_SET_ADDR (14+Vera::VRAM_sprattr), 1
+	sta Vera::Reg::Data0
+
 	rts
 pfadectr:
 	.byte 16
+spradv:
+	.byte 6
 .endproc
 
 
 .proc advance_sprite_pos
-
+	clc
+	adc xdelta
+	sta xdelta
 	ldx xoff
-	lda xtable,x
+	adc xtable,x
 	sta SPRX
+	lda SPRX+1
+	adc #0
+	sta SPRX+1
 	inc xoff
 	ldx yoff
 	lda ytable,x
@@ -859,10 +918,13 @@ pfadectr:
 xtable:
 	.byte $80,$80,$81,$82,$83,$84,$85,$86,$87,$88,$89,$8a,$8b,$8c,$8d,$8e,$8f,$90,$91,$91,$92,$93,$94,$95,$96,$97,$97,$98,$99,$9a,$9a,$9b,$9c,$9c,$9d,$9e,$9e,$9f,$a0,$a0,$a1,$a1,$a2,$a2,$a3,$a3,$a4,$a4,$a4,$a5,$a5,$a5,$a6,$a6,$a6,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a7,$a6,$a6,$a6,$a5,$a5,$a5,$a4,$a4,$a4,$a3,$a3,$a2,$a2,$a1,$a1,$a0,$a0,$9f,$9e,$9e,$9d,$9c,$9c,$9b,$9a,$9a,$99,$98,$97,$97,$96,$95,$94,$93,$92,$91,$91,$90,$8f,$8e,$8d,$8c,$8b,$8a,$89,$88,$87,$86,$85,$84,$83,$82,$81,$80,$80,$80,$7f,$7e,$7d,$7c,$7b,$7a,$79,$78,$77,$76,$75,$74,$73,$72,$71,$70,$6f,$6f,$6e,$6d,$6c,$6b,$6a,$69,$69,$68,$67,$66,$66,$65,$64,$64,$63,$62,$62,$61,$60,$60,$5f,$5f,$5e,$5e,$5d,$5d,$5c,$5c,$5c,$5b,$5b,$5b,$5a,$5a,$5a,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$59,$5a,$5a,$5a,$5b,$5b,$5b,$5c,$5c,$5c,$5d,$5d,$5e,$5e,$5f,$5f,$60,$60,$61,$62,$62,$63,$64,$64,$65,$66,$66,$67,$68,$69,$69,$6a,$6b,$6c,$6d,$6e,$6f,$6f,$70,$71,$72,$73,$74,$75,$76,$77,$78,$79,$7a,$7b,$7c,$7d,$7e,$7f,$80
 ytable:
-	.byte $42,$43,$44,$45,$47,$48,$49,$4a,$4b,$4d,$4e,$4f,$50,$51,$53,$54,$55,$56,$57,$58,$59,$5a,$5b,$5c,$5d,$5e,$5f,$60,$60,$61,$62,$63,$63,$64,$65,$65,$66,$66,$67,$67,$68,$68,$68,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$68,$68,$68,$67,$67,$67,$66,$66,$65,$64,$64,$63,$62,$62,$61,$60,$5f,$5e,$5d,$5d,$5c,$5b,$5a,$59,$58,$56,$55,$54,$53,$52,$51,$50,$4f,$4d,$4c,$4b,$4a,$48,$47,$46,$45,$43,$42,$42,$41,$3f,$3e,$3d,$3c,$3a,$39,$38,$37,$35,$34,$33,$32,$31,$30,$2f,$2e,$2c,$2b,$2a,$29,$28,$27,$27,$26,$25,$24,$23,$22,$22,$21,$20,$20,$1f,$1e,$1e,$1d,$1d,$1d,$1c,$1c,$1c,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1c,$1c,$1c,$1d,$1d,$1e,$1e,$1f,$1f,$20,$21,$21,$22,$23,$24,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f,$30,$31,$33,$34,$35,$36,$37,$39,$3a,$3b,$3c,$3d,$3f,$40,$41
+	.byte $42,$43,$44,$45,$47,$48,$49,$4a,$4b,$4d,$4e,$4f,$50,$51,$53,$54,$55,$56,$57,$58,$59,$5a,$5b,$5c,$5d,$5e,$5f,$60,$60,$61,$62,$63,$63,$64,$65,$65,$66,$66,$67,$67,$68,$68,$68,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$69,$68,$68,$68,$67,$67,$67,$66,$66,$65,$64,$64,$63,$62,$62,$61,$60,$5f,$5e,$5d,$5d,$5c,$5b,$5a,$59,$58,$56,$55,$54,$53,$52,$51,$50,$4f,$4d,$4c,$4b,$4a,$48,$47,$46,$45,$43,$42
+	.byte $42,$41,$3f,$3e,$3d,$3c,$3a,$39,$38,$37,$35,$34,$33,$32,$31,$30,$2f,$2e,$2c,$2b,$2a,$29,$28,$27,$27,$26,$25,$24,$23,$22,$22,$21,$20,$20,$1f,$1e,$1e,$1d,$1d,$1d,$1c,$1c,$1c,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1b,$1c,$1c,$1c,$1d,$1d,$1e,$1e,$1f,$1f,$20,$21,$21,$22,$23,$24,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f,$30,$31,$33,$34,$35,$36,$37,$39,$3a,$3b,$3c,$3d,$3f,$40,$41
 xoff:
 	.byte 0
 yoff:
+	.byte 99
+xdelta:
 	.byte 0
 .endproc
 
@@ -2422,20 +2484,24 @@ poly_pix8p_eo:
 .endproc
 
 .proc waitfornext
+	jsr wait_flip_and_clear_sprite1
+	jsr flip_and_clear_l1
+	jsr wait_flip_and_clear_sprite1
+	jsr flip_and_clear_l1
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	; repoint L1 bitmap
+	stz Vera::Reg::L1TileBase
+
 	MUSIC_SYNC $20
 
-
-	ldx #32
-:	stz target_palette-1,x
-	dex
-	bne :-
-
-	lda target_palette
-
 	lda #0
-	jsr setup_palette_fade
+	sta Vera::Reg::L1HScrollH ; palette offset
 
-	PALETTE_FADE 1
+	; disable layer 0
+	lda #$10
+	trb Vera::Reg::DCVideo
 
 
 	rts
