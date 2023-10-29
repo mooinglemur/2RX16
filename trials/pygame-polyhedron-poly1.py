@@ -590,10 +590,10 @@ while running:
 
     elif hedron_state == States.STEADY:
         if squishy_amplitude == 0:
-            if scale > 21.5:
+            if scale > 20.5:
                 scale -= 0.15
-            if scale < 21.5: # in case we overshot on the same frame
-                scale = 21.5
+            if scale < 20.5: # in case we overshot on the same frame
+                scale = 20.5
                 hedron_state = States.LOOPING
                 print("LOOPING")
                 f.write(b'\xfe') # end of list
@@ -603,17 +603,17 @@ while running:
                 sprite_mode = True
                 f = open("trilist2.bin", "wb")
                 rotation_speed_x = math.pi/180
-                rotation_speed_y = -(math.pi/90)
-                loop_x_start = abs(round(math.cos(angle_x),3))
-                loop_y_start = abs(round(math.sin(angle_y),3))
+                rotation_speed_y = -(math.pi/60)
+                loop_x_start = round(math.cos(angle_x),3)
+                loop_y_start = round(math.sin(angle_y),3)
         else:
             scale -= 0.15
             squishy_dampening = 0.006
-            if scale < 21.5: # in case we overshot on the same frame
-                scale = 21.5
+            if scale < 20.5: # in case we overshot on the same frame
+                scale = 20.5
 
     elif hedron_state == States.LOOPING:
-        if loop_x_start == abs(round(math.cos(angle_x),3)) and loop_y_start == abs(round(math.sin(angle_y),3)):
+        if loop_x_start == round(math.cos(angle_x),3) and loop_y_start == round(math.sin(angle_y),3):
             print("DONE")
             print(f"X {loop_x_start} {round(math.cos(angle_x),3)}")
             print(f"Y {loop_y_start} {round(math.sin(angle_y),3)}")
