@@ -22,15 +22,18 @@ SPRITETRILISTBANK = $1F
 REDTRILIST1BANK = $24
 REDTRILIST2BANK = $2A
 
+.include "flow.inc"
 .include "x16.inc"
 .include "macros.inc"
 
 .segment "HEDRON"
 entry:
+.ifndef SKIP_HEDRON
 	jsr chessboard_in
 	jsr chessboard_to_tiles
 	jsr polyhedron_palette1
 	jsr polyhedron
+.endif
 	jsr waitfornext
 	rts
 
@@ -2494,7 +2497,9 @@ poly_pix8p_eo:
 	; repoint L1 bitmap
 	stz Vera::Reg::L1TileBase
 
+.ifndef SKIP_HEDRON
 	MUSIC_SYNC $20
+.endif
 
 	lda #0
 	sta Vera::Reg::L1HScrollH ; palette offset
