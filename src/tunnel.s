@@ -178,8 +178,6 @@ pal:
 
 	lda minlevel
 	beq :+
-;	lda #120
-;	sta minlevel
 	dec minlevel
 :
 
@@ -197,83 +195,56 @@ level_loop:
 	inc
 	and #(LEVELS - 1)
 	sta leveltime
-	
+	; nibble index fun
+	and #2
+	sta Vera::Reg::AddrH
 	; point the RAM bank to all the tunnel coords
-	lda level
+	lda #$20
+	bit level
 	; 128/32
-	lsr
-	lsr
-	lsr
-	lsr
-	lsr
-	ora #$20
-	sta X16::Reg::RAMBank
+	bvc :+
+	ora #$01
+:	sta X16::Reg::RAMBank
 	; point the ZP pointer to our tun coords
+	stz tunczp
 	lda level
+	lsr
+	ror tunczp
 	and #$1f
 	ora #$a0
 	sta tunczp+1
-	stz tunczp
-	stz point
-	ldx #0
+	ldy #0
 point_loop:
-	ldy times4,x
 	ldx leveltime
 	clc
-	lda (tunczp),y
-	adc liss_coords_x_l,x
-	sta xcoordzp
-	iny
-	lda (tunczp),y
-	adc liss_coords_x_h,x
-	cmp #2
-	jcs next_point ; is (negative or above 512, which is > 320)
-	sta xcoordzp+1
-	iny
-	;clc - already clear
+
 	lda (tunczp),y
 	adc liss_coords_y_l,x
+	cmp #200
+	bcs next_point2
 	sta ycoordzp
+
 	iny
+
 	lda (tunczp),y
-	adc liss_coords_y_h,x
-	jne next_point ; is negative (or above 256, which is > 200)
-	;sta ycoordzp+1 ; (we don't use this)
-	lda xcoordzp+1
-	beq xok
-	lda xcoordzp
-	cmp #<320
-	jcs next_point ; is >= 320
-xok:
+	adc liss_coords_x_l,x
+	cmp #160
+	bcs next_point
 	ldx ycoordzp
-	cpx #200
-	bcs next_point ; is >= 200
-	lda MADDRM
-	;clc - already clear
-	POS_ADDR_ROW_4BIT_AH
-	lsr xcoordzp+1
-	lda xcoordzp
-	ror
-	php ; save whether odd pixel
-	clc
-	adc Vera::Reg::AddrL
+
+	adc addrl_per_row_4bit,x
 	sta Vera::Reg::AddrL
-	lda Vera::Reg::AddrM
-	adc #0
+	lda MADDRM
+	adc addrm_per_row_4bit,x
 	sta Vera::Reg::AddrM
-	lda #0
-	plp
-	rol
-	asl
-	sta Vera::Reg::AddrH ; nibble index
+
 	ldx level
 	lda level2color,x
 	sta Vera::Reg::Data0
 next_point:
-	inc point
-	ldx point
-	cpx #POINTS
-	jcc point_loop
+	iny
+	cpy #(POINTS * 2)
+	bne point_loop
 next_level:
 	dec level
 	jpl level_loop
@@ -284,7 +255,9 @@ next_level:
 	stz Vera::Reg::Ctrl
 
 	rts	
-
+next_point2:
+	iny
+	bra next_point
 .endproc
 
 .proc tunnel_main
@@ -299,6 +272,7 @@ loop:
 
 .proc wait_flip_and_clear_l1
 	WAITVSYNC
+	sta $9fb9
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
 

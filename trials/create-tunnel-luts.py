@@ -10,7 +10,7 @@ LEVELS = 128
 POINTS = 64
 
 LISS_SCALE = 10
-SCALE_X = 50
+SCALE_X = 25
 SCALE_Y = 31
 
 def chunks(lst, n):
@@ -49,8 +49,17 @@ for i in range(SIN_SIZE + COS_OFF):
 for i in range(LEVELS):
     proj = (i+1) / LEVELS
     for j in range(POINTS):
-        xx = round((sincosf[int(j * SIN_SIZE/POINTS) + COS_OFF] * SCALE_X) / proj) + 160
+        xx = round((sincosf[int(j * SIN_SIZE/POINTS) + COS_OFF] * SCALE_X) / proj) + 80
+        if xx > 200:
+            xx = 200
+        if xx < -40:
+            xx = -40
         yy = round((sincosf[int(j * SIN_SIZE/POINTS)] * SCALE_Y) / proj) + 100
+        if yy > 225:
+            yy = 225
+        if yy < -25:
+            yy = -25
+
         twos_x = (xx + 65536) % 65536
         tun_coords_x_l[i][j] = (twos_x & 0xff)
         tun_coords_x_h[i][j] = (twos_x >> 8)
@@ -58,10 +67,8 @@ for i in range(LEVELS):
         tun_coords_y_l[i][j] = (twos_y & 0xff)
         tun_coords_y_h[i][j] = (twos_y >> 8)
 
-        tun_coords.append(tun_coords_x_l[i][j])
-        tun_coords.append(tun_coords_x_h[i][j])
         tun_coords.append(tun_coords_y_l[i][j])
-        tun_coords.append(tun_coords_y_h[i][j])
+        tun_coords.append(tun_coords_x_l[i][j])
         
 
 print("cosmtbl_l := sinmtbl_l+64")
