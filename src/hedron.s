@@ -741,8 +741,6 @@ main_loop:
 	sta Vera::Reg::FXCtrl
 
 	jsr fill_ptr1_poly_sprite
-	jsr wait_flip_and_clear_sprite1
-	jsr flip_and_clear_l1
 
 	; set up DCSEL=2
 	lda #(2 << 1)
@@ -767,6 +765,9 @@ fill_black:
 	; set up
 	lda #0
 	jsr setup_palette_fade
+
+	jsr wait_flip_and_clear_sprite1
+	jsr flip_and_clear_l1
 
 fadechessloop:
 	jsr fill_ptr1_poly_sprite

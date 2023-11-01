@@ -4,7 +4,7 @@
 
 .import target_palette
 
-.importzp tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp9zp, ptr1, ptr2
+.importzp tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp, tmp10zp, ptr1, ptr2
 tunczp = ptr1
 MADDRM = tmp1zp
 minlevel = tmp2zp
@@ -13,7 +13,9 @@ time = tmp4zp
 level = tmp5zp
 point = tmp6zp
 xcoordzp = tmp7zp
+jdelta = tmp8zp
 ycoordzp = tmp9zp
+maxlevel = tmp10zp
 
 
 .macpack longbranch
@@ -37,19 +39,6 @@ entry:
 	jsr tunnel_main
 
 	MUSIC_SYNC $30
-
-	ldx #32
-:   stz target_palette-1,x
-	dex
-	bne :-
-
-	lda target_palette
-
-	lda #0
-	jsr setup_palette_fade
-
-	PALETTE_FADE 1
-
 
 	rts
 
@@ -176,21 +165,17 @@ pal:
 	sta Vera::Reg::FXCtrl ; set 4bpp mode
 	stz Vera::Reg::Ctrl
 
-	lda minlevel
-	beq :+
-	dec minlevel
-:
-
 	lda #(LEVELS - 1)
 	sta level
 level_loop:
 	lda level
+	cmp maxlevel
+	bcs next_level
 	cmp minlevel
-	jcc next_level
-	clc
+	bcc end
 	adc time
-	bit #2
-	jeq next_level
+	bit #$02
+	beq next_level
 
 	inc
 	and #(LEVELS - 1)
@@ -201,24 +186,34 @@ level_loop:
 	; point the RAM bank to all the tunnel coords
 	lda #$20
 	bit level
-	; 128/32
 	bvc :+
 	ora #$01
 :	sta X16::Reg::RAMBank
 	; point the ZP pointer to our tun coords
-	stz tunczp
 	lda level
 	lsr
-	ror tunczp
 	and #$1f
 	ora #$a0
-	sta tunczp+1
-	ldy #0
+	tay
+	lda #0
+	ror
+	sbc #((POINTS * 2) - 1) ; carry is clear, subtract 1 less
+	sta TUNC1
+	sta TUNC2
+	tya
+	sbc #0
+	sta TUNC1+1
+	sta TUNC2+1
+	ldx level
+	lda level2color,x
+	sta LEVC
+	ldy #(256 - (POINTS * 2))
 point_loop:
 	ldx leveltime
 	clc
 
-	lda (tunczp),y
+	lda $ffff,y
+TUNC1 = * - 2
 	adc liss_coords_y_l,x
 	cmp #200
 	bcs next_point2
@@ -226,7 +221,8 @@ point_loop:
 
 	iny
 
-	lda (tunczp),y
+	lda $ffff,y
+TUNC2 = * - 2
 	adc liss_coords_x_l,x
 	cmp #160
 	bcs next_point
@@ -238,17 +234,17 @@ point_loop:
 	adc addrm_per_row_4bit,x
 	sta Vera::Reg::AddrM
 
-	ldx level
-	lda level2color,x
+	lda #$ff
+LEVC = * - 1
 	sta Vera::Reg::Data0
 next_point:
 	iny
-	cpy #(POINTS * 2)
 	bne point_loop
 next_level:
 	dec level
-	jpl level_loop
-
+	bpl level_loop
+end:
+	; done drawing frame
 	lda #(2 << 1) ; DCSEL = 2
 	sta Vera::Reg::Ctrl
 	stz Vera::Reg::FXCtrl ; clear FX (4bpp mode)
@@ -257,22 +253,80 @@ next_level:
 	rts	
 next_point2:
 	iny
-	bra next_point
+	iny
+	bne point_loop
+	jmp next_level
 .endproc
 
 .proc tunnel_main
 	jsr init_tunnel
 	stz time
-loop:
+	lda #128
+	sta maxlevel
+openloop:
+	jsr X16::Kernal::RDTIM
+	sta jdelta
 	jsr draw_tunnel
 	jsr wait_flip_and_clear_l1
-	inc time
-	bra loop
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc jdelta
+	clc
+	sta jdelta
+	adc time
+	sta time
+	lda minlevel
+	cmp #28
+	bcc midloop
+	sec
+	sbc jdelta
+	bpl :+
+	lda #0
+:	sta minlevel
+	jmp openloop
+midloop:
+	jsr X16::Kernal::RDTIM
+	sta jdelta
+	jsr draw_tunnel
+	jsr wait_flip_and_clear_l1
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc jdelta
+	clc
+	sta jdelta
+	adc time
+	sta time
+	lda syncval
+	cmp #$2a
+	bne midloop
+endloop:
+	jsr X16::Kernal::RDTIM
+	sta jdelta
+	jsr draw_tunnel
+	jsr wait_flip_and_clear_l1
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc jdelta
+	clc
+	sta jdelta
+	adc time
+	sta time
+	lda maxlevel
+	cmp #25
+	bcc return
+	sec
+	sbc jdelta
+	bpl :+
+	lda #0
+:	sta maxlevel
+	jmp endloop
+return:
+	rts
 .endproc
 
 .proc wait_flip_and_clear_l1
 	WAITVSYNC
-	sta $9fb9
+;	sta $9fb9 ; debug
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
 

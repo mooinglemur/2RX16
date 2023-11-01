@@ -53,13 +53,19 @@ SPRTXT = * - 2
 	bra char
 :	cmp #$21 ; everything space and earlier we skip
 	bcc nochar
-	cmp #$41 ; temporarily skip non-letters
+	cmp #$30 ; skip everything before numbers
+	bcc nochar
+	cmp #$3a
+	bcs :+
+	adc #$04
+	bra char
+:	cmp #$41 ; temporarily skip non-letters
 	bcc nochar
 	cmp #$5b ; captials
 	bcs :+
 	sec
 	sbc #$41
-	cmp #23 ; letter W has a second part
+	cmp #22 ; letter W has a second part
 	bne char
 	ldy #74
 	bra char

@@ -18,6 +18,7 @@ $10 = trigger transition from title card to chessboard
 $11 = allow polyhedron to fall
 $1F = begin polyhedron exit
 $20 = trigger transition to tunnel scene
+$2A = trigger exit of tunnel
 $30 = trigger transition to circles scene
 $40 = trigger transition to moire scene
 $41 = 1/4 swipe start

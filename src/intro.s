@@ -152,12 +152,15 @@ prebgloop:
 	jeq sync6
 	jmp nosync
 card1:
-	SPRITE_TEXT 1, 40, 80, 1, "Lorem ipsum dolor"
-	SPRITE_TEXT 18, 110, 100, 1, "sit amet"
+	SPRITE_TEXT 1, 40, 80, 1, "A Commander X16"
+	SPRITE_TEXT 18, 70, 100, 1, "and VERA FX"
+	SPRITE_TEXT 36, 100, 120, 1, "showcase"
 	jmp docolor
 card2:
-	SPRITE_TEXT 1, 94, 80, 1, "consectetur"
-	SPRITE_TEXT 18, 76, 100, 1, "adipiscing elit"
+	SPRITE_TEXT 1, 35, 70, 1, "Sneak preview for"
+	SPRITE_TEXT 18, 65, 90, 1, "your exclusive"
+	SPRITE_TEXT 36, 83, 110, 1, "review and"
+	SPRITE_TEXT 54, 93, 130, 1, "enjoyment"
 	bra docolor
 card3:
 	SPRITE_TEXT 1, 150, 70, 1, "in"
@@ -267,23 +270,23 @@ noscroll:
 	bne tbgscrollloop
 	jmp synce
 card4:
-	SPRITE_TEXT 1, 66, 80, 1, "sed do eiusmod"
-	SPRITE_TEXT 18, 50, 100, 1, "tempor incididunt"
+	SPRITE_TEXT 1, 110, 50, 1,  "VERA FX"
+	SPRITE_TEXT 18, 110, 80, 1, "JeffreyH"
 	jmp docolor1
 card5:
-	SPRITE_TEXT 1, 157, 60, 1, "ut"
-	SPRITE_TEXT 3, 130, 80, 1, "labore"
-	SPRITE_TEXT 10, 157, 100, 1, "et"
-	SPRITE_TEXT 13, 130, 120, 1, "dolore"
+	SPRITE_TEXT 1, 128, 40, 1, "Music"
+	SPRITE_TEXT 18, 82, 70, 1, "arranged by"
+	SPRITE_TEXT 36, 80, 100, 1, "MooingLemur"
 	jmp docolor1
 card6:
-	SPRITE_TEXT 1, 130, 80, 1, "magna"
-	SPRITE_TEXT 18, 133, 100, 1, "aliqua"
+	SPRITE_TEXT 1, 130, 40, 1, "Code"
+	SPRITE_TEXT 18, 80, 70, 1, "MooingLemur"
+	SPRITE_TEXT 36, 100, 100, 1, "JeffreyH"
 	bra docolor1
 card7:
-	SPRITE_TEXT 1, 100, 60, 1,   "Inspired by"
-	SPRITE_TEXT 18, 80, 100, 1, "Second Reality"
-	SPRITE_TEXT 37, 70, 140, 1, "by Future Crew"
+	SPRITE_TEXT 1, 90, 40, 1,    "Inspired by"
+	SPRITE_TEXT 18, 75, 70, 1,  "Second Reality"
+	SPRITE_TEXT 37, 60, 97, 1,  "by Future Crew"
 	bra docolor1
 docolor1:
 	lda #$55
