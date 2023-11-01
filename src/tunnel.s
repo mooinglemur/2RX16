@@ -189,7 +189,11 @@ level_loop:
 	bvc :+
 	ora #$01
 :	sta X16::Reg::RAMBank
-	; point the ZP pointer to our tun coords
+	; self-mod pointer to our tun coords location
+	; such that Y is set so that it iterates by 2*POINTS
+	; before reaching zero.  This means for 64 points,
+	; TUNC1 and TUNC2 point to a half page before
+	; the actual location, and Y starts out at #128
 	lda level
 	lsr
 	and #$1f
