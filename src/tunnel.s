@@ -48,14 +48,10 @@ POINTS=64
 
 HIGH_RAM = $A000
 
-liss_coords_x_l:
-	.res LEVELS
-liss_coords_x_h:
-	.res LEVELS
-liss_coords_y_l:
-	.res LEVELS
-liss_coords_y_h:
-	.res LEVELS
+liss_coords_x:
+	.res 256
+liss_coords_y:
+	.res 256
 
 
 .macro BANK bank
@@ -127,34 +123,24 @@ pal:
 .endproc
 
 .proc liss ; y = offset
-	tya
-	and #(LEVELS - 1)
-	tax
 	lda times2p32,y
-	phy
-	tay
-	lda cosmtbl_l,y
-	sta liss_coords_x_l,x
-	lda cosmtbl_h,y
-	sta liss_coords_x_h,x
-	ply
-	lda times6,y
-	tay
-	lda cosmtbl_l,y
-	sta liss_coords_y_l,x
-	lda cosmtbl_h,y
-	sta liss_coords_y_h,x
+	tax
+	lda sinmtbl_x,x
+	sta liss_coords_x,y
+	lda times3,y
+	tax
+	lda sinmtbl_y,x
+	sta liss_coords_y,y
 	rts
 .endproc
 
 .proc init_tunnel
 	ldy #(LEVELS - 1)
 	sty minlevel
-:	phy
-	jsr liss
-	ply
-	dey
-	bpl :-
+	ldy #0
+:	jsr liss
+	iny
+	bne :-
 	rts
 .endproc
 
@@ -177,8 +163,6 @@ level_loop:
 	bit #$02
 	beq next_level
 
-	inc
-	and #(LEVELS - 1)
 	sta leveltime
 	; nibble index fun
 	and #2
@@ -218,7 +202,7 @@ point_loop:
 
 	lda $ffff,y
 TUNC1 = * - 2
-	adc liss_coords_y_l,x
+	adc liss_coords_y,x
 	cmp #200
 	bcs next_point2
 	sta ycoordzp
@@ -227,7 +211,7 @@ TUNC1 = * - 2
 
 	lda $ffff,y
 TUNC2 = * - 2
-	adc liss_coords_x_l,x
+	adc liss_coords_x,x
 	cmp #160
 	bcs next_point
 	ldx ycoordzp
@@ -280,7 +264,7 @@ openloop:
 	adc time
 	sta time
 	lda minlevel
-	cmp #28
+	cmp #20
 	bcc midloop
 	sec
 	sbc jdelta
@@ -326,6 +310,8 @@ endloop:
 	jmp endloop
 return:
 	rts
+lisslevel:
+	.byte 0
 .endproc
 
 .proc wait_flip_and_clear_l1
