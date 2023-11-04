@@ -2,6 +2,7 @@
 .export setup_palette_fade
 .export apply_palette_fade_step
 .export flush_palette
+.export cycle_palette
 
 ; variables
 .export target_palette
@@ -74,7 +75,7 @@ paldiff:
     iny
     bne paldiff
 
-    ; turn new_pallet_exp into 4.4 fixed point
+    ; turn new_palette_exp into 4.4 fixed point
     ldy #0
 pal44:
     lda new_palette_exp,y
@@ -91,6 +92,112 @@ pal44:
 
     rts
 .endproc
+
+.proc cycle_palette ; A = offset (index), X = length (index)
+    sta offset
+    stx length
+
+    asl
+    tax
+
+    asl
+    tay
+
+    lda length
+    clc
+    adc offset
+    asl
+
+    sta stop_x
+    asl
+    sta stop_y
+    lda target_palette,x
+    sta val
+    lda target_palette+1,x
+    sta val+1
+loop_x:
+    inx
+    inx
+    cpx stop_x
+    beq done_x
+    lda target_palette,x
+    pha
+    lda val
+    sta target_palette,x
+    pla
+    sta val
+    lda target_palette+1,x
+    pha
+    lda val+1
+    sta target_palette+1,x
+    pla
+    sta val+1
+    bra loop_x
+done_x:
+    lda offset
+    asl
+    tax
+    lda val
+    sta target_palette,x
+    lda val+1
+    sta target_palette+1,x
+
+
+.repeat 4, i
+    lda new_palette_exp+i,y
+    sta val+i
+    lda diff_palette_exp+i,y
+    sta diff+i
+.endrepeat
+loop_y:
+    iny
+    iny
+    iny
+    iny
+    cpy stop_y
+    beq done_y
+.repeat 4, i
+    lda new_palette_exp+i,y
+    pha
+    lda val+i
+    sta new_palette_exp+i,y
+    pla
+    sta val+i
+    lda diff_palette_exp+i,y
+    pha
+    lda diff+i
+    sta diff_palette_exp+i,y
+    pla
+    sta diff+i
+.endrepeat
+    bra loop_y
+done_y:
+    lda offset
+    asl
+    asl
+    tay
+.repeat 4, i
+    lda val+i
+    sta new_palette_exp+i,y
+    lda diff+i
+    sta diff_palette_exp+i,y
+.endrepeat
+    rts
+
+offset:
+    .byte 0
+length:
+    .byte 0
+stop_x:
+    .byte 0
+stop_y:
+    .byte 0
+val:
+    .byte 0,0,0,0
+diff:
+    .byte 0,0,0,0
+.endproc
+
 
 .proc apply_palette_fade_step
     lda fade_iter
