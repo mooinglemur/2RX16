@@ -25,6 +25,7 @@ maxlevel = tmp10zp
 .include "macros.inc"
 
 .include "tunnel.inc"
+.include "flow.inc"
 
 .segment "TUNNEL"
 entry:
@@ -33,13 +34,13 @@ entry:
 	LOADFILE "TUNCOORDS.BIN", $20, $a000
 
 	stz MADDRM
-
+.ifndef SKIP_TUNNEL
 	jsr full_clear
 	jsr tunnel_palette
 	jsr tunnel_main
 
 	MUSIC_SYNC $30
-
+.endif
 	rts
 
 

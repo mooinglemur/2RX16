@@ -11,16 +11,23 @@
 .include "x16.inc"
 .include "macros.inc"
 
+.include "flow.inc"
+
 .segment "CIRCLES"
 entry:
 
 	jsr circles_init
 
-	LOADFILE "CIRCLES1.VBM", 0, $0000, 0 ; $00000 VRAM
+	LOADFILE "CIRCLES1.VTS", 0, $0000, 0 ; $00000 VRAM
 
+.ifndef SKIP_TUNNEL
 	MUSIC_SYNC $32
+.endif
 
 	jsr circles1_palette_cycle
+
+	LOADFILE "CIRCLES2A.VTS", 0, $8000, 0 ; $08000 VRAM
+	LOADFILE "CIRCLES2B.VTS", 0, $0000, 1 ; $10000 VRAM
 
 	MUSIC_SYNC $34
 
@@ -47,6 +54,9 @@ entry:
 
 	rts
 
+; tables for tile maps
+
+.include "circles.inc"
 
 .proc circles1_palette_cycle
 	lda #$8b
@@ -113,8 +123,6 @@ fade_out_loop:
 	bne fade_out_loop
 
 	rts
-palette_offset:
-	.byte 0
 fade_in:
 	.byte 16
 fade_out:
@@ -135,21 +143,68 @@ hold:
 	stz Vera::Reg::FXCtrl
 	stz Vera::Reg::Ctrl
 
-	; set bitmap mode for layer 1
-	lda #%00000110 ; 4bpp
-	sta Vera::Reg::L1Config
-	lda #(($00000 >> 11) << 2) | 0 ; 320
-	sta Vera::Reg::L1TileBase
-	lda #0
-	sta Vera::Reg::L1HScrollH ; palette offset
-
 	VERA_SET_ADDR (Vera::VRAM_palette), 1
 
+	; blank palette
 	ldx #0
 :   stz target_palette,x
 	stz Vera::Reg::Data0
 	inx
 	bpl :-
+
+	VERA_SET_ADDR $18000, 1
+	
+	; populate tile maps
+	ldx #0
+tilemaploop:
+	lda map1tbl,x
+MAPTBL = * - 2
+	sta Vera::Reg::Data0
+	inx
+	bne tilemaploop
+	lda MAPTBL+1
+	inc
+	sta MAPTBL+1
+	cmp #>(map1tbl + $1000) ; 4kb
+	bcc tilemaploop
+
+	; set only layer 0 visible
+	lda #$10
+	tsb Vera::Reg::DCVideo
+	lda #$60
+	trb Vera::Reg::DCVideo
+
+	; set tile mode for layer 0
+	lda #%00000010 ; 4bpp
+	sta Vera::Reg::L0Config
+	lda #(($00000 >> 11) << 2) | 3
+	sta Vera::Reg::L0TileBase
+
+	lda #(($18000 >> 9))
+	sta Vera::Reg::L0MapBase
+
+	lda #96 ; H scroll to center
+	sta Vera::Reg::L0HScrollL
+	stz Vera::Reg::L0HScrollH
+
+	lda #156 ; V scroll to center
+	sta Vera::Reg::L0VScrollL
+	stz Vera::Reg::L0VScrollH
+
+	; set tile mode for layer 1
+	lda #%00000010 ; 4bpp
+	sta Vera::Reg::L1Config
+	lda #(($08000 >> 11) << 2) | 3
+	sta Vera::Reg::L1TileBase
+
+	lda #(($18800 >> 9))
+	sta Vera::Reg::L1MapBase
+
+	stz Vera::Reg::L1HScrollL
+	stz Vera::Reg::L1HScrollH
+
+	stz Vera::Reg::L1VScrollL
+	stz Vera::Reg::L1VScrollH
 
 
 	rts
