@@ -119,7 +119,7 @@ main_dance:
 	inc l0_offset ; wraps around to 256
 	lda l1_offset
 	inc
-	cmp #200
+	cmp #199
 	bcc :+
 	lda #0
 :	sta l1_offset
