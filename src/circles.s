@@ -26,37 +26,148 @@ entry:
 
 	jsr circles1_palette_cycle
 
-	LOADFILE "CIRCLES2A.VTS", 0, $8000, 0 ; $08000 VRAM
-	LOADFILE "CIRCLES2B.VTS", 0, $0000, 1 ; $10000 VRAM
+	LOADFILE "CIRCLES2.VTS", 0, $8000, 0 ; $08000 VRAM
 
+.ifndef SKIP_TUNNEL
 	MUSIC_SYNC $34
+.endif
 
-	; overlapping
+	jsr circles12_dance
 
-	MUSIC_SYNC $40
-
-	; fade to white
-
-	ldx #32
-:   lda #$0f
-	sta target_palette-1,x
-	dex
-	lda #$ff
-	sta target_palette-1,x
-	dex
-	bne :-
-
-	lda #0
-	jsr setup_palette_fade
-
-	PALETTE_FADE 1
-
+	; disable layer 1
+	lda #$20
+	trb Vera::Reg::DCVideo
 
 	rts
 
 ; tables for tile maps
 
 .include "circles.inc"
+
+.proc circles12_dance
+	WAITVSYNC
+
+	; set the palette
+	VERA_SET_ADDR (Vera::VRAM_palette), 1
+	ldx #0
+palloop:
+	lda initial_palette,x
+	sta target_palette,x
+	sta Vera::Reg::Data0
+	inx
+	cpx #64
+	bcc palloop
+
+	lda #0
+	jsr setup_palette_fade
+
+	; show layer 1
+	lda #$20
+	tsb Vera::Reg::DCVideo
+
+
+main_dance:
+	ldx l0_offset
+
+	clc
+	lda #96-50
+	adc sinmap1_x,x
+	sta Vera::Reg::L0HScrollL
+	lda #0
+	adc #0
+	sta Vera::Reg::L0HScrollH
+
+	lda #156-50
+	adc sinmap1_y,x
+	sta Vera::Reg::L0VScrollL
+	lda #0
+	adc #0
+	sta Vera::Reg::L0VScrollH
+
+	ldx l1_offset
+
+	lda #96-50
+	adc sinmap2_x,x
+	sta Vera::Reg::L1HScrollL
+	lda #0
+	adc #0
+	sta Vera::Reg::L1HScrollH
+
+	lda #156-50
+	adc sinmap2_y,x
+	sta Vera::Reg::L1VScrollL
+	lda #0
+	adc #0
+	sta Vera::Reg::L1VScrollH
+
+	WAITVSYNC
+	lda #1
+	ldx #6
+	jsr cycle_palette
+
+	; cycle l1 palette less often
+
+	lda l0_offset
+	and #3
+	bne :+
+
+	lda #1+16
+	ldx #6
+	jsr cycle_palette
+:	jsr flush_palette
+
+	inc l0_offset ; wraps around to 256
+	lda l1_offset
+	inc
+	cmp #200
+	bcc :+
+	lda #0
+:	sta l1_offset
+
+	lda syncval
+	cmp #$40
+	bne main_dance
+
+	lda paliter
+	cmp #16
+	bne apply_step
+	; set up the fade to white
+
+	ldx #62
+:   lda #$0f
+	sta target_palette+1,x
+	dex
+	lda #$ff
+	sta target_palette+1,x
+	dex
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+
+apply_step:
+	jsr apply_palette_fade_step
+	jsr flush_palette
+	dec paliter
+	jne main_dance
+
+	rts
+l0_offset:
+	.byte 64
+l1_offset:
+	.byte 150
+paliter:
+	.byte 16
+
+
+initial_palette:
+	; for layer 0
+	.word $0000,$0fff,$0bbb,$0888,$0555,$0000,$0222,$0000
+	.word $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+	; for layer 1
+	.word $0000,$0eae,$0969,$0c9c,$0868,$0a7a,$0757,$0000
+	.word $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+.endproc
 
 .proc circles1_palette_cycle
 	lda #$8b
@@ -209,3 +320,5 @@ MAPTBL = * - 2
 
 	rts
 .endproc
+
+sin50tbl:

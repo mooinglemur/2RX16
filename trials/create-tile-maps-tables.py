@@ -39,7 +39,8 @@ for tile in range(1024):
     map1.append(idx)
     map2.append(idx)
     map1.append(flip | 0x00)
-    map2.append(flip | 0x10 | map2t)
+#    map2.append(flip | 0x10 | map2t)
+    map2.append(flip | 0x10)
 
 
 
