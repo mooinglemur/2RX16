@@ -49,6 +49,7 @@ tmp10zp:
 
 .include "x16.inc"
 .include "macros.inc"
+.include "flow.inc"
 
 .scope AudioAPI
 	.include "audio.inc"
@@ -86,10 +87,10 @@ SCENE = $4800
 	; stop song
 	ldx #0
 	jsr zsmkit::zsm_close
-
+.ifndef SKIP_SONG2
 	LOADFILE "MUSIC2.ZSM", SONG_BANK, $a000
 	LOADFILE "HEDRON.BIN", 0, SCENE
-
+.endif
 	; set up 52 Hz VIA timer
 	lda #52
 	jsr setup_via_timer
@@ -98,6 +99,7 @@ SCENE = $4800
 	ldy #0
 	jsr zsmkit::zsm_set_int_rate
 
+.ifndef SKIP_SONG2
 	jsr play_song
 	jsr SCENE
 	LOADFILE "TUNNEL.BIN", 0, SCENE
@@ -107,11 +109,64 @@ SCENE = $4800
 	LOADFILE "MOIRE.BIN", 0, SCENE ; also includes the four column swipe to the beat
 	jsr SCENE
 
+	; stop song
+	ldx #0
+	jsr zsmkit::zsm_close
+.endif
+	LOADFILE "MUSIC3.ZSM", SONG_BANK, $a000
+	LOADFILE "SCROLLER.BIN", 0, SCENE
+	jsr play_song
+	jsr SCENE
 
+	LOADFILE "CREATURE.BIN", 0, SCENE
+	jsr SCENE
+	LOADFILE "PLASMA.BIN", 0, SCENE
+	jsr SCENE
+	LOADFILE "CUBE.BIN", 0, SCENE
+	jsr SCENE
+	LOADFILE "BALLS.BIN", 0, SCENE
+	jsr SCENE
+	
+	MUSIC_SYNC $A0
 
-@1:	jmp @1
+	; stop song
+	ldx #0
+	jsr zsmkit::zsm_close
+
+	LOADFILE "MUSIC4.ZSM", SONG_BANK, $a000
+	LOADFILE "SWORD.BIN", 0, SCENE
+	jsr play_song
+	jsr SCENE
+
+	LOADFILE "WATER.BIN", 0, SCENE
+	jsr SCENE
+
+	MUSIC_SYNC $C0
+
+	LOADFILE "BOUNCE.BIN", 0, SCENE
+	jsr SCENE
+
+	; craft/crew/credits will be added after SONG5 exists!
+
+	; stop song
+	ldx #0
+	jsr zsmkit::zsm_close
+	
 	jsr clear_irq_handler
-	rts
+	jsr X16::Kernal::SCINIT
+
+	stz Vera::Reg::L0HScrollL
+	stz Vera::Reg::L0HScrollH
+	stz Vera::Reg::L0VScrollL
+	stz Vera::Reg::L0VScrollH
+
+	stz Vera::Reg::L1HScrollL
+	stz Vera::Reg::L1HScrollH
+	stz Vera::Reg::L1VScrollL
+	stz Vera::Reg::L1VScrollH
+
+	clc
+	jmp X16::Kernal::ENTER_BASIC ; won't return!
 .endproc
 
 .proc play_song
