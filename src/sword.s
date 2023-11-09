@@ -13,34 +13,34 @@
 
 .segment "SWORD"
 entry:
-    ; fade to blue
+	; fade to blue
 
-    ldx #32
+	ldx #32
 :   lda #$00
-    sta target_palette-1,x
-    dex
-    lda #$0f
-    sta target_palette-1,x
-    dex
-    bne :-
+	sta target_palette-1,x
+	dex
+	lda #$0f
+	sta target_palette-1,x
+	dex
+	bne :-
 
-    lda #0
-    jsr setup_palette_fade
+	lda #0
+	jsr setup_palette_fade
 
-    PALETTE_FADE 1
+	PALETTE_FADE 1
 
-    MUSIC_SYNC $AC
+	MUSIC_SYNC $AC
 
-    ldx #32
+	ldx #32
 :   stz target_palette-1,x
-    dex
-    bne :-
+	dex
+	bne :-
 
-    lda #0
-    jsr setup_palette_fade
+	lda #0
+	jsr setup_palette_fade
 
-    PALETTE_FADE 1
+	PALETTE_FADE 1
 
-    MUSIC_SYNC $B0
+	MUSIC_SYNC $B0
 
-    rts
+	rts

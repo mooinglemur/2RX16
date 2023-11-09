@@ -13,16 +13,22 @@
 
 .segment "MOIRE"
 entry:
-    ; fade to white
+	; fade to white
 
-    ldx #32
+	VERA_SET_ADDR (31+(Vera::VRAM_palette)), -1
+
+	; set palette to white
+
+	ldx #30
 :   lda #$0f
-    sta target_palette-1,x
-    dex
-    lda #$ff
-    sta target_palette-1,x
-    dex
-    bne :-
+	sta target_palette+1,x
+	sta Vera::Reg::Data0
+	dex
+	lda #$ff
+	sta target_palette+1,x
+	sta Vera::Reg::Data0
+	dex
+	bne :-
 
 	; set bitmap mode for layer 1
 	lda #%00000110 ; 4bpp
@@ -32,28 +38,204 @@ entry:
 	lda #0
 	sta Vera::Reg::L0HScrollH ; palette offset
 
-    LOADFILE "PLACEHOLDER_MOIRE.VBM", 0, $0000, 0 ; $00000 VRAM
+	; set up cache
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
 
-    MUSIC_SYNC $45
+	lda #$40
+	sta Vera::Reg::FXCtrl
 
-    LOADFILE "PLACEHOLDER_MOIRE.PAL", 0, target_palette
+	lda #(6 << 1)
+	sta Vera::Reg::Ctrl
+	lda #$11
+	sta $9f29
+	sta $9f2a
+	sta $9f2b
+	sta $9f2c
+	stz Vera::Reg::Ctrl
 
-    lda #0
-    jsr setup_palette_fade
+	; write the whole buffer
+	VERA_SET_ADDR $00000, 3
 
-    PALETTE_FADE 1
+	ldy #4 ; 32kB
+	ldx #0  ; 8kB per loop (256 * 32 w/ cache)
+clearloop:
+.repeat 8
+	stz Vera::Reg::Data0
+.endrepeat
+	dex
+	bne clearloop
+	dey
+	bne clearloop
 
-    MUSIC_SYNC $50
+	; disable FX
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
 
-    ldx #32
+	MUSIC_SYNC $41
+	
+	; do wipe 1
+	lda #0
+	jsr wipe
+
+	MUSIC_SYNC $42
+	
+	; do wipe 2
+	lda #80
+	jsr wipe
+
+	MUSIC_SYNC $43
+	
+	; do wipe 3
+	lda #160
+	jsr wipe
+
+	MUSIC_SYNC $44
+	
+	; do wipe 4
+	lda #240
+	jsr wipe
+
+
+
+	LOADFILE "PLACEHOLDER_MOIRE.VBM", 0, $0000, 0 ; $00000 VRAM
+
+	MUSIC_SYNC $45
+
+	LOADFILE "PLACEHOLDER_MOIRE.PAL", 0, target_palette
+
+	lda #0
+	jsr setup_palette_fade
+
+	PALETTE_FADE 1
+
+	MUSIC_SYNC $50
+
+	ldx #32
 :   stz target_palette-1,x
-    dex
-    bne :-
+	dex
+	bne :-
 
-    lda #0
-    jsr setup_palette_fade
+	lda #0
+	jsr setup_palette_fade
 
-    PALETTE_FADE 1
+	PALETTE_FADE 1
 
 
-    rts
+	rts
+
+
+.proc wipe
+	sta xoff
+	stz row
+
+	; set target palette to white
+
+	lda #$0f
+	sta target_palette+3
+	sta target_palette+5
+	lda #$ff
+	sta target_palette+2
+	sta target_palette+4
+
+	lda #0
+	jsr setup_palette_fade
+
+	WAITVSYNC
+.repeat 4
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 4
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 4
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 4
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	; skyblue
+	lda #$0a
+	sta target_palette+3
+	lda #$df
+	sta target_palette+2
+
+	; black
+	stz target_palette+5
+	stz target_palette+4
+
+	lda #0
+	jsr setup_palette_fade  
+
+.repeat 2
+	WAITVSYNC
+	jsr apply_palette_fade_step
+.endrepeat
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 2
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 2
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 2
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 2
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 2
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 2
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+	WAITVSYNC
+.repeat 2
+	jsr apply_palette_fade_step
+.endrepeat    
+	jsr flush_palette
+
+
+
+	rts
+
+
+
+xoff:
+	.byte 0
+row:
+	.byte 0
+.endproc

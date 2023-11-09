@@ -13,32 +13,32 @@
 
 .segment "CUBE"
 entry:
-    ; fade to dark green
+	; fade to dark green
 
-    ldx #32
+	ldx #32
 :   lda #$02
-    sta target_palette-1,x
-    dex
-    lda #$82
-    sta target_palette-1,x
-    dex
-    bne :-
+	sta target_palette-1,x
+	dex
+	lda #$82
+	sta target_palette-1,x
+	dex
+	bne :-
 
-    lda #0
-    jsr setup_palette_fade
+	lda #0
+	jsr setup_palette_fade
 
-    PALETTE_FADE 1
+	PALETTE_FADE 1
 
-    MUSIC_SYNC $8C
+	MUSIC_SYNC $8C
 
-    ldx #32
+	ldx #32
 :   stz target_palette-1,x
-    dex
-    bne :-
+	dex
+	bne :-
 
-    lda #0
-    jsr setup_palette_fade
+	lda #0
+	jsr setup_palette_fade
 
-    PALETTE_FADE 1
+	PALETTE_FADE 1
 
-    rts
+	rts
