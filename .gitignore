@@ -4,6 +4,8 @@ ROOT/*.BIN
 *.sym
 *.X16
 obj/
+assets/3d_scene/U2A_anim/
+assets/3d_scene/U2E_anim/
 src/blob_loadfile.inc
 src/blob_openfile.inc
 sdcard.img
