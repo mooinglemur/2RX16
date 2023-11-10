@@ -68,6 +68,15 @@ clearloop:
 	dey
 	bne clearloop
 
+	; set up cache with wipe color
+	lda #(6 << 1)
+	sta Vera::Reg::Ctrl
+	lda #$22
+	sta $9f29
+	sta $9f2a
+	sta $9f2b
+	sta $9f2c
+
 	; disable FX
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
@@ -128,6 +137,7 @@ clearloop:
 
 
 .proc wipe
+	lsr
 	sta xoff
 	stz row
 
@@ -180,60 +190,69 @@ clearloop:
 	lda #0
 	jsr setup_palette_fade  
 
-.repeat 2
+	lda #12
+	sta rowto
+fadeoutloop:
 	WAITVSYNC
+.repeat 2
 	jsr apply_palette_fade_step
 .endrepeat
 	jsr flush_palette
 
-	WAITVSYNC
-.repeat 2
-	jsr apply_palette_fade_step
-.endrepeat    
-	jsr flush_palette
+	lda rowto
+	jsr wipeto
+	lda rowto
+	cmp #96 ; set carry each iteration at/after 96, bringing total to 200 after 16
+	adc #12
+	sta rowto
+	cmp #201 ; stop *after* 200
+	bcc fadeoutloop
 
-	WAITVSYNC
-.repeat 2
-	jsr apply_palette_fade_step
-.endrepeat    
-	jsr flush_palette
+	rts
+rowto:
+	.byte 0
 
-	WAITVSYNC
-.repeat 2
-	jsr apply_palette_fade_step
-.endrepeat    
-	jsr flush_palette
+wipeto:
+	sta @STOP_ROW
+	lda #$30
+	sta Vera::Reg::AddrH
 
-	WAITVSYNC
-.repeat 2
-	jsr apply_palette_fade_step
-.endrepeat    
-	jsr flush_palette
+	; set up cache
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
 
-	WAITVSYNC
-.repeat 2
-	jsr apply_palette_fade_step
-.endrepeat    
-	jsr flush_palette
+	lda #$40
+	sta Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+@loop:
+	ldx row
+	lda xoff
+	clc
+	adc addrl_per_row_4bit,x
+    sta Vera::Reg::AddrL
+    lda addrm_per_row_4bit,x
+	adc #0
+    sta Vera::Reg::AddrM
+	lda #$22
+.repeat 10
+	stz Vera::Reg::Data0
+.endrepeat
+	lda row
+	inc
+	sta row
+	cmp #$ff
+@STOP_ROW = * - 1
+	bcc @loop
 
-	WAITVSYNC
-.repeat 2
-	jsr apply_palette_fade_step
-.endrepeat    
-	jsr flush_palette
+	; end FX
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
 
-	WAITVSYNC
-.repeat 2
-	jsr apply_palette_fade_step
-.endrepeat    
-	jsr flush_palette
-
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
 
 
 	rts
-
-
-
 xoff:
 	.byte 0
 row:
