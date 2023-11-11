@@ -173,7 +173,11 @@ faces = objects['Cube']['faces']
 
 camera_object = objects['CameraBox']
 
+# We need to take the point of the camera (which is HALF-way of one of the edges of the CameraFace faces)
+# We also have to use the normal
+# Then we need to translate and rotate all vertices so they become into Camera/View space.
 # TODO: We might to do something like this: https://stackoverflow.com/questions/1023948/rotate-normal-vector-onto-axis-plane
+
 
 #camera = 
 
