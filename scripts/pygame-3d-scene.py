@@ -67,6 +67,8 @@ faces = []
 
 material_name_to_color_index = {
     None : 0,
+    'None' : 1,
+    'CameraFace' : 1,
     'Red' : 2,
     'Blue' : 6,
     'Yellow' : 7,
@@ -86,6 +88,10 @@ def load_vertices_and_faces():
     objects = {}
     current_object_name = None
     current_material_name = None
+    current_vertex_index = 0
+    object_start_vertex_index = None
+    current_normal_index = 0
+    object_start_normal_index = None
     for line_raw in lines:
         line = line_raw.strip()
         if line.startswith('#'):
@@ -96,14 +102,26 @@ def load_vertices_and_faces():
             current_object_name = line_parts[1]
             objects[current_object_name] = {
                 'vertices' : [],
+                'normals' : [],
                 'faces' : [],
             }
             current_material_name = None
-            
+            object_start_vertex_index = current_vertex_index
+            object_start_normal_index = current_normal_index
         elif line.startswith('usemtl '):
             line_parts = line.split()
             current_material_name = line_parts[1]
             
+        elif line.startswith('vn '):
+        
+            line_parts = line.split()
+            line_parts.pop(0)  # first element contains the 'vn '
+            coordinates = [float(line_part) for line_part in line_parts]
+            
+            normal = ( coordinates[0], coordinates[1], coordinates[2] )
+            objects[current_object_name]['normals'].append(normal)
+            current_normal_index += 1
+        
         elif line.startswith('v '):
         
             line_parts = line.split()
@@ -112,24 +130,38 @@ def load_vertices_and_faces():
             
             vertex = ( coordinates[0], coordinates[1], coordinates[2] )
             objects[current_object_name]['vertices'].append(vertex)
+            current_vertex_index += 1
 
         elif line.startswith('f '):
         
             line_parts = line.split()
             line_parts.pop(0)  # first element contains the 'f '
             vertex_indexes = []
+            normal_index = None
             for line_part in line_parts:
-                # There are in fact two indexes: one for the triangle and one for the quad/face. We only take the one for the triangle here
+                # There are in fact two indexes: one for the vertex and one for the normal.
                 vertex_index = int(line_part.split('//')[0])-1   
                 vertex_indexes.append(vertex_index)
+                # Note: we overwrite the normal index, since we assume this is a triangle and has ONE normal for each face
+                normal_index = int(line_part.split('//')[1])-1   
                 
+            
             # FIXME: we need a proper way to map colors!
+            #   Its probably best to read in the .mtl (material file)
             color_index = material_name_to_color_index[current_material_name]
                 
-            # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case.
-            objects[current_object_name]['faces'].append((vertex_indexes[0], vertex_indexes[1], vertex_indexes[2], color_index))
+            # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
+            objects[current_object_name]['faces'].append((
+                vertex_indexes[0] - object_start_vertex_index,
+                vertex_indexes[1] - object_start_vertex_index,
+                vertex_indexes[2] - object_start_vertex_index,
+                color_index,
+                normal_index - object_start_normal_index,
+            ))
             
     return objects
+
+# FIXME: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
 
 
 # TODO: this adds to the faces and vertices, but we might want separate lists per object...
@@ -138,6 +170,11 @@ objects = load_vertices_and_faces()
 # FIXME: this is a temporary workaround. We should get all objects but the camera here!
 vertices = objects['Cube']['vertices']
 faces = objects['Cube']['faces']
+
+camera_object = objects['CameraBox']
+
+#camera = 
+
 
 # Define the size and position of the polyhedron
 scale = 37
