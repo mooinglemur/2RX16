@@ -173,6 +173,8 @@ faces = objects['Cube']['faces']
 
 camera_object = objects['CameraBox']
 
+# TODO: We might to do something like this: https://stackoverflow.com/questions/1023948/rotate-normal-vector-onto-axis-plane
+
 #camera = 
 
 
