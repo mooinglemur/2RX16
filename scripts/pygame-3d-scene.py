@@ -12,55 +12,43 @@ import numpy as np
 # Initialize Pygame
 pygame.init()
 
-# Define colors
+# FIXME: quick and dirty colors here (somewhat akin to VERA's first 16 colors0
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-BLUE  = (64, 64, 255)
 RED  = (255, 64, 64)
-GREEN = (64, 255, 64)
 CYAN = (64, 255, 255)
 MAGENTA = (255, 64, 255)
+GREEN = (64, 255, 64)
+BLUE  = (64, 64, 255)
 YELLOW = (255, 255, 64)
-PINK = (255, 224, 224)
-LIME = (224, 255, 224)
-LAVENDER = (255, 224, 255)
-ORANGE = (255, 224, 0)
-SKYBLUE = (224, 224, 255)
-GRAY = (128, 128, 128)
 
-IDX0 = (0, 0, 0)
-IDX1 = (0, 0, 255)
-IDX2 = (255, 255, 255)
-IDX3 = (0, 0, 221)
-IDX4 = (221, 221, 221)
-IDX5 = (0, 0, 187)
-IDX6 = (187, 187, 187)
-IDX7 = (0, 0, 153)
-IDX8 = (153, 153, 153)
-IDX9 = (0, 0, 119)
-IDXA = (119, 119, 119)
-IDXB = (0, 0, 85)
-IDXC = (85, 85, 85)
-IDXD = (0, 0, 51)
-IDXE = (51, 51, 51)
-IDXF = (0, 0, 0)
+ORANGE = (255, 224, 0)
+BROWN = (165, 42, 42)
+PINK = (255, 224, 224)
+DARKGRAY = (64, 64, 64)
+GRAY = (128, 128, 128)
+LIME = (224, 255, 224)
+SKYBLUE = (224, 224, 255)
+LIGHTGRAY = (192, 192, 192)
 
 colors = [
-    IDX1,
-    IDX2,
-    IDX3,
-    IDX4,
-    IDX5,
-    IDX6,
-    IDX7,
-    IDX8,
-    IDX9,
-    IDXA,
-    IDXB,
-    IDXC,
-    IDXD,
-    IDXE,
-    IDXF
+    BLACK,
+    WHITE,
+    RED,
+    CYAN,
+    MAGENTA,
+    GREEN,
+    BLUE,
+    YELLOW,
+
+    ORANGE,
+    BROWN,
+    PINK,
+    DARKGRAY,
+    GRAY,
+    LIME,
+    SKYBLUE,
+    LIGHTGRAY,
 ]
 
 
@@ -72,58 +60,20 @@ screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Tetrakis Hexahedron")
 
 
+# FIXME: we should use objects that have vertices and faces (and bounding boxes)
 vertices = []
 faces = []
 
-'''
-# Define the vertices of the Tetrakis hexahedron
-vertices = [
-    (   0,    0, -3/2), #0
-    (   0,    0,  3/2), #1
-    (   0, -3/2,    0), #2
-    (   0,  3/2,    0), #3
-    (-3/2,    0,    0), #4
-    ( 3/2,    0,    0), #5
-    (-1, -1, -1), #6
-    (-1, -1,  1), #7
-    (-1,  1, -1), #8
-    (-1,  1,  1), #9
-    ( 1, -1, -1), #10
-    ( 1, -1,  1), #11
-    ( 1,  1, -1), #12
-    ( 1,  1,  1), #13
-]
 
-# Define the faces by specifying the vertex indices
-faces = [
-    ( 0, 10,  6, 0),
-    ( 1, 13,  9, 0),
-    ( 0,  6,  8, 1),
-    ( 1, 11, 13, 1),
-    ( 0,  8, 12, 2),
-    ( 1,  7, 11, 2),
-    ( 0, 12, 10, 3),
-    ( 1,  9,  7, 3),
-    ( 2,  7,  6, 4),
-    ( 3, 13, 12, 4),
-    ( 2, 11,  7, 5),
-    ( 3, 12,  8, 5),
-    ( 2, 10, 11, 6),
-    ( 3,  8,  9, 6),
-    ( 2,  6, 10, 7),
-    ( 3,  9, 13, 7),
-    ( 5, 13, 11, 8),
-    ( 4,  8,  6, 8),
-    ( 5, 11, 10, 9),
-    ( 4,  9,  8, 9),
-    ( 5, 10, 12, 10),
-    ( 4,  7,  9, 10),
-    ( 5, 12, 13, 11),
-    ( 4,  6,  7, 11),
-]
-'''
+material_name_to_color_index = {
+    None : 0,
+    'Red' : 2,
+    'Blue' : 6,
+    'Yellow' : 7,
+}
 
-def load_ship_vertices_and_faces():
+
+def load_vertices_and_faces():
 
     # In Blender do:
     #  - File->Export->Wavefront (obj)
@@ -133,24 +83,37 @@ def load_ship_vertices_and_faces():
     obj_file = open('assets/test_cube.obj', 'r')
     lines = obj_file.readlines()
     
-    global faces
-    global vertices
-    
+    objects = {}
+    current_object_name = None
+    current_material_name = None
     for line_raw in lines:
         line = line_raw.strip()
         if line.startswith('#'):
             continue
         
-        if line.startswith('v '):
+        if line.startswith('o '):
+            line_parts = line.split()
+            current_object_name = line_parts[1]
+            objects[current_object_name] = {
+                'vertices' : [],
+                'faces' : [],
+            }
+            current_material_name = None
+            
+        elif line.startswith('usemtl '):
+            line_parts = line.split()
+            current_material_name = line_parts[1]
+            
+        elif line.startswith('v '):
         
             line_parts = line.split()
             line_parts.pop(0)  # first element contains the 'v '
             coordinates = [float(line_part) for line_part in line_parts]
             
             vertex = ( coordinates[0], coordinates[1], coordinates[2] )
-            vertices.append(vertex)
+            objects[current_object_name]['vertices'].append(vertex)
 
-        if line.startswith('f '):
+        elif line.startswith('f '):
         
             line_parts = line.split()
             line_parts.pop(0)  # first element contains the 'f '
@@ -160,15 +123,21 @@ def load_ship_vertices_and_faces():
                 vertex_index = int(line_part.split('//')[0])-1   
                 vertex_indexes.append(vertex_index)
                 
-            # FIXME: we need a COLOR!
-            color_index = 1
+            # FIXME: we need a proper way to map colors!
+            color_index = material_name_to_color_index[current_material_name]
                 
             # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case.
-            faces.append((vertex_indexes[0], vertex_indexes[1], vertex_indexes[2], color_index))
+            objects[current_object_name]['faces'].append((vertex_indexes[0], vertex_indexes[1], vertex_indexes[2], color_index))
+            
+    return objects
 
 
 # TODO: this adds to the faces and vertices, but we might want separate lists per object...
-load_ship_vertices_and_faces()
+objects = load_vertices_and_faces()
+
+# FIXME: this is a temporary workaround. We should get all objects but the camera here!
+vertices = objects['Cube']['vertices']
+faces = objects['Cube']['faces']
 
 # Define the size and position of the polyhedron
 scale = 37
