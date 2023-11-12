@@ -86,18 +86,23 @@ def load_vertices_and_faces():
     lines = obj_file.readlines()
     
     objects = {}
+    
     current_object_name = None
     current_material_name = None
+    
     current_vertex_index = 0
     object_start_vertex_index = None
+    
     current_normal_index = 0
     object_start_normal_index = None
+    
     for line_raw in lines:
         line = line_raw.strip()
+        
         if line.startswith('#'):
             continue
         
-        if line.startswith('o '):
+        elif line.startswith('o '):
             line_parts = line.split()
             current_object_name = line_parts[1]
             objects[current_object_name] = {
@@ -108,32 +113,30 @@ def load_vertices_and_faces():
             current_material_name = None
             object_start_vertex_index = current_vertex_index
             object_start_normal_index = current_normal_index
+            
         elif line.startswith('usemtl '):
             line_parts = line.split()
             current_material_name = line_parts[1]
             
         elif line.startswith('vn '):
-        
             line_parts = line.split()
             line_parts.pop(0)  # first element contains the 'vn '
             coordinates = [float(line_part) for line_part in line_parts]
             
-            normal = ( coordinates[0], coordinates[1], coordinates[2] )
+            normal = [ coordinates[0], coordinates[1], coordinates[2] ]
             objects[current_object_name]['normals'].append(normal)
             current_normal_index += 1
         
         elif line.startswith('v '):
-        
             line_parts = line.split()
             line_parts.pop(0)  # first element contains the 'v '
             coordinates = [float(line_part) for line_part in line_parts]
             
-            vertex = ( coordinates[0], coordinates[1], coordinates[2] )
+            vertex = [ coordinates[0], coordinates[1], coordinates[2] ]
             objects[current_object_name]['vertices'].append(vertex)
             current_vertex_index += 1
 
         elif line.startswith('f '):
-        
             line_parts = line.split()
             line_parts.pop(0)  # first element contains the 'f '
             vertex_indexes = []
@@ -151,31 +154,68 @@ def load_vertices_and_faces():
             color_index = material_name_to_color_index[current_material_name]
                 
             # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
-            objects[current_object_name]['faces'].append((
-                vertex_indexes[0] - object_start_vertex_index,
-                vertex_indexes[1] - object_start_vertex_index,
-                vertex_indexes[2] - object_start_vertex_index,
-                color_index,
-                normal_index - object_start_normal_index,
-            ))
+            # FIXME?: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
+            objects[current_object_name]['faces'].append({
+                'vertex_indices' : [ 
+                    vertex_indexes[0] - object_start_vertex_index,
+                    vertex_indexes[1] - object_start_vertex_index,
+                    vertex_indexes[2] - object_start_vertex_index 
+                ],
+                'normal_index' : normal_index - object_start_normal_index,
+                'color_index' : color_index,
+            })
+            
+    # FIXME: we should do another pass and add the *bounding boxes* of these objects! (to SPEED UP the clipping!)
             
     return objects
 
-# FIXME: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
+
+
+def get_camera_info_from_camera_box(camera_box):
+
+    # We need to take the world position of the camera (which is HALF-way of the diagonal of the camera face)
+    # We also have to use the normal of the camera face to determine the camera pointing direction (in world space)
+
+    # HACK: we happen to know we have to take the last face of the CameraBox, then take the first and last vertex of that (=diagonal)
+    #       with those two points we take the point half-way of those and know the origin of the camera.
+
+    camera_box_face = camera_box['faces'][-1]
+    vertex_index_1 = camera_box_face['vertex_indices'][0]
+    vertex_index_2 = camera_box_face['vertex_indices'][2]
+    camera_box_vertex1 = camera_box['vertices'][vertex_index_1]
+    camera_box_vertex2 = camera_box['vertices'][vertex_index_2]
+    x = (camera_box_vertex1[0] + camera_box_vertex2[0])/2
+    y = (camera_box_vertex1[1] + camera_box_vertex2[1])/2
+    z = (camera_box_vertex1[2] + camera_box_vertex2[2])/2
+    camera_pos = [x, y, z]
+    camera_dir = camera_box['normals'][camera_box_face['normal_index']]
+    
+    camera_info = {
+        'pos' : camera_pos,
+        'dir' : camera_dir,
+    }
+
+    return camera_info
+
+
 
 
 # TODO: this adds to the faces and vertices, but we might want separate lists per object...
 objects = load_vertices_and_faces()
 
 # FIXME: this is a temporary workaround. We should get all objects but the camera here!
+
+# FIXME: this is incompatible with the old code!
+# FIXME: this is incompatible with the old code!
+# FIXME: this is incompatible with the old code!
 vertices = objects['Cube']['vertices']
 faces = objects['Cube']['faces']
 
-camera_object = objects['CameraBox']
+camera_box = objects['CameraBox']
+camera_info = get_camera_info_from_camera_box(camera_box)
 
-# We need to take the point of the camera (which is HALF-way of one of the edges of the CameraFace faces)
-# We also have to use the normal
 
+exit()
 
 # More info on: Model space, World space, View/Camera space, Projection Space:
 #   http://www.codinglabs.net/article_world_view_projection_matrix.aspx
@@ -191,8 +231,7 @@ camera_object = objects['CameraBox']
 # Then we need to translate and rotate all vertices so they become into Camera/View space.
 # TODO: We might to do something like this: https://stackoverflow.com/questions/1023948/rotate-normal-vector-onto-axis-plane
 
-
-#camera = 
+# Numpy issues: https://stackoverflow.com/questions/21562986/numpy-matrix-vector-multiplication
 
 
 # Define the size and position of the polyhedron
