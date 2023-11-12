@@ -175,6 +175,19 @@ camera_object = objects['CameraBox']
 
 # We need to take the point of the camera (which is HALF-way of one of the edges of the CameraFace faces)
 # We also have to use the normal
+
+
+# More info on: Model space, World space, View/Camera space, Projection Space:
+#   http://www.codinglabs.net/article_world_view_projection_matrix.aspx
+
+# We get World space data from Blender (in the .obj files)
+# In order for this to be processed, we need to know every relative to the camera (and where it points: negative Z direction)
+# For that we need to transform every vertex coordinate from World Space to View Space first.
+# We can do that with a "World to View/Camera"-Matrix (aka "View Matrix" or "Camera Matrix"). This is what we constuct here.
+#   More info on this: https://www.mauriciopoppe.com/notes/computer-graphics/viewing/view-transform/
+#     Explanation of example code in this video: https://www.youtube.com/watch?v=HXSuNxpCzdM&t=1560s
+#     Actual example code: https://github.com/OneLoneCoder/Javidx9/blob/54b26051d0fd1491c325ae09f50a7fc3f25030e8/ConsoleGameEngine/BiggerProjects/Engine3D/OneLoneCoder_olcEngine3D_Part3.cpp#L228
+
 # Then we need to translate and rotate all vertices so they become into Camera/View space.
 # TODO: We might to do something like this: https://stackoverflow.com/questions/1023948/rotate-normal-vector-onto-axis-plane
 
