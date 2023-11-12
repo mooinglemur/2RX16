@@ -110,7 +110,7 @@ def load_vertices_and_faces():
                 'normals' : [],
                 'faces' : [],
             }
-            current_material_name = None
+            current_material_name = None # Each object has its own material assignments. We only reset the current_material_name at the start of an object
             object_start_vertex_index = current_vertex_index
             object_start_normal_index = current_normal_index
             
@@ -151,7 +151,11 @@ def load_vertices_and_faces():
             
             # FIXME: we need a proper way to map colors!
             #   Its probably best to read in the .mtl (material file)
-            color_index = material_name_to_color_index[current_material_name]
+            if current_material_name in material_name_to_color_index:
+                color_index = material_name_to_color_index[current_material_name]
+            else:
+                print("Unknown material")
+                exit()
                 
             # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
             # FIXME?: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
@@ -178,6 +182,8 @@ def get_camera_info_from_camera_box(camera_box):
 
     # HACK: we happen to know we have to take the last face of the CameraBox, then take the first and last vertex of that (=diagonal)
     #       with those two points we take the point half-way of those and know the origin of the camera.
+    #       A better way would be to take the two triagles with the material "CameraFace" and determine
+    #       which edge they share: this is the diagonal. And take half-way of that.
 
     camera_box_face = camera_box['faces'][-1]
     vertex_index_1 = camera_box_face['vertex_indices'][0]
@@ -191,47 +197,110 @@ def get_camera_info_from_camera_box(camera_box):
     camera_dir = camera_box['normals'][camera_box_face['normal_index']]
     
     camera_info = {
-        'pos' : camera_pos,
-        'dir' : camera_dir,
+        'pos' : camera_pos, # Coordinate in world space
+        'dir' : camera_dir, # Normalized value, in world space
     }
 
     return camera_info
 
 
+def transform_objects_into_view_space(camera_info, objects):
 
+    # More info on: Model space, World space, View/Camera space, Projection Space:
+    #   http://www.codinglabs.net/article_world_view_projection_matrix.aspx
+
+    # We get World space data from Blender (in the .obj files)
+    # In order for this to be processed, we need to know every coordinate *relative to the camera* (and where it points: negative Z direction)
+    # For that we need to transform every vertex coordinate from World Space to View Space first.
+    # We can do that with a "World to View/Camera"-Matrix (aka "View Matrix" or "Camera Matrix"). This is what we constuct here.
+    #   More info on this: https://www.mauriciopoppe.com/notes/computer-graphics/viewing/view-transform/
+    #     Explanation of example code in this video: https://www.youtube.com/watch?v=HXSuNxpCzdM&t=1560s
+    #     Actual example code: https://github.com/OneLoneCoder/Javidx9/blob/54b26051d0fd1491c325ae09f50a7fc3f25030e8/ConsoleGameEngine/BiggerProjects/Engine3D/OneLoneCoder_olcEngine3D_Part3.cpp#L228
+
+    # Then we need to translate and rotate all vertices so they become into Camera/View space.
+
+    # Careful with numpy issues: https://stackoverflow.com/questions/21562986/numpy-matrix-vector-multiplication
+    
+    cam_x = camera_info['pos'][0]
+    cam_y = camera_info['pos'][1]
+    cam_z = camera_info['pos'][2]
+    
+    # FIXME: we are a bit lazy here and do this in two steps (not efficient)
+    #        we first translate (aka move) everything so that the camera is at 0,0
+    #        then we only have to rotate all objects so the camera points in the negative Z direction.
+    #        this simplifies our view-matrix
+    
+    for current_object_name in objects:
+        current_object = objects[current_object_name]
+        for idx, vertex in enumerate(current_object['vertices']):
+            old_x = current_object['vertices'][idx][0]
+            old_y = current_object['vertices'][idx][1]
+            old_z = current_object['vertices'][idx][2]
+            current_object['vertices'][idx] = (old_x - cam_x, old_y - cam_y, old_z - cam_z)
+            
+    # We now construct a view-matrix (but without the translation part, making it a bit simpler)
+    #  (See Javidx9 video for naming of these variables)
+# FIXME: WHY would y have to be -1??
+# FIXME: WHY would y have to be -1??
+# FIXME: WHY would y have to be -1??
+    up = [0, -1, 0]       # y-axis
+    target = camera_info['dir']  # current camera_pos (0,0,0) + look dir (0,0,-1)
+    pos = [0, 0, 0]      # current camera_pos (0,0,0)
+
+# FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
+# FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
+# FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
+    new_forward = target # target - pos (0,0,0) - Note: this is already NORMALIZED!
+#    new_forward = np.negative(target) # target - pos (0,0,0) - Note: this is already NORMALIZED!
+    
+    up_dot_forward = np.dot(np.array(up), np.array(new_forward))
+    a = np.array(new_forward) * up_dot_forward
+    new_up = np.subtract(up, a)
+    new_up = new_up / np.linalg.norm(new_up)
+    
+    new_right = np.cross(new_up, new_forward)
+    
+    view_matrix = np.array([
+        [   new_right[0],   new_right[1], new_right[2]],
+        [      new_up[0],      new_up[1],    new_up[2]],
+        [ new_forward[0], new_forward[1], new_forward[2]],
+    ])
+
+    # We transform all vertices by the view_matrix
+    for current_object_name in objects:
+        current_object = objects[current_object_name]
+        for idx, vertex in enumerate(current_object['vertices']):
+            old_vertex = np.array(current_object['vertices'][idx])
+            current_object['vertices'][idx] = view_matrix.dot(old_vertex)
+            
+# FIXME: ALSO DO THE NORMALS!
+# FIXME: ALSO DO THE NORMALS!
+# FIXME: ALSO DO THE NORMALS!
+# FIXME: ALSO DO THE NORMALS!
+# FIXME: ALSO DO THE NORMALS!
+# FIXME: ALSO DO THE NORMALS!
+    
+    
+    
 
 # TODO: this adds to the faces and vertices, but we might want separate lists per object...
 objects = load_vertices_and_faces()
 
-# FIXME: this is a temporary workaround. We should get all objects but the camera here!
-
-# FIXME: this is incompatible with the old code!
-# FIXME: this is incompatible with the old code!
-# FIXME: this is incompatible with the old code!
-vertices = objects['Cube']['vertices']
-faces = objects['Cube']['faces']
-
 camera_box = objects['CameraBox']
 camera_info = get_camera_info_from_camera_box(camera_box)
 
+transform_objects_into_view_space(camera_info, objects)
 
-exit()
+print(objects)
 
-# More info on: Model space, World space, View/Camera space, Projection Space:
-#   http://www.codinglabs.net/article_world_view_projection_matrix.aspx
+# FIXME: vertices and faces are incompatible with the old code!
+# FIXME: vertices and faces are incompatible with the old code!
+# FIXME: vertices and faces are incompatible with the old code!
 
-# We get World space data from Blender (in the .obj files)
-# In order for this to be processed, we need to know every relative to the camera (and where it points: negative Z direction)
-# For that we need to transform every vertex coordinate from World Space to View Space first.
-# We can do that with a "World to View/Camera"-Matrix (aka "View Matrix" or "Camera Matrix"). This is what we constuct here.
-#   More info on this: https://www.mauriciopoppe.com/notes/computer-graphics/viewing/view-transform/
-#     Explanation of example code in this video: https://www.youtube.com/watch?v=HXSuNxpCzdM&t=1560s
-#     Actual example code: https://github.com/OneLoneCoder/Javidx9/blob/54b26051d0fd1491c325ae09f50a7fc3f25030e8/ConsoleGameEngine/BiggerProjects/Engine3D/OneLoneCoder_olcEngine3D_Part3.cpp#L228
+# FIXME: this is a temporary workaround. We should get all objects but the camera here!
+vertices = objects['Cube']['vertices']
+faces = objects['Cube']['faces']
 
-# Then we need to translate and rotate all vertices so they become into Camera/View space.
-# TODO: We might to do something like this: https://stackoverflow.com/questions/1023948/rotate-normal-vector-onto-axis-plane
-
-# Numpy issues: https://stackoverflow.com/questions/21562986/numpy-matrix-vector-multiplication
 
 
 # Define the size and position of the polyhedron
@@ -275,7 +344,8 @@ def slope2bytes(slope):
 
 
 def face_sorter(item):
-    return zees[item[0]]+zees[item[1]]+zees[item[2]]
+#    return zees[item[0]]+zees[item[1]]+zees[item[2]]
+    return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
 
 def y_sorter(item):
     return rotated_vertices[item][1]
@@ -308,29 +378,43 @@ def advance_cube():
     unscaled_rotated_vertices = []
     zees = []
     for vertex in vertices:
-        x, y, z = vertex
+        #x, y, z = vertex
+        x = vertex[0]
+        y = vertex[1]
+        z = vertex[2]
+        
+        new_x = x
+        new_y = y
+        new_z = z
 
         # Rotate around the x-axis
-        new_y = y * math.cos(angle_x) - z * math.sin(angle_x)
-        new_z = y * math.sin(angle_x) + z * math.cos(angle_x)
+ #       new_y = y * math.cos(angle_x) - z * math.sin(angle_x)
+ #       new_z = y * math.sin(angle_x) + z * math.cos(angle_x)
 
         # Rotate around the y-axis
-        new_x = x * math.cos(angle_y) - new_z * math.sin(angle_y)
-        new_z = x * math.sin(angle_y) + new_z * math.cos(angle_y)
+ #       new_x = x * math.cos(angle_y) - new_z * math.sin(angle_y)
+ #       new_z = x * math.sin(angle_y) + new_z * math.cos(angle_y)
 
         # Do squishy things
-        squish_amount = 1+(math.sin(squishy_phase) * squishy_amplitude)
+#        squish_amount = 1+(math.sin(squishy_phase) * squishy_amplitude)
         
-        new_y *= squish_amount
-        new_x *= 1/(squish_amount**0.6)
+#        new_y *= squish_amount
+#        new_x *= 1/(squish_amount**0.6)
 
+# FIXME: what should we do here?
+# FIXME: what should we do here?
+# FIXME: what should we do here?
+        #z_ratio = (1-camera[2]) / (new_z + camera[2]) # camera position
+        z_ratio = 1/new_z
 
-        z_ratio = (1-camera[2]) / (new_z + camera[2]) # camera position
-
-        new_x *= z_ratio
-        new_y *= z_ratio
-
-        new_y += vertical_offset
+        new_x *= (z_ratio*6)
+        new_y *= (z_ratio*6)
+        
+# FIXME: y moves in the WRONG direction!
+# FIXME: y moves in the WRONG direction!
+# FIXME: y moves in the WRONG direction!
+#        new_y += 1
+#        new_y += vertical_offset
 
         x_proj = new_x * scale + center_offset[0]
         y_proj = new_y * scale + center_offset[1]
@@ -347,7 +431,8 @@ def advance_cube():
     visible_polys = []
 
     for face in sorted_faces:
-        fc = Polygon([rotated_vertices[i] for i in face[0:3]])
+        face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
+        fc = Polygon([rotated_vertices[i] for i in face_vertex_indices])
         covers = False
 
         if len(visible_faces) > 0:
@@ -368,9 +453,10 @@ def advance_cube():
 #            continue
 
         # find angle relative to Z axis
-        vert1 = np.array([unscaled_rotated_vertices[face[0]][0],unscaled_rotated_vertices[face[0]][1],unscaled_rotated_vertices[face[0]][2]])
-        vert2 = np.array([unscaled_rotated_vertices[face[1]][0],unscaled_rotated_vertices[face[1]][1],unscaled_rotated_vertices[face[1]][2]])
-        vert3 = np.array([unscaled_rotated_vertices[face[2]][0],unscaled_rotated_vertices[face[2]][1],unscaled_rotated_vertices[face[2]][2]])
+# FIXME: clean this up!
+        vert1 = np.array([unscaled_rotated_vertices[face['vertex_indices'][0]][0],unscaled_rotated_vertices[face['vertex_indices'][0]][1],unscaled_rotated_vertices[face['vertex_indices'][0]][2]])
+        vert2 = np.array([unscaled_rotated_vertices[face['vertex_indices'][1]][0],unscaled_rotated_vertices[face['vertex_indices'][1]][1],unscaled_rotated_vertices[face['vertex_indices'][1]][2]])
+        vert3 = np.array([unscaled_rotated_vertices[face['vertex_indices'][2]][0],unscaled_rotated_vertices[face['vertex_indices'][2]][1],unscaled_rotated_vertices[face['vertex_indices'][2]][2]])
 
         edge1 = vert2 - vert1
         edge2 = vert3 - vert1
@@ -390,12 +476,13 @@ def advance_cube():
         print(f"Angle relative to the light source: {angle_deg} degrees")
         
         
-        color_idx = (face[3] % 2) + (2*int(angle_deg/15))
+# FIXME!        color_idx = (face['color_index'] % 2) + (2*int(angle_deg/15))
+        color_idx = face['color_index']
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
 
-
-        pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face[0:3]], 0)
+        face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
+        pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face_vertex_indices], 0)
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
         #  $40 - two part, change X2
@@ -458,7 +545,8 @@ def advance_cube():
         color_idx_out = (color_idx+1) | ((color_idx+1)*16)
 
         # find top two points of triangle
-        sorted_points = sorted(face[0:3], key=y_sorter, reverse=False)
+        face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
+        sorted_points = sorted(face_vertex_indices, key=y_sorter, reverse=False)
 
         v0 = list(copy.deepcopy(rotated_vertices[sorted_points[0]]))
         v1 = list(copy.deepcopy(rotated_vertices[sorted_points[1]]))
