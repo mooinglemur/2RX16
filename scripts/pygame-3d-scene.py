@@ -67,6 +67,7 @@ material_name_to_color_index = {
     'LookingDir' : 1,
     'UpDir' : 1,
     'Red' : 2,
+    'Green' : 5,
     'Blue' : 6,
     'Yellow' : 7,
 }
@@ -427,8 +428,6 @@ def advance_cube():
         
         face['sum_of_z']
        ''' 
-        
-        
     
 
     
@@ -501,6 +500,7 @@ def advance_cube():
         pygame.draw.polygon(screen, colors[color_idx], [y_flipped_vertices[i] for i in face_vertex_indices], 0)
         #pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face_vertex_indices], 0)
         
+# FIXME: remove this continue!
         continue
         
         # Triangle type (bit 0 is X high bit)
@@ -780,12 +780,17 @@ bounces = 0
 f = open("trilist.bin", "wb")
 
 frame_nr = 1
+increment_frame_by = 0
 max_frame_nr = 100
 
 while running:
     for event in pygame.event.get():
         if event.type == QUIT:
             running = False
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RIGHT:
+                increment_frame_by = 1
 
     objects = load_vertices_and_faces(frame_nr)
 
@@ -808,7 +813,7 @@ while running:
 
     pygame.display.flip()
     
-    frame_nr += 1
+    frame_nr += increment_frame_by
     
     if frame_nr > max_frame_nr:
         running = False
