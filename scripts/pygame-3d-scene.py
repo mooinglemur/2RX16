@@ -233,7 +233,7 @@ def get_camera_info_from_camera_box(camera_box):
     return camera_info
 
 
-def transform_objects_into_view_space(camera_info, objects):
+def transform_objects_into_view_space(objects, camera_info):
 
     # More info on: Model space, World space, View/Camera space, Projection Space:
     #   http://www.codinglabs.net/article_world_view_projection_matrix.aspx
@@ -310,18 +310,16 @@ def transform_objects_into_view_space(camera_info, objects):
     
     
     
-# FIXME: we should use objects that have vertices and faces (and bounding boxes)
-vertices = []
-faces = []
-
 
 scale = 37
 center_offset = (screen_width // 2, screen_height // 2)
 
+# FIXME: we should use objects that have vertices and faces (and bounding boxes)
+vertices = []
+faces = []
+
 # FIXME: REMOVE or set to 0,0,0!
 camera = (0, 0, 6)
-
-tris_seen = False
 
 def slope2bytes(slope):
     x1 = (slope / 2)
@@ -336,25 +334,19 @@ def slope2bytes(slope):
     b1[1] |= x32
     return b1
 
-
-def face_sorter(item):
-    return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
-
-def y_sorter(item):
-    return rotated_vertices[item][1]
-
 def advance_cube():
-    global zees
-    global rotated_vertices
-    global tris_seen
-    global max_x
-    global max_y
 
+    def face_sorter(item):
+        return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
 
-    rotated_vertices = []
+    def y_sorter(item):
+        return y_flipped_projected_vertices[item][1]
+
+    tris_seen = False
+    y_flipped_projected_vertices = []
+    projected_vertices = []
     unscaled_rotated_vertices = []
     zees = []
-    
     
     # Projection of the vertices of the visible faces
     for vertex in vertices:
@@ -384,7 +376,7 @@ def advance_cube():
         y_proj = new_y * scale + center_offset[1]
         z_proj = new_z * scale
 
-        rotated_vertices.append((round(x_proj), round(y_proj)))
+        projected_vertices.append((round(x_proj), round(y_proj)))
         zees.append(z_proj)
         unscaled_rotated_vertices.append((new_x, new_y, new_z))
         
@@ -411,7 +403,7 @@ def advance_cube():
 
     for face in sorted_faces:
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
-        fc = Polygon([rotated_vertices[i] for i in face_vertex_indices])
+        fc = Polygon([projected_vertices[i] for i in face_vertex_indices])
         covers = False
 
         if len(visible_faces) > 0:
@@ -461,19 +453,15 @@ def advance_cube():
 
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         
-        y_flipped_vertices = []
-        for rotated_vertex in rotated_vertices:
+        for rotated_vertex in projected_vertices:
             y_flipped_vertex = [
                 rotated_vertex[0],
                 screen_height - rotated_vertex[1],
             ]
-            y_flipped_vertices.append(y_flipped_vertex)
+            y_flipped_projected_vertices.append(y_flipped_vertex)
         
-        pygame.draw.polygon(screen, colors[color_idx], [y_flipped_vertices[i] for i in face_vertex_indices], 0)
-        #pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face_vertex_indices], 0)
+        pygame.draw.polygon(screen, colors[color_idx], [y_flipped_projected_vertices[i] for i in face_vertex_indices], 0)
         
-# FIXME: remove this continue!
-        continue
         
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
@@ -540,13 +528,9 @@ def advance_cube():
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         sorted_points = sorted(face_vertex_indices, key=y_sorter, reverse=False)
 
-# FIXME: use y_flipped_vertices to OUTPUT to the X16!        
-# FIXME: use y_flipped_vertices to OUTPUT to the X16!        
-# FIXME: use y_flipped_vertices to OUTPUT to the X16!        
-        
-        v0 = list(copy.deepcopy(rotated_vertices[sorted_points[0]]))
-        v1 = list(copy.deepcopy(rotated_vertices[sorted_points[1]]))
-        v2 = list(copy.deepcopy(rotated_vertices[sorted_points[2]]))
+        v0 = list(copy.deepcopy(y_flipped_projected_vertices[sorted_points[0]]))
+        v1 = list(copy.deepcopy(y_flipped_projected_vertices[sorted_points[1]]))
+        v2 = list(copy.deepcopy(y_flipped_projected_vertices[sorted_points[2]]))
 
         if v2[1] < 0:
             print("Fully offscreen")
@@ -716,6 +700,8 @@ def advance_cube():
                 f.write(slope2bytes(slope_x1_new)) # 09-0a - new X1 inc
                 f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
 
+    return tris_seen
+    
 
 # Main game loop
 running = True
@@ -741,8 +727,33 @@ while running:
     camera_box = objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
 
-    transform_objects_into_view_space(camera_info, objects)
+    transform_objects_into_view_space(objects, camera_info)
+    
+    '''
+     === Implement this ===
+    
+    # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and direction becomes 0,0,-1 (+up = 0,1,0)
+    objects_in_view_space = transform_objects_into_view_space(objects, camera_info)
 
+    # Backface cull where face/triangle-normal points away from camera
+    # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
+    # Clip 4 sides of the camera
+    culled_and_clipped_triangles = cull_and_clip_objects_into_visible_triangles(objects_in_view_space, camera_info)
+
+    # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
+    lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
+    
+    # Project all vertices to screen-space
+    # Flip y
+    projected_triangles = project_triangles_onto_screen(lit_triangles, camera_info)
+    
+    # Draw in pygame
+    draw_projected_triangles(projected_triangles)
+    
+    # Create trilist files for the X16
+    export_projected_triangles(projected_triangles)
+    '''
+    
     #print(objects)
     #exit()
 
@@ -751,7 +762,7 @@ while running:
     faces = objects['Cube']['faces']
 
     screen.fill(BLACK)
-    advance_cube()
+    tris_seen = advance_cube()
     if tris_seen:
         f.write(b'\xff') # end of frame
 
