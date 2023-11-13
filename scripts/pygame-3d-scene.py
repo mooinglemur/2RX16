@@ -737,21 +737,30 @@ while running:
 
     # Backface cull where face/triangle-normal points away from camera
     # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
-    # Clip 4 sides of the camera
+    # Clip 4 sides of the camera -> creating NEW triangles!
     culled_and_clipped_triangles = cull_and_clip_objects_into_visible_triangles(objects_in_view_space, camera_info)
 
     # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
     lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
     
+    # Sort triangles by Z
+    z_sorted_triangles = sort_triangles_by_z(lit_triangles)
+    
     # Project all vertices to screen-space
     # Flip y
-    projected_triangles = project_triangles_onto_screen(lit_triangles, camera_info)
+    projected_triangles = project_triangles_onto_screen(z_sorted_triangles, camera_info)
     
+    # Shrink triangles when overdrawn
+    minimized_projected_triangles = shrink_triangles_when_overdrawn(projected_triangles)
+    
+    # Maybe: Combine projected triangles (with *same* color+light) into larger polygons
+    larger_polygons = combine_triangles_into_larger_polygons(minimized_projected_triangles)
+
     # Draw in pygame
-    draw_projected_triangles(projected_triangles)
+    draw_projected_triangles(minimized_projected_triangles)
     
     # Create trilist files for the X16
-    export_projected_triangles(projected_triangles)
+    export_projected_triangles(minimized_projected_triangles)
     '''
     
     #print(objects)
