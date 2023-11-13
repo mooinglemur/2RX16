@@ -55,8 +55,8 @@ colors = [
 clock=pygame.time.Clock()
 
 # Set up the display
-width, height = 320, 200
-screen = pygame.display.set_mode((width, height))
+screen_width, screen_height = 320, 200
+screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Tetrakis Hexahedron")
 
 
@@ -83,6 +83,7 @@ def load_vertices_and_faces():
     #  - TODO: also export Animation
     
     obj_file = open('assets/test_cube.obj', 'r')
+    # obj_file = open('assets/test_cube_50.obj', 'r')
     lines = obj_file.readlines()
     
     objects = {}
@@ -240,10 +241,7 @@ def transform_objects_into_view_space(camera_info, objects):
             
     # We now construct a view-matrix (but without the translation part, making it a bit simpler)
     #  (See Javidx9 video for naming of these variables)
-# FIXME: WHY would y have to be -1??
-# FIXME: WHY would y have to be -1??
-# FIXME: WHY would y have to be -1??
-    up = [0, -1, 0]       # y-axis
+    up = [0, 1, 0]       # y-axis
     target = camera_info['dir']  # current camera_pos (0,0,0) + look dir (0,0,-1)
     pos = [0, 0, 0]      # current camera_pos (0,0,0)
 
@@ -291,11 +289,7 @@ camera_info = get_camera_info_from_camera_box(camera_box)
 
 transform_objects_into_view_space(camera_info, objects)
 
-print(objects)
-
-# FIXME: vertices and faces are incompatible with the old code!
-# FIXME: vertices and faces are incompatible with the old code!
-# FIXME: vertices and faces are incompatible with the old code!
+# print(objects)
 
 # FIXME: this is a temporary workaround. We should get all objects but the camera here!
 vertices = objects['Cube']['vertices']
@@ -305,7 +299,11 @@ faces = objects['Cube']['faces']
 
 # Define the size and position of the polyhedron
 scale = 37
-center_offset = (width // 2, height // 2)
+center_offset = (screen_width // 2, screen_height // 2)
+
+# FIXME: REMOVE THIS!
+# FIXME: REMOVE THIS!
+# FIXME: REMOVE THIS!
 
 # Define rotation parameters
 angle_x = 0
@@ -325,6 +323,7 @@ sprite_mode = False
 max_x = 0
 max_y = 0
 
+# FIXME: REMOVE or set to 0,0,0!
 camera = (0, 0, 6)
 
 tris_seen = False
@@ -351,27 +350,12 @@ def y_sorter(item):
     return rotated_vertices[item][1]
 
 def advance_cube():
-    global f
-    global angle_x
-    global angle_y
-    global squishy_phase
-    global squishy_amplitude
-    global squishy_max_amplitude
     global zees
     global rotated_vertices
     global tris_seen
     global sprite_mode
     global max_x
     global max_y
-
-    # Apply rotation
-    angle_x += rotation_speed_x
-    angle_y += rotation_speed_y
-
-    squishy_phase += squishy_increment
-    squishy_amplitude -= squishy_dampening
-    if squishy_amplitude < 0:
-        squishy_amplitude = 0
 
 
     rotated_vertices = []
@@ -387,35 +371,19 @@ def advance_cube():
         new_y = y
         new_z = z
 
-        # Rotate around the x-axis
- #       new_y = y * math.cos(angle_x) - z * math.sin(angle_x)
- #       new_z = y * math.sin(angle_x) + z * math.cos(angle_x)
-
-        # Rotate around the y-axis
- #       new_x = x * math.cos(angle_y) - new_z * math.sin(angle_y)
- #       new_z = x * math.sin(angle_y) + new_z * math.cos(angle_y)
-
-        # Do squishy things
-#        squish_amount = 1+(math.sin(squishy_phase) * squishy_amplitude)
-        
-#        new_y *= squish_amount
-#        new_x *= 1/(squish_amount**0.6)
-
 # FIXME: what should we do here?
 # FIXME: what should we do here?
 # FIXME: what should we do here?
         #z_ratio = (1-camera[2]) / (new_z + camera[2]) # camera position
         z_ratio = 1/new_z
 
+# FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+# FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+# FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+
         new_x *= (z_ratio*6)
         new_y *= (z_ratio*6)
         
-# FIXME: y moves in the WRONG direction!
-# FIXME: y moves in the WRONG direction!
-# FIXME: y moves in the WRONG direction!
-#        new_y += 1
-#        new_y += vertical_offset
-
         x_proj = new_x * scale + center_offset[0]
         y_proj = new_y * scale + center_offset[1]
         z_proj = new_z * scale
@@ -449,8 +417,6 @@ def advance_cube():
     sorted_visible_faces = sorted(visible_faces, key=face_sorter, reverse=True)
 
     for face in sorted_visible_faces:
-#        if face[3] != 0:
-#            continue
 
         # find angle relative to Z axis
 # FIXME: clean this up!
@@ -482,7 +448,16 @@ def advance_cube():
         color_idx_out += 16*color_idx_out
 
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
-        pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face_vertex_indices], 0)
+        
+        y_flipped_vertices = []
+        for rotated_vertex in rotated_vertices:
+            y_flipped_vertex = [
+                rotated_vertex[0],
+                screen_height - rotated_vertex[1],
+            ]
+            y_flipped_vertices.append(y_flipped_vertex)
+        
+        pygame.draw.polygon(screen, colors[color_idx], [y_flipped_vertices[i] for i in face_vertex_indices], 0)
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
         #  $40 - two part, change X2
@@ -548,6 +523,10 @@ def advance_cube():
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         sorted_points = sorted(face_vertex_indices, key=y_sorter, reverse=False)
 
+# FIXME: use y_flipped_vertices to OUTPUT to the X16!        
+# FIXME: use y_flipped_vertices to OUTPUT to the X16!        
+# FIXME: use y_flipped_vertices to OUTPUT to the X16!        
+        
         v0 = list(copy.deepcopy(rotated_vertices[sorted_points[0]]))
         v1 = list(copy.deepcopy(rotated_vertices[sorted_points[1]]))
         v2 = list(copy.deepcopy(rotated_vertices[sorted_points[2]]))
