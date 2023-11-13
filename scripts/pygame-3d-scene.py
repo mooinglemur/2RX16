@@ -57,7 +57,7 @@ clock=pygame.time.Clock()
 # Set up the display
 screen_width, screen_height = 320, 200
 screen = pygame.display.set_mode((screen_width, screen_height))
-pygame.display.set_caption("Tetrakis Hexahedron")
+pygame.display.set_caption("3D Scene")
 
 
 
@@ -75,10 +75,14 @@ def load_vertices_and_faces(frame_nr):
 
     # In Blender do:
     #  - File->Export->Wavefront (obj)
+    #  - Forward Axis: Y
+    #  - Upward Axis: Z
     #  - Select: Normals, Triangulated Mesh, Materials (Export)
     #  - TODO: also export Animation
     
-    obj_file = open('assets/3d_scene/test_cube' + str(frame_nr) + '.obj', 'r')
+    # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
+    obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
+    # obj_file = open('assets/3d_scene/test_cube' + str(frame_nr) + '.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube1.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube50.obj', 'r')
     lines = obj_file.readlines()
@@ -198,7 +202,7 @@ def get_camera_info_from_camera_box(camera_box):
         'pos' : camera_pos, # Coordinate in world space
         'dir' : camera_dir, # Normalized value, in world space
     }
-
+    
     return camera_info
 
 
@@ -245,8 +249,8 @@ def transform_objects_into_view_space(camera_info, objects):
 # FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
 # FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
 # FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
-    new_forward = target # target - pos (0,0,0) - Note: this is already NORMALIZED!
-#    new_forward = np.negative(target) # target - pos (0,0,0) - Note: this is already NORMALIZED!
+#    new_forward = target # target - pos (0,0,0) - Note: this is already NORMALIZED!
+    new_forward = np.negative(target) # target - pos (0,0,0) - Note: this is already NORMALIZED!
     
     up_dot_forward = np.dot(np.array(up), np.array(new_forward))
     a = np.array(new_forward) * up_dot_forward
@@ -347,6 +351,9 @@ def advance_cube():
     rotated_vertices = []
     unscaled_rotated_vertices = []
     zees = []
+    
+    
+    # Projection of the vertices of the visible faces
     for vertex in vertices:
         #x, y, z = vertex
         x = vertex[0]
@@ -361,7 +368,8 @@ def advance_cube():
 # FIXME: what should we do here?
 # FIXME: what should we do here?
         #z_ratio = (1-camera[2]) / (new_z + camera[2]) # camera position
-        z_ratio = 1/new_z
+# FIXME: -z??
+        z_ratio = 1/-new_z
 
 # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
 # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
@@ -377,9 +385,27 @@ def advance_cube():
         rotated_vertices.append((round(x_proj), round(y_proj)))
         zees.append(z_proj)
         unscaled_rotated_vertices.append((new_x, new_y, new_z))
+        
+    # We calculate the sum of z for every face
+    '''
+    for face in faces:
+        face_vertex_indices = face['vertex_indices']
+        
+        vertex1 = vertices[face_vertex_indices[0]]
+        vertex2 = vertices[face_vertex_indices[1]]
+        vertex3 = vertices[face_vertex_indices[2]]
+        
+        sum_of_z = vertex1[2] + vertex2[2] + vertex3[2]
+        
+        face['sum_of_z']
+       ''' 
+        
+        
+    
 
     
-    sorted_faces = sorted(faces, key=face_sorter, reverse=False)
+# FIXME: should we reverse here?
+    sorted_faces = sorted(faces, key=face_sorter, reverse=True)
 
     visible_faces = []
     visible_polys = []
@@ -400,7 +426,8 @@ def advance_cube():
             visible_faces.append(face)
             visible_polys.append(fc)
 
-    sorted_visible_faces = sorted(visible_faces, key=face_sorter, reverse=True)
+# FIXME: should we reverse here?
+    sorted_visible_faces = sorted(visible_faces, key=face_sorter, reverse=False)
 
     for face in sorted_visible_faces:
 
@@ -444,6 +471,10 @@ def advance_cube():
             y_flipped_vertices.append(y_flipped_vertex)
         
         pygame.draw.polygon(screen, colors[color_idx], [y_flipped_vertices[i] for i in face_vertex_indices], 0)
+        #pygame.draw.polygon(screen, colors[color_idx], [rotated_vertices[i] for i in face_vertex_indices], 0)
+        
+        continue
+        
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
         #  $40 - two part, change X2
@@ -735,7 +766,8 @@ while running:
 
     transform_objects_into_view_space(camera_info, objects)
 
-    # print(objects)
+    #print(objects)
+    #exit()
 
     # FIXME: this is a temporary workaround. We should get all objects but the camera here!
     vertices = objects['Cube']['vertices']
@@ -748,7 +780,7 @@ while running:
 
     pygame.display.flip()
     
-    frame_nr += 1
+#    frame_nr += 1
     
     if frame_nr > max_frame_nr:
         running = False
