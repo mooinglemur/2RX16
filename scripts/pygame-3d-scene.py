@@ -60,10 +60,6 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Tetrakis Hexahedron")
 
 
-# FIXME: we should use objects that have vertices and faces (and bounding boxes)
-vertices = []
-faces = []
-
 
 material_name_to_color_index = {
     None : 0,
@@ -75,15 +71,16 @@ material_name_to_color_index = {
 }
 
 
-def load_vertices_and_faces():
+def load_vertices_and_faces(frame_nr):
 
     # In Blender do:
     #  - File->Export->Wavefront (obj)
     #  - Select: Normals, Triangulated Mesh, Materials (Export)
     #  - TODO: also export Animation
     
-    obj_file = open('assets/test_cube.obj', 'r')
-    # obj_file = open('assets/test_cube_50.obj', 'r')
+    obj_file = open('assets/3d_scene/test_cube' + str(frame_nr) + '.obj', 'r')
+    # obj_file = open('assets/3d_scene/test_cube1.obj', 'r')
+    # obj_file = open('assets/3d_scene/test_cube50.obj', 'r')
     lines = obj_file.readlines()
     
     objects = {}
@@ -280,20 +277,9 @@ def transform_objects_into_view_space(camera_info, objects):
     
     
     
-
-# TODO: this adds to the faces and vertices, but we might want separate lists per object...
-objects = load_vertices_and_faces()
-
-camera_box = objects['CameraBox']
-camera_info = get_camera_info_from_camera_box(camera_box)
-
-transform_objects_into_view_space(camera_info, objects)
-
-# print(objects)
-
-# FIXME: this is a temporary workaround. We should get all objects but the camera here!
-vertices = objects['Cube']['vertices']
-faces = objects['Cube']['faces']
+# FIXME: we should use objects that have vertices and faces (and bounding boxes)
+vertices = []
+faces = []
 
 
 
@@ -734,78 +720,26 @@ bounces = 0
 
 f = open("trilist.bin", "wb")
 
+frame_nr = 1
+max_frame_nr = 100
+
 while running:
     for event in pygame.event.get():
         if event.type == QUIT:
             running = False
 
-    if hedron_state == States.FALLING:
-        momentum += gravity
-        vertical_offset += (momentum / 1.6)
-        if vertical_offset >= 0.9:
-            print("SQUISHING")
-            hedron_state = States.SQUISHING
+    objects = load_vertices_and_faces(frame_nr)
 
-    elif hedron_state == States.SQUISHING:
-        squishy_amplitude = squishy_max_amplitude
-        squishy_phase = math.pi
-        hedron_state = States.BOUNCING
-        bounces += 1
-        print("BOUNCING")
+    camera_box = objects['CameraBox']
+    camera_info = get_camera_info_from_camera_box(camera_box)
 
-    elif hedron_state == States.BOUNCING:
-        hedron_state = States.RISING
-        if bounces >= 3:
-            momentum = 0.055
-        else:
-            momentum = 0.097
-        print("RISING")
-        
-    elif hedron_state == States.RISING:
-        momentum -= gravity
-        if momentum < 0:
-            momentum = 0
-            if bounces >= 3:
-                hedron_state = States.STEADY
-                print("STEADY")
-            else:    
-                hedron_state = States.FALLING
-                print("FALLING")
-        vertical_offset -= (momentum / 1.6)
+    transform_objects_into_view_space(camera_info, objects)
 
-    elif hedron_state == States.STEADY:
-        if squishy_amplitude == 0:
-            if scale > 20.5:
-                scale -= 0.15
-            if scale < 20.5: # in case we overshot on the same frame
-                scale = 20.5
-                hedron_state = States.LOOPING
-                print("LOOPING")
-                f.write(b'\xfe') # end of list
-                f.close()
-                center_offset = (32,32)
-                vertical_offset = 0
-                sprite_mode = True
-                f = open("trilist2.bin", "wb")
-                rotation_speed_x = math.pi/180
-                rotation_speed_y = -(math.pi/60)
-                loop_x_start = round(math.cos(angle_x),3)
-                loop_y_start = round(math.sin(angle_y),3)
-        else:
-            scale -= 0.15
-            squishy_dampening = 0.006
-            if scale < 20.5: # in case we overshot on the same frame
-                scale = 20.5
+    # print(objects)
 
-    elif hedron_state == States.LOOPING:
-        if loop_x_start == round(math.cos(angle_x),3) and loop_y_start == round(math.sin(angle_y),3):
-            print("DONE")
-            print(f"X {loop_x_start} {round(math.cos(angle_x),3)}")
-            print(f"Y {loop_y_start} {round(math.sin(angle_y),3)}")
-            f.write(b'\xfe') # end of list
-            break
-
-
+    # FIXME: this is a temporary workaround. We should get all objects but the camera here!
+    vertices = objects['Cube']['vertices']
+    faces = objects['Cube']['faces']
 
     screen.fill(BLACK)
     advance_cube()
@@ -813,6 +747,12 @@ while running:
         f.write(b'\xff') # end of frame
 
     pygame.display.flip()
+    
+    frame_nr += 1
+    
+    if frame_nr > max_frame_nr:
+        running = False
+    
     clock.tick(60)
 
 # Quit Pygame
