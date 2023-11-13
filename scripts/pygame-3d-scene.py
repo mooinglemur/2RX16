@@ -315,32 +315,8 @@ vertices = []
 faces = []
 
 
-
-# Define the size and position of the polyhedron
 scale = 37
 center_offset = (screen_width // 2, screen_height // 2)
-
-# FIXME: REMOVE THIS!
-# FIXME: REMOVE THIS!
-# FIXME: REMOVE THIS!
-
-# Define rotation parameters
-angle_x = 0
-angle_y = 1
-rotation_speed_x = math.pi/185
-rotation_speed_y = -(math.pi/65)
-squishy_phase = 0
-squishy_increment = 0.18
-squishy_max_amplitude = 0.30
-squishy_dampening = 0.0015
-squishy_amplitude = 0
-
-vertical_offset = -10
-momentum = 0
-gravity = 0.0009
-sprite_mode = False
-max_x = 0
-max_y = 0
 
 # FIXME: REMOVE or set to 0,0,0!
 camera = (0, 0, 6)
@@ -362,7 +338,6 @@ def slope2bytes(slope):
 
 
 def face_sorter(item):
-#    return zees[item[0]]+zees[item[1]]+zees[item[2]]
     return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
 
 def y_sorter(item):
@@ -372,7 +347,6 @@ def advance_cube():
     global zees
     global rotated_vertices
     global tris_seen
-    global sprite_mode
     global max_x
     global max_y
 
@@ -384,7 +358,6 @@ def advance_cube():
     
     # Projection of the vertices of the visible faces
     for vertex in vertices:
-        #x, y, z = vertex
         x = vertex[0]
         y = vertex[1]
         z = vertex[2]
@@ -428,7 +401,6 @@ def advance_cube():
         
         face['sum_of_z']
        ''' 
-    
 
     
 # FIXME: should we reverse here?
@@ -621,30 +593,6 @@ def advance_cube():
             #time.sleep(10)
             continue
 
-        if sprite_mode:
-            print(f"Sprite: v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]} v2 {v2[0]} {v2[1]}")
-            assert v0[0] < 64
-            assert v0[1] < 64
-            assert v1[0] < 64
-            assert v1[1] < 64
-            assert v2[1] < 64
-            assert v2[0] < 64
-            if v0[0] > max_x:
-                max_x = v0[0]             
-            if v1[0] > max_x:
-                max_x = v1[0]             
-            if v2[0] > max_x:
-                max_x = v2[0]             
-
-            if v0[1] > max_y:
-                max_y = v0[1]
-            if v1[1] > max_y:
-                max_y = v1[1]
-            if v2[1] > max_y:
-                max_y = v2[1]
-
-            print(f"Max X {max_x} Max Y {max_y}")
-
         if (v0[1] == v1[1]): # Part 2 only
             print("Part 2 only")
             dx_1 = v2[0] - v0[0]
@@ -769,13 +717,8 @@ def advance_cube():
                 f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
 
 
-States = Enum('States', ['FALLING', 'SQUISHING', 'BOUNCING', 'RISING', 'STEADY', 'LOOPING'])
-
 # Main game loop
 running = True
-hedron_state = States.FALLING
-
-bounces = 0
 
 f = open("trilist.bin", "wb")
 
