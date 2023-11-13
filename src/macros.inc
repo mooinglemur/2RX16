@@ -35,14 +35,14 @@ macros_inc = 1
 	ldx #<addr
 	ldy #>addr
 .ifnblank vbank
-    lda #(vbank + 2)
+	lda #(vbank + 2)
 .else
 	lda #0
 .endif
 	jsr X16::Kernal::LOAD
 	bra cont
 fn:
-    .byte name
+	.byte name
 FNLEN = * - fn
 cont:
 .endmacro
@@ -62,31 +62,31 @@ FRC = * -1
 
 
 .macro POS_ADDR_ROW_4BIT
-    lda addrl_per_row_4bit,x
-    sta Vera::Reg::AddrL
-    lda addrm_per_row_4bit,x
-    sta Vera::Reg::AddrM
+	lda addrl_per_row_4bit,x
+	sta Vera::Reg::AddrL
+	lda addrm_per_row_4bit,x
+	sta Vera::Reg::AddrM
 .endmacro
 
 .macro POS_ADDR_ROW_4BIT_AH
-    adc addrm_per_row_4bit,x
-    sta Vera::Reg::AddrM
-    lda addrl_per_row_4bit,x
-    sta Vera::Reg::AddrL
+	adc addrm_per_row_4bit,x
+	sta Vera::Reg::AddrM
+	lda addrl_per_row_4bit,x
+	sta Vera::Reg::AddrL
 .endmacro
 
 .macro POS_ADDR_ROW_8BIT
-    lda addrl_per_row_8bit,x
-    sta Vera::Reg::AddrL
-    lda addrm_per_row_8bit,x
-    sta Vera::Reg::AddrM
+	lda addrl_per_row_8bit,x
+	sta Vera::Reg::AddrL
+	lda addrm_per_row_8bit,x
+	sta Vera::Reg::AddrM
 .endmacro
 
 .macro POS_ADDR_SPR_ROW_4BIT_AH
-    adc addrm_per_row_spr_4bit,x
-    sta Vera::Reg::AddrM
-    lda addrl_per_row_spr_4bit,x
-    sta Vera::Reg::AddrL
+	adc addrm_per_row_spr_4bit,x
+	sta Vera::Reg::AddrM
+	lda addrl_per_row_spr_4bit,x
+	sta Vera::Reg::AddrL
 .endmacro
 
 .macro PALETTE_FADE vsyncs_per_step
@@ -94,74 +94,74 @@ FRC = * -1
 .local palloop
 .local vsloop
 .local VS
-    lda #16
-    sta PALITER
+	lda #16
+	sta PALITER
 palloop:
-    jsr apply_palette_fade_step
+	jsr apply_palette_fade_step
 
-    lda #vsyncs_per_step
-    sta VS
+	lda #vsyncs_per_step
+	sta VS
 vsloop:
-    WAITVSYNC
-    dec VS
-    lda #$ff
+	WAITVSYNC
+	dec VS
+	lda #$ff
 VS = * - 1
-    bne vsloop
+	bne vsloop
 
-    jsr flush_palette
-    dec PALITER
-    lda #$ff
+	jsr flush_palette
+	dec PALITER
+	lda #$ff
 PALITER = * - 1
-    bne palloop
+	bne palloop
 .endmacro
 
 .macro MUSIC_SYNC val
 .local syncloop
 syncloop:
-    wai
-    lda syncval
-    cmp #val
-    bne syncloop
+	wai
+	lda syncval
+	cmp #val
+	bne syncloop
 .endmacro
 
 .macro DISABLE_SPRITES
 .local sp
-    VERA_SET_ADDR (Vera::VRAM_sprattr+6), 4 ; stride 4, auto-inc 8
-    ldy #128
+	VERA_SET_ADDR (Vera::VRAM_sprattr+6), 4 ; stride 4, auto-inc 8
+	ldy #128
 sp:
-    stz Vera::Reg::Data0
-    dey
-    bne sp
+	stz Vera::Reg::Data0
+	dey
+	bne sp
 .endmacro
 
 .macro SPRITE_TEXT spridx, xpos, ypos, palidx, text
 .local sprtxt
 .local cont
-    lda #spridx
-    ldx #xpos
-    ldy #ypos
-    jsr sprite_text_pos
-    lda #palidx
-    ldx #<sprtxt
-    ldy #>sprtxt
-    jsr sprite_text_do
-    bra cont
+	lda #spridx
+	ldx #xpos
+	ldy #ypos
+	jsr sprite_text_pos
+	lda #palidx
+	ldx #<sprtxt
+	ldy #>sprtxt
+	jsr sprite_text_do
+	bra cont
 sprtxt:
-    .byte text,0
+	.byte text,0
 cont:
 .endmacro
 
 .macro INCPTR1
 .local @1
 .local @2
-    inc ptr1
-    bne @2
-    lda ptr1+1
-    inc
-    cmp #$c0
-    bcc @1
-    sbc #$20
-    inc X16::Reg::RAMBank
+	inc ptr1
+	bne @2
+	lda ptr1+1
+	inc
+	cmp #$c0
+	bcc @1
+	sbc #$20
+	inc X16::Reg::RAMBank
 @1: sta ptr1+1
 @2:
 .endmacro
@@ -169,14 +169,14 @@ cont:
 .macro INCPTR2
 .local @1
 .local @2
-    inc ptr2
-    bne @2
-    lda ptr2+1
-    inc
-    cmp #$c0
-    bcc @1
-    sbc #$20
-    inc X16::Reg::RAMBank
+	inc ptr2
+	bne @2
+	lda ptr2+1
+	inc
+	cmp #$c0
+	bcc @1
+	sbc #$20
+	inc X16::Reg::RAMBank
 @1: sta ptr2+1
 @2:
 .endmacro
@@ -185,22 +185,22 @@ cont:
 .local msgloc
 .local loop
 .local cont
-    pha
-    phx
-    ldx #0
+	pha
+	phx
+	ldx #0
 loop:
-    lda msgloc,x
-    beq cont
-    sta $9fbb
-    inx
-    bne loop
-    bra cont
+	lda msgloc,x
+	beq cont
+	sta $9fbb
+	inx
+	bne loop
+	bra cont
 msgloc:
-    .byte msg
-    .byte 13,10,0
+	.byte msg
+	.byte 13,10,0
 cont:
-    plx
-    pla
+	plx
+	pla
 .endmacro
 
 

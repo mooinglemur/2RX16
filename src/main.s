@@ -113,6 +113,7 @@ SCENE = $4800
 	ldx #0
 	jsr zsmkit::zsm_close
 .endif
+.ifndef SKIP_SONG3
 	LOADFILE "MUSIC3.ZSM", SONG_BANK, $a000
 	LOADFILE "SCROLLER.BIN", 0, SCENE
 	jsr play_song
@@ -132,7 +133,8 @@ SCENE = $4800
 	; stop song
 	ldx #0
 	jsr zsmkit::zsm_close
-
+.endif
+.ifndef SKIP_SONG4
 	LOADFILE "MUSIC4.ZSM", SONG_BANK, $a000
 	LOADFILE "SWORD.BIN", 0, SCENE
 	jsr play_song
@@ -144,9 +146,22 @@ SCENE = $4800
 	MUSIC_SYNC $C0
 
 	LOADFILE "BOUNCE.BIN", 0, SCENE
+	jsr SCENE ; exits at sync $CC
+
+	; stop song
+	ldx #0
+	jsr zsmkit::zsm_close
+.endif
+	LOADFILE "MUSIC5.ZSM", SONG_BANK, $a000
+	jsr play_song
+	LOADFILE "CRAFT.BIN", 0, SCENE
 	jsr SCENE
 
-	; craft/crew/credits will be added after SONG5 exists!
+	LOADFILE "CREW.BIN", 0, SCENE
+	jsr SCENE
+
+	LOADFILE "CREDITS.BIN", 0, SCENE
+	jsr SCENE
 
 	; stop song
 	ldx #0
