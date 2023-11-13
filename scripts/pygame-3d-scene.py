@@ -64,7 +64,8 @@ pygame.display.set_caption("3D Scene")
 material_name_to_color_index = {
     None : 0,
     'None' : 1,
-    'CameraFace' : 1,
+    'LookingDir' : 1,
+    'UpDir' : 1,
     'Red' : 2,
     'Blue' : 6,
     'Yellow' : 7,
@@ -81,8 +82,8 @@ def load_vertices_and_faces(frame_nr):
     #  - TODO: also export Animation
     
     # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
-    obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
-    # obj_file = open('assets/3d_scene/test_cube' + str(frame_nr) + '.obj', 'r')
+    # obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
+    obj_file = open('assets/3d_scene/test_cube' + str(frame_nr) + '.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube1.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube50.obj', 'r')
     lines = obj_file.readlines()
@@ -169,6 +170,7 @@ def load_vertices_and_faces(frame_nr):
                 ],
                 'normal_index' : normal_index - object_start_normal_index,
                 'color_index' : color_index,
+                'material_name' : current_material_name
             })
             
     # FIXME: we should do another pass and add the *bounding boxes* of these objects! (to SPEED UP the clipping!)
@@ -176,31 +178,55 @@ def load_vertices_and_faces(frame_nr):
     return objects
 
 
+def get_longest_edge_of_two_triangles(face, vertices):
+    # We want the diagonal of the (triangle) face. So the longest edge.
+    
+    vertex1 = vertices[face['vertex_indices'][0]]
+    vertex2 = vertices[face['vertex_indices'][1]]
+    vertex3 = vertices[face['vertex_indices'][2]]
+    
+    edge1_len = np.linalg.norm(np.subtract(vertex1, vertex2))
+    edge2_len = np.linalg.norm(np.subtract(vertex2, vertex3))
+    edge3_len = np.linalg.norm(np.subtract(vertex3, vertex1))
+    
+    if (edge1_len > edge2_len and edge1_len > edge3_len):
+        return (vertex1, vertex2)
+    elif (edge2_len > edge1_len and edge2_len > edge3_len):
+        return (vertex2, vertex3)
+    else:
+        return (vertex3, vertex1)
+
 
 def get_camera_info_from_camera_box(camera_box):
 
-    # We need to take the world position of the camera (which is HALF-way of the diagonal of the camera face)
-    # We also have to use the normal of the camera face to determine the camera pointing direction (in world space)
+    # We need to take the world position of the camera (which is HALF-way of the diagonal of the looking dir face)
+    # We also have to use the normal of the looking face to determine the camera pointing/looking direction (in world space)
+    # We also have to use the normal of the up face to determine the up direction of the camera (in world space)
 
-    # HACK: we happen to know we have to take the last face of the CameraBox, then take the first and last vertex of that (=diagonal)
-    #       with those two points we take the point half-way of those and know the origin of the camera.
-    #       A better way would be to take the two triagles with the material "CameraFace" and determine
-    #       which edge they share: this is the diagonal. And take half-way of that.
+    camera_box_looking_dir_face = None
+    camera_box_up_dir_faces = None
+    for camera_face_triangle in camera_box['faces']:
+        if camera_face_triangle['material_name'] == 'LookingDir':
+            # To determine the camera position and looking dir 
+            camera_box_looking_dir_face = camera_face_triangle
+        if camera_face_triangle['material_name'] == 'UpDir':
+            # For the look up dir we need only one of the face triangles (that refers to a normal)
+            camera_box_up_dir_face = camera_face_triangle
 
-    camera_box_face = camera_box['faces'][-1]
-    vertex_index_1 = camera_box_face['vertex_indices'][0]
-    vertex_index_2 = camera_box_face['vertex_indices'][2]
-    camera_box_vertex1 = camera_box['vertices'][vertex_index_1]
-    camera_box_vertex2 = camera_box['vertices'][vertex_index_2]
-    x = (camera_box_vertex1[0] + camera_box_vertex2[0])/2
-    y = (camera_box_vertex1[1] + camera_box_vertex2[1])/2
-    z = (camera_box_vertex1[2] + camera_box_vertex2[2])/2
+    (looking_face_diagonal_vertex_1, looking_face_diagonal_vertex_2) = get_longest_edge_of_two_triangles(camera_box_looking_dir_face, camera_box['vertices'])
+
+    x = (looking_face_diagonal_vertex_1[0] + looking_face_diagonal_vertex_2[0])/2
+    y = (looking_face_diagonal_vertex_1[1] + looking_face_diagonal_vertex_2[1])/2
+    z = (looking_face_diagonal_vertex_1[2] + looking_face_diagonal_vertex_2[2])/2
     camera_pos = [x, y, z]
-    camera_dir = camera_box['normals'][camera_box_face['normal_index']]
+    looking_dir = camera_box['normals'][camera_box_looking_dir_face['normal_index']]
+    
+    up_dir = camera_box['normals'][camera_box_up_dir_face['normal_index']]
     
     camera_info = {
         'pos' : camera_pos, # Coordinate in world space
-        'dir' : camera_dir, # Normalized value, in world space
+        'looking_dir' : looking_dir, # Normalized value, in world space
+        'up_dir' : up_dir, # Normalized value, in world space
     }
     
     return camera_info
@@ -242,8 +268,9 @@ def transform_objects_into_view_space(camera_info, objects):
             
     # We now construct a view-matrix (but without the translation part, making it a bit simpler)
     #  (See Javidx9 video for naming of these variables)
-    up = [0, 1, 0]       # y-axis
-    target = camera_info['dir']  # current camera_pos (0,0,0) + look dir (0,0,-1)
+    up_dir = camera_info['up_dir']
+# FIXME: naming!
+    target = camera_info['looking_dir']  # current point_at - camera_pos (0,0,0)??
     pos = [0, 0, 0]      # current camera_pos (0,0,0)
 
 # FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
@@ -252,9 +279,10 @@ def transform_objects_into_view_space(camera_info, objects):
 #    new_forward = target # target - pos (0,0,0) - Note: this is already NORMALIZED!
     new_forward = np.negative(target) # target - pos (0,0,0) - Note: this is already NORMALIZED!
     
-    up_dot_forward = np.dot(np.array(up), np.array(new_forward))
+    
+    up_dot_forward = np.dot(np.array(up_dir), np.array(new_forward))
     a = np.array(new_forward) * up_dot_forward
-    new_up = np.subtract(up, a)
+    new_up = np.subtract(up_dir, a)
     new_up = new_up / np.linalg.norm(new_up)
     
     new_right = np.cross(new_up, new_forward)
@@ -780,7 +808,7 @@ while running:
 
     pygame.display.flip()
     
-#    frame_nr += 1
+    frame_nr += 1
     
     if frame_nr > max_frame_nr:
         running = False
