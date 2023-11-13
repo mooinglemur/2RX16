@@ -780,7 +780,8 @@ bounces = 0
 f = open("trilist.bin", "wb")
 
 frame_nr = 1
-increment_frame_by = 0
+#increment_frame_by = 0
+increment_frame_by = 1
 max_frame_nr = 100
 
 while running:
@@ -788,9 +789,9 @@ while running:
         if event.type == QUIT:
             running = False
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RIGHT:
-                increment_frame_by = 1
+        #if event.type == pygame.KEYDOWN:
+            #if event.key == pygame.K_RIGHT:
+            #    increment_frame_by = 1
 
     objects = load_vertices_and_faces(frame_nr)
 
