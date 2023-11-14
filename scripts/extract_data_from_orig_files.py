@@ -37,11 +37,15 @@ def parse_object_file(u2_bin, file_name):
             
             vertices = []
             for vert_index in range(nr_of_vertices):
-                x = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/10
+            
+# FIXME: by what do we have to divide this?
+# FIXME: by what do we have to divide this?
+# FIXME: by what do we have to divide this?
+                x = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/16384
                 pos += 4
-                y = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/10
+                y = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/16384
                 pos += 4
-                z = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/10
+                z = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/16384
                 pos += 4
                 normal_index = int.from_bytes(u2_bin[pos:pos+2], byteorder='little', signed=True)
                 pos += 2
@@ -169,10 +173,44 @@ def parse_object_file(u2_bin, file_name):
 
     return u2_object
 
+def generate_obj_text_for_u2_object(u2_object, vertex_index_start):
+    obj_text = ""
+    
+    obj_text += "o " + u2_object['name'] + "\n"
+    for vertex in u2_object['vertices']:
+        obj_text += "v "
+        obj_text += str(vertex['x'])
+        obj_text += " "
+        obj_text += str(vertex['y'])
+        obj_text += " "
+        obj_text += str(vertex['z'])
+        obj_text += "\n"
+        
+    
+    for data_pos in u2_object['polygon_data_by_pos']:
+        polygon_data = u2_object['polygon_data_by_pos'][data_pos]
+        
+        #print(polygon_data)
+        obj_text += "f "
+        obj_text += ' '.join(str(vertex_index+vertex_index_start) for vertex_index in polygon_data['vertex_indices'])
+        obj_text += "\n"
+        
+    nr_of_vertices = len(u2_object['vertices'])
+    
+    return (obj_text, nr_of_vertices)
+
 
 file_list = []
 for filename in os.listdir(scene_dir):
     file_list.append((filename, os.path.join(scene_dir, filename)))
+
+objs_text = ""
+objs_text += "#\n"
+objs_text += "# Generated for use in 2R X16 demo\n"
+objs_text += "#\n"
+objs_text += "s off\n"
+    
+vertex_index_start = 1
 
 for (file_name, full_file_name) in file_list:
     if (file_name.startswith('U2E.0')):
@@ -180,13 +218,17 @@ for (file_name, full_file_name) in file_list:
         if (file_name.startswith('U2E.0A')):
             # FIXME: we need to load/parse the ANIMATION files!
             print('skipping: ' + file_name)
-            pass
+            continue
+        if (file_name.startswith('U2E.00M')):
+            # FIXME: we need to load/parse the MATERIAL files!
+            print('skipping: ' + file_name)
+            continue
         else:
             # We are assuming its an object file
             
             # FIXME: remove this!
-            if (file_name != 'U2E.004'):  # Building08
-                continue
+            #if (file_name != 'U2E.004' and file_name != 'U2E.003'):  # Building08 and ...
+            #    continue
         
             print('- ' + file_name + ' -')
             u2_object_file = open(full_file_name, 'rb')
@@ -195,8 +237,19 @@ for (file_name, full_file_name) in file_list:
             
             u2_object = parse_object_file(u2_object_binary, file_name)
             
+            
+            # FIXME: use this: normal_index_start = 0
+            (obj_text, nr_of_vertices) = generate_obj_text_for_u2_object(u2_object, vertex_index_start)
+            objs_text += obj_text
+            vertex_index_start += nr_of_vertices
+            
             #print(u2_object_binary)
             #print(u2_object)
             
             # FIXME: remove this!
             # break
+            
+print(objs_text)
+
+with open("../assets/3d_scene/city.obj", "w") as obj_file:
+    obj_file.write(objs_text)
