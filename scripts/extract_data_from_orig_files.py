@@ -9,6 +9,7 @@ def parse_object_file(u2_bin, file_name):
 
     u2_object = {
         'file_name' : file_name,
+        'polygon_lists' : [],
     }
 
     pos = 0
@@ -51,7 +52,7 @@ def parse_object_file(u2_bin, file_name):
                 vertices.append(vertex)
             
             print('VERT: ' + str(nr_of_vertices))
-            print(vertices)
+            #print(vertices)
             u2_object['vertices'] = vertices
             
         elif (u2_bin[pos0:pos0+4] == b'NORM'):
@@ -75,18 +76,20 @@ def parse_object_file(u2_bin, file_name):
                 normals.append(normal)
             
             print('NORM: ' + str(nr_of_normals))
-            print(normals)
+            #print(normals)
             u2_object['normals'] = normals
             
         elif (u2_bin[pos0:pos0+4] == b'POLY'):
         
-            # Zero word
-            pos += 2
-            
             polygon_index = 0
             polygon_data_by_pos = {}
             
             end_of_section = pos + nr_of_bytes
+            start_of_section = pos
+            
+            # Zero word
+            pos += 2
+            
             # FIXME: arbritary -4 here, to prevent going too far...
             while(pos < end_of_section-4):
                 # FIXME: remember the POSITION this polygon START!
@@ -121,19 +124,45 @@ def parse_object_file(u2_bin, file_name):
                 
                 print('POLY: s:' + str(sides) + ' f:' + str(flags) + ' c:' + str(color_index)+ ' n:' + str(normal_index) + ' v:' + str(vertex_indices))
                 #print(polygon_data)
-                polygon_data_by_pos[start_polygon_data_pos] = polygon_data
+                polygon_data_by_pos[start_polygon_data_pos-start_of_section] = polygon_data
                 polygon_index += 1
                 
             # TODO: do we really want to add this polygon datas to the object here?
             u2_object['polygon_data_by_pos'] = polygon_data_by_pos
             
+            # print(polygon_data_by_pos)
+            
             
         elif (u2_bin[pos0:pos0+3] == b'ORD'):
             print('ORD')
             
-        # break
-         
+            # Note: we are ignoring the 4th character after 'ORD' (which contains either a '0' or an 'E'). We dont really need it in Python.
 
+            # This includes the last 0 (and THIS number)
+            nr_of_words_in_list = int.from_bytes(u2_bin[pos:pos+2], byteorder='little')
+            pos += 2
+            
+            # FIXME: WHAT IS THIS???? -> a way to quickly sort polygons of an object given a certain camera position/angle, maybe?
+            sort_polygon_for_this_list = int.from_bytes(u2_bin[pos:pos+2], byteorder='little')
+            pos += 2
+            
+            polygon_pointers = []
+            # Note: we remove 3 from nr_of_words_in_list: the last word (=0) and the first word and sort_polygon_for_this_list
+            for polygon_index_in_polygon_list in range(nr_of_words_in_list-3):
+                polygon_pointer = int.from_bytes(u2_bin[pos:pos+2], byteorder='little', signed=True)
+                pos += 2
+                polygon_pointers.append(polygon_pointer)
+                
+            polygon_list = {
+                'sort_polygon_for_this_list' : sort_polygon_for_this_list,
+                'polygon_pointers' : polygon_pointers,
+            }
+            
+            # print(polygon_list)
+            
+            u2_object['polygon_lists'].append(polygon_list)
+            
+            
         pos = pos0 + nr_of_bytes + 8
     
 
@@ -167,7 +196,7 @@ for (file_name, full_file_name) in file_list:
             u2_object = parse_object_file(u2_object_binary, file_name)
             
             #print(u2_object_binary)
-            print(u2_object)
+            #print(u2_object)
             
             # FIXME: remove this!
             # break
