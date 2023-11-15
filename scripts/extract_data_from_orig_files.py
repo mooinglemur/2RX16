@@ -130,17 +130,17 @@ def parse_animation_file(u2_bin, file_name):
             (x_delta, incr_pos) = lsget (pflag, u2_bin, pos)
             if incr_pos:
                 pos += incr_pos
-                delta['x'] = x_delta/256
+                delta['x'] = x_delta/(256*64)
             
             (y_delta, incr_pos) = lsget (pflag>>2, u2_bin, pos)
             if incr_pos:
                 pos += incr_pos
-                delta['y'] = y_delta/256
+                delta['y'] = y_delta/(256*64)
             
             (z_delta, incr_pos) = lsget (pflag>>4, u2_bin, pos)
             if incr_pos:
                 pos += incr_pos
-                delta['z'] = z_delta/256
+                delta['z'] = z_delta/(256*64)
             
             
 # FIXME: flip Y and Z here too??
@@ -150,7 +150,7 @@ def parse_animation_file(u2_bin, file_name):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(2, u2_bin, pos)
 # FIXME: is this matrix filled correctly?
-                        delta['m'][b%3][b//3] = m_delta/256
+                        delta['m'][b%3][b//3] = m_delta/(256*64)
                         pos += incr_pos
                         
             else:
@@ -159,7 +159,7 @@ def parse_animation_file(u2_bin, file_name):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(1, u2_bin, pos)
 # FIXME: is this matrix filled correctly?
-                        delta['m'][b%3][b//3] = m_delta/256
+                        delta['m'][b%3][b//3] = m_delta/(256*64)
                         pos += incr_pos
             
             print(delta)
