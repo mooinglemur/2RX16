@@ -38,14 +38,12 @@ def parse_object_file(u2_bin, file_name):
             vertices = []
             for vert_index in range(nr_of_vertices):
             
-# FIXME: by what do we have to divide this?
-# FIXME: by what do we have to divide this?
-# FIXME: by what do we have to divide this?
-                x = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/16384
+                # FIXME: by what do we have to divide this? -> if we compare the ship.obj with the city.obj (which we generate here) maybe 300-350?
+                x = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/256
                 pos += 4
-                y = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/16384
+                y = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/256
                 pos += 4
-                z = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/16384
+                z = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/256
                 pos += 4
                 normal_index = int.from_bytes(u2_bin[pos:pos+2], byteorder='little', signed=True)
                 pos += 2
@@ -180,10 +178,11 @@ def generate_obj_text_for_u2_object(u2_object, vertex_index_start):
     for vertex in u2_object['vertices']:
         obj_text += "v "
         obj_text += str(vertex['x'])
-        obj_text += " "
-        obj_text += str(vertex['y'])
+        # Note: we are flipping the Z and Y axis here (and negating Y), since Blender has the axis in a different way!
         obj_text += " "
         obj_text += str(vertex['z'])
+        obj_text += " "
+        obj_text += str(-vertex['y'])
         obj_text += "\n"
         
     
