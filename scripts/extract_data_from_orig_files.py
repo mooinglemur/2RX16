@@ -209,26 +209,24 @@ objs_text += "# Generated for use in 2R X16 demo\n"
 objs_text += "#\n"
 objs_text += "s off\n"
     
+    
+scene_name = 'U2E'
 vertex_index_start = 1
 
 for (file_name, full_file_name) in file_list:
-    if (file_name.startswith('U2E.0')):
+    if (file_name.startswith(scene_name + '.0')):
     
-        if (file_name.startswith('U2E.0A')):
+        if (file_name.startswith(scene_name + '.0A')):
             # FIXME: we need to load/parse the ANIMATION files!
             print('skipping: ' + file_name)
             continue
-        if (file_name.startswith('U2E.00M')):
+        if (file_name.startswith(scene_name + '.00M')):
             # FIXME: we need to load/parse the MATERIAL files!
             print('skipping: ' + file_name)
             continue
         else:
             # We are assuming its an object file
             
-            # FIXME: remove this!
-            #if (file_name != 'U2E.004' and file_name != 'U2E.003'):  # Building08 and ...
-            #    continue
-        
             print('- ' + file_name + ' -')
             u2_object_file = open(full_file_name, 'rb')
             u2_object_binary = u2_object_file.read()
@@ -248,7 +246,7 @@ for (file_name, full_file_name) in file_list:
             # FIXME: remove this!
             # break
             
-print(objs_text)
+# print(objs_text)
 
-with open("../assets/3d_scene/city.obj", "w") as obj_file:
+with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
     obj_file.write(objs_text)
