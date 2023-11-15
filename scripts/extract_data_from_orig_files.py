@@ -33,6 +33,13 @@ def parse_animation_file(u2_bin, file_name):
 # FIXME: should this be a list instead?
     animation_per_frame = {}
     
+# FIXME: this should be the initial values?
+    object_pos_per_frame = {
+        0 : { 'x' : -182, 'y' : 0, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] },
+# FIXME! HARDCODED!
+        28 : { 'x' : 0, 'y' : 254, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] }
+    }
+    
     pos = 0
     
     finished = False
@@ -45,20 +52,20 @@ def parse_animation_file(u2_bin, file_name):
         onum = 0
         while(pos < len(u2_bin) and not finished):
             a = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
-            print('first byte: ' + hex(a))
+            #print('first byte: ' + hex(a))
             pos+=1
             
             if (a == 0xFF):
                 a = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
-                print(hex(a))
+                #print(hex(a))
                 pos+=1
                 
                 if(a <= 0x7F):
 # FIXME: this value does seem right! 0-65538 = 0-360?
                     fov = a << 8
                     # fov = (a << 8) / 360
-                    print('fov: ' + str(fov))
-                    print('frame done')
+                    # print('fov: ' + str(fov))
+                    #print('frame done')
                     break
                 elif(a == 0xFF):
                     print('all frames done')
@@ -69,28 +76,29 @@ def parse_animation_file(u2_bin, file_name):
             if ((a&0xc0) == 0xc0):
                 onum = ((a&0x3f)<<4)
                 a = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
-                print(hex(a))
+                #print(hex(a))
                 pos+=1
             onum = (onum & 0xff0)|(a&0xf)
             
-            print("object number: " + str(onum))
+            #print("object number: " + str(onum))
             
             # FIXME: get the relevant object xyz and matrix!
             
             if (a&0xc0 == 0x80):
                 # object is *on*
-                print("object is on")
+                #print("object is on")
                 pass
             elif (a&0xc0 == 0x40):
                 # object is *off*
-                print("object is off")
+                #print("object is off")
                 pass
             else:
-                print("object is neither on or off")
+                #print("object is neither on or off")
+                pass
                 
             pflag = 0
             if ((a&0x30) == 0x00):
-                print('no pflag for object')
+                #print('no pflag for object')
                 pass # nothing to do here (maybe just on/off setting of this object, but no change)
             elif ((a&0x30) == 0x10):
                 byte_value = u2_bin[pos:pos+1]
@@ -112,7 +120,7 @@ def parse_animation_file(u2_bin, file_name):
                 pflag |= triple_byte_value[2] << 16
                 
                 
-            print('pflag: ' + str(hex(pflag)))
+            #print('pflag: ' + str(hex(pflag)))
 
             delta = {
                 'x' : None,
@@ -127,21 +135,24 @@ def parse_animation_file(u2_bin, file_name):
             
 # FIXME: by how MUCH do we have to divide here? /256?
 
+            divider_pos = 256
+
             (x_delta, incr_pos) = lsget (pflag, u2_bin, pos)
             if incr_pos:
                 pos += incr_pos
-                delta['x'] = x_delta/(256*64)
+                delta['x'] = x_delta/divider_pos
             
             (y_delta, incr_pos) = lsget (pflag>>2, u2_bin, pos)
             if incr_pos:
                 pos += incr_pos
-                delta['y'] = y_delta/(256*64)
+                delta['y'] = y_delta/divider_pos
             
             (z_delta, incr_pos) = lsget (pflag>>4, u2_bin, pos)
             if incr_pos:
                 pos += incr_pos
-                delta['z'] = z_delta/(256*64)
-            
+                delta['z'] = z_delta/divider_pos
+
+            divider_matrix = 256*64
             
 # FIXME: flip Y and Z here too??
             if(pflag&0x40):
@@ -150,7 +161,7 @@ def parse_animation_file(u2_bin, file_name):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(2, u2_bin, pos)
 # FIXME: is this matrix filled correctly?
-                        delta['m'][b%3][b//3] = m_delta/(256*64)
+                        delta['m'][b%3][b//3] = m_delta/divider_matrix
                         pos += incr_pos
                         
             else:
@@ -159,22 +170,42 @@ def parse_animation_file(u2_bin, file_name):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(1, u2_bin, pos)
 # FIXME: is this matrix filled correctly?
-                        delta['m'][b%3][b//3] = m_delta/(256*64)
+                        delta['m'][b%3][b//3] = m_delta/divider_matrix
                         pos += incr_pos
             
-            print(delta)
+            # print(delta)
 # FIXME: do something with delta!
 # FIXME: do something with delta!
 # FIXME: do something with delta!
 
+            if (onum in object_pos_per_frame):
+                if delta['x'] is not None:
+                    object_pos_per_frame[onum]['x'] += delta['x']
+                if delta['y'] is not None:
+                    object_pos_per_frame[onum]['y'] += delta['y']
+                if delta['z'] is not None:
+                    object_pos_per_frame[onum]['z'] += delta['z']
+                for b in range(9):
+                    if (delta['m'][b%3][b//3] is not None):
+                        object_pos_per_frame[onum]['m'][b%3][b//3] += delta['m'][b%3][b//3]
+            
+                #print('object: ' + str(onum) 
+                #                 + ' pos: x:' + str(object_pos_per_frame[onum]['x'])
+                #                 + ' pos: y:' + str(object_pos_per_frame[onum]['y'])
+                #                 + ' pos: z:' + str(object_pos_per_frame[onum]['z']))
+            
+            if onum == 28:
+                print('object: ' + str(onum) + str(object_pos_per_frame[onum]))
 
-            print('---')
+
+            #print('---')
 
 # FIXME: is this correct??
         frame_nr += 1
             
     # FIXME: REMOVE!        
-        if (frame_nr > 20):
+#        if (frame_nr > 3):
+        if (frame_nr > 6*30):
             break
 
 
