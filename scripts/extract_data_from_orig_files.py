@@ -4,6 +4,181 @@ import os
 scene_dir = '../../2R_test/SCENE'
 
 
+def lsget (f, u2_bin, pos):
+    value = None
+    incr_pos = None
+    
+    if(f&3 == 0):
+        value = None
+        incr_pos = 0
+    elif(f&3 == 1):
+        # Signed byte value
+        value = int.from_bytes(u2_bin[pos:pos+1], byteorder='little', signed=True)
+        incr_pos = 1
+    elif(f&3 == 2):
+        # Signed word value
+        value = int.from_bytes(u2_bin[pos:pos+2], byteorder='little', signed=True)
+        incr_pos = 2
+    elif(f&3 == 3):
+        # Signed long value
+        value = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)
+        incr_pos = 4
+    
+    return (value, incr_pos)
+    
+    
+
+def parse_animation_file(u2_bin, file_name):
+
+# FIXME: should this be a list instead?
+    animation_per_frame = {}
+    
+    pos = 0
+    
+    finished = False
+    frame_nr = 0
+    a = 0
+    while(pos < len(u2_bin) and not finished):
+    
+        print('===============FRAME '+ str(frame_nr) + '=======================')
+            
+        onum = 0
+        while(pos < len(u2_bin) and not finished):
+            a = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
+            print('first byte: ' + hex(a))
+            pos+=1
+            
+            if (a == 0xFF):
+                a = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
+                print(hex(a))
+                pos+=1
+                
+                if(a <= 0x7F):
+# FIXME: this value does seem right! 0-65538 = 0-360?
+                    fov = a << 8
+                    # fov = (a << 8) / 360
+                    print('fov: ' + str(fov))
+                    print('frame done')
+                    break
+                elif(a == 0xFF):
+                    print('all frames done')
+                    finished = True
+                    continue
+            
+            
+            if ((a&0xc0) == 0xc0):
+                onum = ((a&0x3f)<<4)
+                a = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
+                print(hex(a))
+                pos+=1
+            onum = (onum & 0xff0)|(a&0xf)
+            
+            print("object number: " + str(onum))
+            
+            # FIXME: get the relevant object xyz and matrix!
+            
+            if (a&0xc0 == 0x80):
+                # object is *on*
+                print("object is on")
+                pass
+            elif (a&0xc0 == 0x40):
+                # object is *off*
+                print("object is off")
+                pass
+            else:
+                print("object is neither on or off")
+                
+            pflag = 0
+            if ((a&0x30) == 0x00):
+                print('no pflag for object')
+                pass # nothing to do here (maybe just on/off setting of this object, but no change)
+            elif ((a&0x30) == 0x10):
+                byte_value = u2_bin[pos:pos+1]
+                #print(byte_value)
+                pos+=1
+                pflag |= byte_value[0]
+            elif ((a&0x30) == 0x20):
+                double_byte_value = u2_bin[pos:pos+2]
+                #print(double_byte_value)
+                pos+=2
+                pflag |= double_byte_value[0]
+                pflag |= double_byte_value[1] << 8
+            elif ((a&0x30) == 0x30):
+                triple_byte_value = u2_bin[pos:pos+3]
+                #print(triple_byte_value)
+                pos+=3
+                pflag |= triple_byte_value[0]
+                pflag |= triple_byte_value[1] << 8
+                pflag |= triple_byte_value[2] << 16
+                
+                
+            print('pflag: ' + str(hex(pflag)))
+
+            delta = {
+                'x' : None,
+                'y' : None,
+                'z' : None,
+                'm' : [
+                    [ None, None, None ],
+                    [ None, None, None ],
+                    [ None, None, None ] 
+                ]
+            }
+            
+# FIXME: by how MUCH do we have to divide here? /256?
+
+            (x_delta, incr_pos) = lsget (pflag, u2_bin, pos)
+            if incr_pos:
+                pos += incr_pos
+                delta['x'] = x_delta/256
+            
+            (y_delta, incr_pos) = lsget (pflag>>2, u2_bin, pos)
+            if incr_pos:
+                pos += incr_pos
+                delta['y'] = y_delta/256
+            
+            (z_delta, incr_pos) = lsget (pflag>>4, u2_bin, pos)
+            if incr_pos:
+                pos += incr_pos
+                delta['z'] = z_delta/256
+            
+            
+# FIXME: flip Y and Z here too??
+            if(pflag&0x40):
+                # word matrix
+                for b in range(9):
+                    if (pflag&(0x80<<b)):
+                        (m_delta, incr_pos) = lsget(2, u2_bin, pos)
+# FIXME: is this matrix filled correctly?
+                        delta['m'][b%3][b//3] = m_delta/256
+                        pos += incr_pos
+                        
+            else:
+                # byte matrix
+                for b in range(9):
+                    if (pflag&(0x80<<b)):
+                        (m_delta, incr_pos) = lsget(1, u2_bin, pos)
+# FIXME: is this matrix filled correctly?
+                        delta['m'][b%3][b//3] = m_delta/256
+                        pos += incr_pos
+            
+            print(delta)
+# FIXME: do something with delta!
+# FIXME: do something with delta!
+# FIXME: do something with delta!
+
+
+            print('---')
+
+# FIXME: is this correct??
+        frame_nr += 1
+            
+    # FIXME: REMOVE!        
+        if (frame_nr > 20):
+            break
+
+
+    return animation_per_frame
 
 def parse_object_file(u2_bin, file_name):
 
@@ -218,13 +393,35 @@ for (file_name, full_file_name) in file_list:
     
         if (file_name.startswith(scene_name + '.0A')):
             # FIXME: we need to load/parse the ANIMATION files!
-            print('skipping: ' + file_name)
-            continue
+            
+            if file_name.startswith(scene_name + '.0AB'):
+                u2_animation_file = open(full_file_name, 'rb')
+                u2_animation_binary = u2_animation_file.read()
+                u2_animation_file.close()
+            
+                animation_data = parse_animation_file(u2_animation_binary, file_name)
+                
+                print(animation_data)
+                
+#                print('skipping: ' + file_name)
+#                continue
+            else:
+                print('skipping: ' + file_name)
+                continue
+            
         if (file_name.startswith(scene_name + '.00M')):
             # FIXME: we need to load/parse the MATERIAL files!
             print('skipping: ' + file_name)
             continue
         else:
+        
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+            print('skipping: ' + file_name)
+            continue
+            
             # We are assuming its an object file
             
             print('- ' + file_name + ' -')
@@ -248,5 +445,39 @@ for (file_name, full_file_name) in file_list:
             
 # print(objs_text)
 
-with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
-    obj_file.write(objs_text)
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#FIXME!
+#with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
+#    obj_file.write(objs_text)
+
+
+
+
+
+
+
+
+
+
