@@ -189,6 +189,24 @@ def parse_animation_file(u2_bin, file_name):
                 # https://stackoverflow.com/questions/39280104/how-to-get-current-camera-position-from-view-matrix
                 # https://gamedev.stackexchange.com/questions/138208/extract-eye-camera-position-from-a-view-matrix
                 # https://community.khronos.org/t/extracting-camera-position-from-a-modelview-matrix/68031
+                
+                r3_m = object_pos_per_frame[onum]['m']
+                r_xyz = object_pos_per_frame[onum]
+                view_matrix = np.array([
+                    [ r3_m[0][0], r3_m[1][0], r3_m[2][0], r_xyz['x'] ],
+                    [ r3_m[0][1], r3_m[1][1], r3_m[2][1], r_xyz['y'] ],
+                    [ r3_m[0][2], r3_m[1][2], r3_m[2][2], r_xyz['z'] ],
+                    [          0,          0,          0,          1 ],
+                ])
+                inv_view_matrix = np.linalg.inv(view_matrix)
+                
+                camera_pos = [ inv_view_matrix[0][3], inv_view_matrix[1][3], inv_view_matrix[2][3] ]
+                
+                # FIXME: get the rotation matrix for the camera!
+                
+                print('0: ' + str(camera_pos))
+                
+                
                 pass
             else:
                 pass
