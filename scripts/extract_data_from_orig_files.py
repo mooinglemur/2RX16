@@ -188,6 +188,7 @@ def parse_animation_file(u2_bin, file_name):
                 # Decompose matrix: get camera location from view matrix
                 # https://stackoverflow.com/questions/39280104/how-to-get-current-camera-position-from-view-matrix
                 # https://gamedev.stackexchange.com/questions/138208/extract-eye-camera-position-from-a-view-matrix
+                # https://community.khronos.org/t/extracting-camera-position-from-a-modelview-matrix/68031
                 pass
             else:
                 pass
