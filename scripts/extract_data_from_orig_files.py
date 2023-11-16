@@ -187,6 +187,7 @@ def parse_animation_file(u2_bin, file_name):
             if onum == 0:
                 # Decompose matrix: get camera location from view matrix
                 # https://stackoverflow.com/questions/39280104/how-to-get-current-camera-position-from-view-matrix
+                # https://gamedev.stackexchange.com/questions/138208/extract-eye-camera-position-from-a-view-matrix
                 pass
             else:
                 pass
