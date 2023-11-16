@@ -83,8 +83,6 @@ def parse_animation_file(u2_bin, file_name):
             
             #print("object number: " + str(onum))
             
-            # FIXME: get the relevant object xyz and matrix!
-            
             if (a&0xc0 == 0x80):
                 # object is *on*
                 #print("object is on")
@@ -134,8 +132,7 @@ def parse_animation_file(u2_bin, file_name):
                 ]
             }
             
-# FIXME: by how MUCH do we have to divide here? /256?
-
+            # TODO: by how MUCH do we have to divide here? /256?
             divider_pos = 256
 
             (x_delta, incr_pos) = lsget (pflag, u2_bin, pos)
@@ -155,13 +152,11 @@ def parse_animation_file(u2_bin, file_name):
 
             divider_matrix = 256*64
             
-# FIXME: flip Y and Z here too??
             if(pflag&0x40):
                 # word matrix
                 for b in range(9):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(2, u2_bin, pos)
-# FIXME: is this matrix filled correctly?
                         delta['m'][b//3][b%3] = m_delta/divider_matrix
                         pos += incr_pos
                         
@@ -170,15 +165,9 @@ def parse_animation_file(u2_bin, file_name):
                 for b in range(9):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(1, u2_bin, pos)
-# FIXME: is this matrix filled correctly?
                         delta['m'][b//3][b%3] = m_delta/divider_matrix
                         pos += incr_pos
             
-            # print(delta)
-# FIXME: do something with delta!
-# FIXME: do something with delta!
-# FIXME: do something with delta!
-
             if (onum in object_pos_per_frame):
                 if delta['x'] is not None:
                     object_pos_per_frame[onum]['x'] += delta['x']
@@ -189,10 +178,22 @@ def parse_animation_file(u2_bin, file_name):
                 for b in range(9):
                     if (delta['m'][b%3][b//3] is not None):
                         object_pos_per_frame[onum]['m'][b//3][b%3] += delta['m'][b%3][b//3]
+
+
+            # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
+            # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
+            # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
+            
+            if onum == 0:
+                # Decompose matrix: get camera location from view matrix
+                # https://stackoverflow.com/questions/39280104/how-to-get-current-camera-position-from-view-matrix
+                pass
+            else:
+                pass
             
             if onum == 28:
                 #print('object: ' + str(onum) + str(object_pos_per_frame[onum]))
-# FIXME: 33fps?
+                # TODO: 33fps?
                 '''
                 print('t:' + str("{:.2f}".format(frame_nr/33)) # + ' o: ' + str(onum) 
                                  + ' x:' + str("{:.2f}".format(object_pos_per_frame[onum]['x']))
@@ -208,14 +209,6 @@ def parse_animation_file(u2_bin, file_name):
                 r3_m = object_pos_per_frame[onum]['m']
                 r_xyz = object_pos_per_frame[onum]
                 r_matrix = np.array([
-#                    [ r3_m[0][0], r3_m[0][1], r3_m[0][2], 0 ],
-#                    [ r3_m[1][0], r3_m[1][1], r3_m[1][2], 0 ],
-#                    [ r3_m[2][0], r3_m[2][1], r3_m[2][2], 0 ],
-#                    [ r_xyz['x'], r_xyz['x'], r_xyz['x'], 1 ],
-#                    [ r3_m[0][0], r3_m[0][1], r3_m[0][2], r_xyz['x'] ],
-#                    [ r3_m[1][0], r3_m[1][1], r3_m[1][2], r_xyz['y'] ],
-#                    [ r3_m[2][0], r3_m[2][1], r3_m[2][2], r_xyz['z'] ],
-#                    [          0,          0,          0,          1 ],
                     [ r3_m[0][0], r3_m[1][0], r3_m[2][0], r_xyz['x'] ],
                     [ r3_m[0][1], r3_m[1][1], r3_m[2][1], r_xyz['y'] ],
                     [ r3_m[0][2], r3_m[1][2], r3_m[2][2], r_xyz['z'] ],
@@ -234,11 +227,9 @@ def parse_animation_file(u2_bin, file_name):
 
             #print('---')
 
-# FIXME: is this correct??
         frame_nr += 1
             
     # FIXME: REMOVE!        
-#        if (frame_nr > 3):
         #if (frame_nr > 22*30):
         #    break
 
