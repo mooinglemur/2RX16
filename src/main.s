@@ -153,6 +153,15 @@ SCENE = $4800
 	jsr zsmkit::zsm_close
 .endif
 	LOADFILE "MUSIC5.ZSM", SONG_BANK, $a000
+
+	; set up 50 Hz VIA timer
+	lda #50
+	jsr setup_via_timer
+	; tell ZSMKit about the 50 Hz timer
+	lda #50
+	ldy #0
+	jsr zsmkit::zsm_set_int_rate
+
 	jsr play_song
 	LOADFILE "CRAFT.BIN", 0, SCENE
 	jsr SCENE
@@ -163,6 +172,22 @@ SCENE = $4800
 	LOADFILE "CREDITS.BIN", 0, SCENE
 	jsr SCENE
 
+	; fade out song
+	ldy #0
+:	phy
+	WAITVSYNC
+	WAITVSYNC
+	WAITVSYNC
+	ply
+	phy
+	tya
+	ldx #0
+	jsr zsmkit::zsm_setatten
+	ply
+	iny
+	cpy #64
+	bne :-
+	
 	; stop song
 	ldx #0
 	jsr zsmkit::zsm_close

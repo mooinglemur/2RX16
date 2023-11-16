@@ -29,11 +29,17 @@ entry:
 
 	PALETTE_FADE 1
 
+	; about the duration of the music
+	ldy #70
 	ldx #0
 :	phx
+	phy
 	WAITVSYNC
+	ply
 	plx
 	dex
+	bne :-
+	dey
 	bne :-
 
 	ldx #32
