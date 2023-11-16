@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 # FIXME: HARDCODED DIR!!
 scene_dir = '../../2R_test/SCENE'
@@ -35,9 +36,9 @@ def parse_animation_file(u2_bin, file_name):
     
 # FIXME: this should be the initial values?
     object_pos_per_frame = {
-        0 : { 'x' : -182, 'y' : 0, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] },
+        0 : { 'x' : 0, 'y' : 0, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] },
 # FIXME! HARDCODED!
-        28 : { 'x' : 0, 'y' : 254, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] }
+        28 : { 'x' : 0, 'y' : 0, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] }
     }
     
     pos = 0
@@ -189,10 +190,10 @@ def parse_animation_file(u2_bin, file_name):
                     if (delta['m'][b%3][b//3] is not None):
                         object_pos_per_frame[onum]['m'][b//3][b%3] += delta['m'][b%3][b//3]
             
-            
-            if onum == 0:
+            if onum == 28:
                 #print('object: ' + str(onum) + str(object_pos_per_frame[onum]))
 # FIXME: 33fps?
+                '''
                 print('t:' + str("{:.2f}".format(frame_nr/33)) # + ' o: ' + str(onum) 
                                  + ' x:' + str("{:.2f}".format(object_pos_per_frame[onum]['x']))
                                  + ' y:' + str("{:.2f}".format(object_pos_per_frame[onum]['y']))
@@ -201,6 +202,30 @@ def parse_animation_file(u2_bin, file_name):
                                  + ' [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][2])) + '], '
                                  + ' [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][2])) + ']'
                                  )
+                '''                 
+                            
+                # https://help.autodesk.com/view/3DSMAX/2023/ENU/?guid=GUID-BEADCF00-3BBA-4722-9D7D-C07C15F8A33B
+                r3_m = object_pos_per_frame[onum]['m']
+                r_xyz = object_pos_per_frame[onum]
+                r_matrix = np.array([
+#                    [ r3_m[0][0], r3_m[0][1], r3_m[0][2], 0 ],
+#                    [ r3_m[1][0], r3_m[1][1], r3_m[1][2], 0 ],
+#                    [ r3_m[2][0], r3_m[2][1], r3_m[2][2], 0 ],
+#                    [ r_xyz['x'], r_xyz['x'], r_xyz['x'], 1 ],
+                    [ r3_m[0][0], r3_m[0][1], r3_m[0][2], r_xyz['x'] ],
+                    [ r3_m[1][0], r3_m[1][1], r3_m[1][2], r_xyz['y'] ],
+                    [ r3_m[2][0], r3_m[2][1], r3_m[2][2], r_xyz['z'] ],
+                    [          0,          0,          0,          1 ],
+                ])
+
+                # FIXME: HARDCODED!
+                # org: {'x': -107.04296875, 'y': -125.140625, 'z': 4.98046875 }
+                ship_coords = np.array([ -107.04296875, -125.140625, 4.98046875, 1 ])
+                
+                new_ship_coords = r_matrix.dot(ship_coords)
+                
+                print('t:' + str("{:.2f} ".format(frame_nr/33)) + str(new_ship_coords.tolist()[0:3]))
+                
 
 
             #print('---')
@@ -232,7 +257,7 @@ def parse_object_file(u2_bin, file_name):
         
         if (u2_bin[pos0:pos0+4] == b'VERS'):
             version = int.from_bytes(u2_bin[pos:pos+2], byteorder='little')
-            print('VERS: ' + str(version/256))
+            #print('VERS: ' + str(version/256))
             # We dont really care about the version, so we dont keep it
         
         elif (u2_bin[pos0:pos0+4] == b'NAME'):
@@ -264,7 +289,7 @@ def parse_object_file(u2_bin, file_name):
                 vertex = { 'x' : x, 'y': y, 'z': z, 'normal_index': normal_index }
                 vertices.append(vertex)
             
-            print('VERT: ' + str(nr_of_vertices))
+            #print('VERT: ' + str(nr_of_vertices))
             #print(vertices)
             u2_object['vertices'] = vertices
             
@@ -288,7 +313,7 @@ def parse_object_file(u2_bin, file_name):
                 normal = { 'x' : x, 'y': y, 'z': z }
                 normals.append(normal)
             
-            print('NORM: ' + str(nr_of_normals))
+            #print('NORM: ' + str(nr_of_normals))
             #print(normals)
             u2_object['normals'] = normals
             
@@ -335,7 +360,7 @@ def parse_object_file(u2_bin, file_name):
                     'vertex_indices' : vertex_indices
                 }
                 
-                print('POLY: s:' + str(sides) + ' f:' + str(flags) + ' c:' + str(color_index)+ ' n:' + str(normal_index) + ' v:' + str(vertex_indices))
+                #print('POLY: s:' + str(sides) + ' f:' + str(flags) + ' c:' + str(color_index)+ ' n:' + str(normal_index) + ' v:' + str(vertex_indices))
                 #print(polygon_data)
                 polygon_data_by_pos[start_polygon_data_pos-start_of_section] = polygon_data
                 polygon_index += 1
@@ -347,7 +372,7 @@ def parse_object_file(u2_bin, file_name):
             
             
         elif (u2_bin[pos0:pos0+3] == b'ORD'):
-            print('ORD')
+            #print('ORD')
             
             # Note: we are ignoring the 4th character after 'ORD' (which contains either a '0' or an 'E'). We dont really need it in Python.
 
@@ -437,7 +462,7 @@ for (file_name, full_file_name) in file_list:
             
                 animation_data = parse_animation_file(u2_animation_binary, file_name)
                 
-                print(animation_data)
+                #print(animation_data)
                 
 #                print('skipping: ' + file_name)
 #                continue
@@ -445,7 +470,7 @@ for (file_name, full_file_name) in file_list:
                 print('skipping: ' + file_name)
                 continue
             
-        if (file_name.startswith(scene_name + '.00M')):
+        elif (file_name.startswith(scene_name + '.00M')):
             # FIXME: we need to load/parse the MATERIAL files!
             print('skipping: ' + file_name)
             continue
@@ -468,6 +493,10 @@ for (file_name, full_file_name) in file_list:
             u2_object = parse_object_file(u2_object_binary, file_name)
             
             
+            #if (u2_object['name'] == '"s01"'):
+            #    print(u2_object['vertices'])
+            
+            
             # FIXME: use this: normal_index_start = 0
             (obj_text, nr_of_vertices) = generate_obj_text_for_u2_object(u2_object, vertex_index_start)
             objs_text += obj_text
@@ -477,7 +506,7 @@ for (file_name, full_file_name) in file_list:
             #print(u2_object)
             
             # FIXME: remove this!
-            # break
+            #break
             
 # print(objs_text)
 
