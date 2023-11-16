@@ -47,7 +47,7 @@ def parse_animation_file(u2_bin, file_name):
     a = 0
     while(pos < len(u2_bin) and not finished):
     
-        print('===============FRAME '+ str(frame_nr) + '=======================')
+        #print('===============FRAME '+ str(frame_nr) + '=======================')
             
         onum = 0
         while(pos < len(u2_bin) and not finished):
@@ -161,7 +161,7 @@ def parse_animation_file(u2_bin, file_name):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(2, u2_bin, pos)
 # FIXME: is this matrix filled correctly?
-                        delta['m'][b%3][b//3] = m_delta/divider_matrix
+                        delta['m'][b//3][b%3] = m_delta/divider_matrix
                         pos += incr_pos
                         
             else:
@@ -170,7 +170,7 @@ def parse_animation_file(u2_bin, file_name):
                     if (pflag&(0x80<<b)):
                         (m_delta, incr_pos) = lsget(1, u2_bin, pos)
 # FIXME: is this matrix filled correctly?
-                        delta['m'][b%3][b//3] = m_delta/divider_matrix
+                        delta['m'][b//3][b%3] = m_delta/divider_matrix
                         pos += incr_pos
             
             # print(delta)
@@ -187,15 +187,20 @@ def parse_animation_file(u2_bin, file_name):
                     object_pos_per_frame[onum]['z'] += delta['z']
                 for b in range(9):
                     if (delta['m'][b%3][b//3] is not None):
-                        object_pos_per_frame[onum]['m'][b%3][b//3] += delta['m'][b%3][b//3]
+                        object_pos_per_frame[onum]['m'][b//3][b%3] += delta['m'][b%3][b//3]
             
-                #print('object: ' + str(onum) 
-                #                 + ' pos: x:' + str(object_pos_per_frame[onum]['x'])
-                #                 + ' pos: y:' + str(object_pos_per_frame[onum]['y'])
-                #                 + ' pos: z:' + str(object_pos_per_frame[onum]['z']))
             
-            if onum == 28:
-                print('object: ' + str(onum) + str(object_pos_per_frame[onum]))
+            if onum == 0:
+                #print('object: ' + str(onum) + str(object_pos_per_frame[onum]))
+# FIXME: 33fps?
+                print('t:' + str("{:.2f}".format(frame_nr/33)) # + ' o: ' + str(onum) 
+                                 + ' x:' + str("{:.2f}".format(object_pos_per_frame[onum]['x']))
+                                 + ' y:' + str("{:.2f}".format(object_pos_per_frame[onum]['y']))
+                                 + ' z:' + str("{:.2f}".format(object_pos_per_frame[onum]['z']))
+                                 + '  [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][0][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][0][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][0][2])) + '], '
+                                 + ' [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][2])) + '], '
+                                 + ' [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][2])) + ']'
+                                 )
 
 
             #print('---')
@@ -205,8 +210,8 @@ def parse_animation_file(u2_bin, file_name):
             
     # FIXME: REMOVE!        
 #        if (frame_nr > 3):
-        if (frame_nr > 6*30):
-            break
+        #if (frame_nr > 22*30):
+        #    break
 
 
     return animation_per_frame
