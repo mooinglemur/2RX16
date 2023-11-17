@@ -129,9 +129,9 @@ for frame_nr in range(1,nr_of_frames+1):
 
                 
         #rot_angles = obj.matrix_world.to_euler()
-        rot = obj.rotation_euler
-        rot.x = math.pi - rot.x
-        obj.rotation_euler = rot
+        #rot = obj.rotation_euler
+        #rot.x = math.pi - rot.x
+        #obj.rotation_euler = rot
         #print()
 
         obj.keyframe_insert(data_path="location", frame=frame_nr)
