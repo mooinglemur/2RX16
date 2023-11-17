@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import sys
+import copy
 
 # FIXME: HARDCODED DIR!!
 scene_dir = '../../2R_test/SCENE'
@@ -29,26 +31,62 @@ def lsget (f, u2_bin, pos):
     
     
 
-def parse_animation_file(u2_bin, file_name):
+def parse_animation_file(u2_bin, nr_of_objects):
 
-# FIXME: should this be a list instead?
-    animation_per_frame = {}
     
-# FIXME: this should be the initial values?
-    object_pos_per_frame = {
-        0 : { 'x' : 0, 'y' : 0, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] },
-# FIXME! HARDCODED!
-        28 : { 'x' : 0, 'y' : 0, 'z' : 0, 'm' : [ [ 0, 0, 0 ], [ 0, 0, 0 ], [ 0, 0, 0 ] ] }
+# FIXME: do we need this?
+    default_visible_object = { 
+        'visible' : True,
+        'x' : 0, 
+        'y' : 0, 
+        'z' : 0, 
+        'm' : [ 
+            [ 0, 0, 0 ], 
+            [ 0, 0, 0 ], 
+            [ 0, 0, 0 ]
+        ] 
     }
+    
+    default_invisible_object = { 
+        'visible' : False,
+        'x' : 0, 
+        'y' : 0, 
+        'z' : 0, 
+        'm' : [ 
+            [ 0, 0, 0 ], 
+            [ 0, 0, 0 ], 
+            [ 0, 0, 0 ]
+        ] 
+    }
+    
+    
+    # We need to keep track of the ORIGINAL matrices and xyz
+    objects_in_u2_engine = {}
+    # Note: +1 because of the camera at index 0
+    for i in range(nr_of_objects+1):
+        objects_in_u2_engine[i] = copy.deepcopy(default_invisible_object)
+
+    # We also need to keep track of the OUTPUT object matrices and xyz's. We do this for each frame! (and only when something changes)
+    objects_xyz_and_matrix_per_frame = {}
+    
     
     pos = 0
     
     finished = False
-    frame_nr = 0
+    frame_nr = 1
     a = 0
     while(pos < len(u2_bin) and not finished):
     
-        #print('===============FRAME '+ str(frame_nr) + '=======================')
+        print('===============FRAME '+ str(frame_nr) + '=======================')
+            
+        objects_xyz_and_matrix_per_frame[frame_nr] = {}
+        objects_xyz_and_matrix = objects_xyz_and_matrix_per_frame[frame_nr]
+        
+        # For frame 1 we set all objects to invisible
+        if (frame_nr == 1):
+            # Note: +1 because of the camera at index 0
+            for i in range(nr_of_objects+1):
+                objects_xyz_and_matrix[i] = default_invisible_object
             
         onum = 0
         while(pos < len(u2_bin) and not finished):
@@ -83,17 +121,23 @@ def parse_animation_file(u2_bin, file_name):
             
             #print("object number: " + str(onum))
             
+            objects_xyz_and_matrix[onum] = {}
+            
             if (a&0xc0 == 0x80):
                 # object is *on*
-                #print("object is on")
+                objects_in_u2_engine[onum]['visible'] = True
+                #print("object is turned on")
                 pass
             elif (a&0xc0 == 0x40):
                 # object is *off*
-                #print("object is off")
+                objects_in_u2_engine[onum]['visible'] = False
+                #print("object is turned off")
                 pass
             else:
-                #print("object is neither on or off")
+                #print("object is neither turned on or off")
                 pass
+                
+            objects_xyz_and_matrix[onum]['visible'] = objects_in_u2_engine[onum]['visible']
                 
             pflag = 0
             if ((a&0x30) == 0x00):
@@ -168,18 +212,34 @@ def parse_animation_file(u2_bin, file_name):
                         delta['m'][b//3][b%3] = m_delta/divider_matrix
                         pos += incr_pos
             
-            if (onum in object_pos_per_frame):
+            object_xyz_or_m_has_changed = False
+            if (onum in objects_in_u2_engine):
                 if delta['x'] is not None:
-                    object_pos_per_frame[onum]['x'] += delta['x']
+                    objects_in_u2_engine[onum]['x'] += delta['x']
+                    object_xyz_or_m_has_changed = True
                 if delta['y'] is not None:
-                    object_pos_per_frame[onum]['y'] += delta['y']
+                    objects_in_u2_engine[onum]['y'] += delta['y']
+                    object_xyz_or_m_has_changed = True
                 if delta['z'] is not None:
-                    object_pos_per_frame[onum]['z'] += delta['z']
+                    objects_in_u2_engine[onum]['z'] += delta['z']
+                    object_xyz_or_m_has_changed = True
                 for b in range(9):
                     if (delta['m'][b%3][b//3] is not None):
-                        object_pos_per_frame[onum]['m'][b//3][b%3] += delta['m'][b%3][b//3]
+                        objects_in_u2_engine[onum]['m'][b//3][b%3] += delta['m'][b%3][b//3]
+                    object_xyz_or_m_has_changed = True
+            else:
+                print('ERROR: unkown object number! ' + str(onum))
+                sys.exit()
 
 
+            if (object_xyz_or_m_has_changed):
+                objects_xyz_and_matrix[onum]['x'] = objects_in_u2_engine[onum]['x']
+                objects_xyz_and_matrix[onum]['y'] = objects_in_u2_engine[onum]['y']
+                objects_xyz_and_matrix[onum]['z'] = objects_in_u2_engine[onum]['z']
+                objects_xyz_and_matrix[onum]['m'] = copy.deepcopy(objects_in_u2_engine[onum]['m'])
+
+
+            '''
             # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
             # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
             # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
@@ -190,8 +250,8 @@ def parse_animation_file(u2_bin, file_name):
                 # https://gamedev.stackexchange.com/questions/138208/extract-eye-camera-position-from-a-view-matrix
                 # https://community.khronos.org/t/extracting-camera-position-from-a-modelview-matrix/68031
                 
-                r3_m = object_pos_per_frame[onum]['m']
-                r_xyz = object_pos_per_frame[onum]
+                r3_m = objects_in_u2_engine[onum]['m']
+                r_xyz = objects_in_u2_engine[onum]
                 view_matrix = np.array([
                     [ r3_m[0][0], r3_m[1][0], r3_m[2][0], r_xyz['x'] ],
                     [ r3_m[0][1], r3_m[1][1], r3_m[2][1], r_xyz['y'] ],
@@ -206,28 +266,28 @@ def parse_animation_file(u2_bin, file_name):
                 
                 print('0: ' + str(camera_pos))
                 
-                
-                pass
-            else:
-                pass
             
-            if onum == 28:
-                #print('object: ' + str(onum) + str(object_pos_per_frame[onum]))
+                
+            else:
+#            if onum == 28:
+
+            
+                #print('object: ' + str(onum) + str(objects_in_u2_engine[onum]))
                 # TODO: 33fps?
-                '''
+                
                 print('t:' + str("{:.2f}".format(frame_nr/33)) # + ' o: ' + str(onum) 
-                                 + ' x:' + str("{:.2f}".format(object_pos_per_frame[onum]['x']))
-                                 + ' y:' + str("{:.2f}".format(object_pos_per_frame[onum]['y']))
-                                 + ' z:' + str("{:.2f}".format(object_pos_per_frame[onum]['z']))
-                                 + '  [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][0][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][0][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][0][2])) + '], '
-                                 + ' [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][1][2])) + '], '
-                                 + ' [' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][0])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][1])) + ', ' + str("{:.2f}".format(object_pos_per_frame[onum]['m'][2][2])) + ']'
+                                 + ' x:' + str("{:.2f}".format(objects_in_u2_engine[onum]['x']))
+                                 + ' y:' + str("{:.2f}".format(objects_in_u2_engine[onum]['y']))
+                                 + ' z:' + str("{:.2f}".format(objects_in_u2_engine[onum]['z']))
+                                 + '  [' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][0][0])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][0][1])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][0][2])) + '], '
+                                 + ' [' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][1][0])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][1][1])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][1][2])) + '], '
+                                 + ' [' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][2][0])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][2][1])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][2][2])) + ']'
                                  )
-                '''                 
+                
                             
                 # https://help.autodesk.com/view/3DSMAX/2023/ENU/?guid=GUID-BEADCF00-3BBA-4722-9D7D-C07C15F8A33B
-                r3_m = object_pos_per_frame[onum]['m']
-                r_xyz = object_pos_per_frame[onum]
+                r3_m = objects_in_u2_engine[onum]['m']
+                r_xyz = objects_in_u2_engine[onum]
                 r_matrix = np.array([
                     [ r3_m[0][0], r3_m[1][0], r3_m[2][0], r_xyz['x'] ],
                     [ r3_m[0][1], r3_m[1][1], r3_m[2][1], r_xyz['y'] ],
@@ -243,7 +303,9 @@ def parse_animation_file(u2_bin, file_name):
                 
                 print('t:' + str("{:.2f} ".format(frame_nr/33)) + str(new_ship_coords.tolist()[0:3]))
                 
-
+            
+            '''
+            
 
             #print('---')
 
@@ -253,8 +315,9 @@ def parse_animation_file(u2_bin, file_name):
         #if (frame_nr > 22*30):
         #    break
 
-
-    return animation_per_frame
+    return objects_xyz_and_matrix_per_frame
+    
+    
 
 def parse_object_file(u2_bin, file_name):
 
@@ -464,6 +527,15 @@ objs_text += "s off\n"
 scene_name = 'U2E'
 vertex_index_start = 1
 
+objects_xyz_and_matrix_per_frame = None
+
+# FIXME: we need a number to name mapping!
+# FIXME: we need a number to name mapping!
+# FIXME: we need a number to name mapping!
+
+# FIXME: we need the BASE VERTEX of each object! OR the TRANSFORM matrix! -> DO THIS IN BLENDER!
+    
+
 for (file_name, full_file_name) in file_list:
     if (file_name.startswith(scene_name + '.0')):
     
@@ -474,10 +546,13 @@ for (file_name, full_file_name) in file_list:
                 u2_animation_file = open(full_file_name, 'rb')
                 u2_animation_binary = u2_animation_file.read()
                 u2_animation_file.close()
-            
-                animation_data = parse_animation_file(u2_animation_binary, file_name)
                 
-                #print(animation_data)
+                # FIXME: get this from .00M!!
+                nr_of_objects = 58  # This does *not* include the camera!
+            
+                objects_xyz_and_matrix_per_frame = parse_animation_file(u2_animation_binary, nr_of_objects)
+                
+                #print(objects_xyz_and_matrix_per_frame)
                 
 #                print('skipping: ' + file_name)
 #                continue
@@ -525,27 +600,6 @@ for (file_name, full_file_name) in file_list:
             
 # print(objs_text)
 
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
 #FIXME!
 #FIXME!
 #FIXME!
