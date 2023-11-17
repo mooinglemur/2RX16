@@ -97,7 +97,18 @@ for frame_nr in range(1,nr_of_frames+1):
             [          0,          0,          0,          1 ],
         ]
         
-        r_inv = np.linalg.inv(r_matrix).tolist()
+        r_rotate_180_x_matrix = [
+            [           1,           0,           0,              0 ],
+            [           0,           -1,           0,              0 ],
+            [           0,           0,          -1,              0 ],
+            [           0,           0,           0,              1 ],
+        ]
+        
+        
+        r_matrix_corrected = np.matmul(r_rotate_180_x_matrix, r_matrix)
+        
+        r_inv = np.linalg.inv(r_matrix_corrected).tolist()
+        #r_inv = np.linalg.inv(r_matrix).tolist()
         
         #dump(r_inv)
 
