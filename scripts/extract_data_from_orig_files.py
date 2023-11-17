@@ -2,6 +2,7 @@ import os
 import numpy as np
 import sys
 import copy
+import json
 
 # FIXME: HARDCODED DIR!!
 scene_dir = '../../2R_test/SCENE'
@@ -82,11 +83,12 @@ def parse_animation_file(u2_bin, nr_of_objects):
         objects_xyz_and_matrix_per_frame[frame_nr] = {}
         objects_xyz_and_matrix = objects_xyz_and_matrix_per_frame[frame_nr]
         
-        # For frame 1 we set all objects to invisible
-        if (frame_nr == 1):
-            # Note: +1 because of the camera at index 0
-            for i in range(nr_of_objects+1):
-                objects_xyz_and_matrix[i] = default_invisible_object
+        if (False):
+            # For frame 1 we set all objects to invisible
+            if (frame_nr == 1):
+                # Note: +1 because of the camera at index 0
+                for i in range(nr_of_objects+1):
+                    objects_xyz_and_matrix[i] = default_invisible_object
             
         onum = 0
         while(pos < len(u2_bin) and not finished):
@@ -249,6 +251,9 @@ def parse_animation_file(u2_bin, nr_of_objects):
                 # https://stackoverflow.com/questions/39280104/how-to-get-current-camera-position-from-view-matrix
                 # https://gamedev.stackexchange.com/questions/138208/extract-eye-camera-position-from-a-view-matrix
                 # https://community.khronos.org/t/extracting-camera-position-from-a-modelview-matrix/68031
+                
+                # Camera orientation?: https://gamedev.net/forums/topic/543424-get-camera-orientation-from-view-matrix/4503820/
+                # Rotation around an axis: https://stackoverflow.com/questions/6802577/rotation-of-3d-vector
                 
                 r3_m = objects_in_u2_engine[onum]['m']
                 r_xyz = objects_in_u2_engine[onum]
@@ -492,11 +497,10 @@ def generate_obj_text_for_u2_object(u2_object, vertex_index_start):
     for vertex in u2_object['vertices']:
         obj_text += "v "
         obj_text += str(vertex['x'])
-        # Note: we are flipping the Z and Y axis here (and negating Y), since Blender has the axis in a different way!
+        obj_text += " "
+        obj_text += str(vertex['y'])
         obj_text += " "
         obj_text += str(vertex['z'])
-        obj_text += " "
-        obj_text += str(-vertex['y'])
         obj_text += "\n"
         
     
@@ -529,12 +533,12 @@ vertex_index_start = 1
 
 objects_xyz_and_matrix_per_frame = None
 
-# FIXME: we need a number to name mapping!
-# FIXME: we need a number to name mapping!
-# FIXME: we need a number to name mapping!
+# FIXME: get this from .00M!!
+nr_of_objects = 58  # This does *not* include the camera!
 
-# FIXME: we need the BASE VERTEX of each object! OR the TRANSFORM matrix! -> DO THIS IN BLENDER!
-    
+# FIXME: we need a number to name mapping!
+# FIXME: we need a number to name mapping!
+# FIXME: we need a number to name mapping!
 
 for (file_name, full_file_name) in file_list:
     if (file_name.startswith(scene_name + '.0')):
@@ -547,9 +551,6 @@ for (file_name, full_file_name) in file_list:
                 u2_animation_binary = u2_animation_file.read()
                 u2_animation_file.close()
                 
-                # FIXME: get this from .00M!!
-                nr_of_objects = 58  # This does *not* include the camera!
-            
                 objects_xyz_and_matrix_per_frame = parse_animation_file(u2_animation_binary, nr_of_objects)
                 
                 #print(objects_xyz_and_matrix_per_frame)
@@ -562,16 +563,16 @@ for (file_name, full_file_name) in file_list:
             
         elif (file_name.startswith(scene_name + '.00M')):
             # FIXME: we need to load/parse the MATERIAL files!
+            
+# We need ALL 58 objects and their NAMES!!
+# We need ALL 58 objects and their NAMES!!
+# We need ALL 58 objects and their NAMES!!
             print('skipping: ' + file_name)
             continue
         else:
         
-#FIXME!
-#FIXME!
-#FIXME!
-#FIXME!
-            print('skipping: ' + file_name)
-            continue
+            #print('skipping: ' + file_name)
+            #continue
             
             # We are assuming its an object file
             
@@ -592,19 +593,13 @@ for (file_name, full_file_name) in file_list:
             objs_text += obj_text
             vertex_index_start += nr_of_vertices
             
-            #print(u2_object_binary)
-            #print(u2_object)
-            
-            # FIXME: remove this!
-            #break
-            
-# print(objs_text)
 
-#FIXME!
-#FIXME!
-#FIXME!
-#with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
-#    obj_file.write(objs_text)
+
+with open("../assets/3d_scene/" + scene_name + "_animation.json", "w") as animation_file:
+    animation_file.write(json.dumps(objects_xyz_and_matrix_per_frame, indent=4))
+
+with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
+    obj_file.write(objs_text)
 
 
 
