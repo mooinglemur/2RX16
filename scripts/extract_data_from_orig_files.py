@@ -35,19 +35,6 @@ def lsget (f, u2_bin, pos):
 def parse_animation_file(u2_bin, nr_of_objects):
 
     
-# FIXME: do we need this?
-    default_visible_object = { 
-        'visible' : True,
-        'x' : 0, 
-        'y' : 0, 
-        'z' : 0, 
-        'm' : [ 
-            [ 0, 0, 0 ], 
-            [ 0, 0, 0 ], 
-            [ 0, 0, 0 ]
-        ] 
-    }
-    
     default_invisible_object = { 
         'visible' : False,
         'x' : 0, 
@@ -239,77 +226,6 @@ def parse_animation_file(u2_bin, nr_of_objects):
                 objects_xyz_and_matrix[onum]['y'] = objects_in_u2_engine[onum]['y']
                 objects_xyz_and_matrix[onum]['z'] = objects_in_u2_engine[onum]['z']
                 objects_xyz_and_matrix[onum]['m'] = copy.deepcopy(objects_in_u2_engine[onum]['m'])
-
-
-            '''
-            # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
-            # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
-            # FIXME: get the relevant object xyz and matrix and matrix MULTIPLY!
-            
-            if onum == 0:
-                # Decompose matrix: get camera location from view matrix
-                # https://stackoverflow.com/questions/39280104/how-to-get-current-camera-position-from-view-matrix
-                # https://gamedev.stackexchange.com/questions/138208/extract-eye-camera-position-from-a-view-matrix
-                # https://community.khronos.org/t/extracting-camera-position-from-a-modelview-matrix/68031
-                
-                # Camera orientation?: https://gamedev.net/forums/topic/543424-get-camera-orientation-from-view-matrix/4503820/
-                # Rotation around an axis: https://stackoverflow.com/questions/6802577/rotation-of-3d-vector
-                
-                r3_m = objects_in_u2_engine[onum]['m']
-                r_xyz = objects_in_u2_engine[onum]
-                view_matrix = np.array([
-                    [ r3_m[0][0], r3_m[1][0], r3_m[2][0], r_xyz['x'] ],
-                    [ r3_m[0][1], r3_m[1][1], r3_m[2][1], r_xyz['y'] ],
-                    [ r3_m[0][2], r3_m[1][2], r3_m[2][2], r_xyz['z'] ],
-                    [          0,          0,          0,          1 ],
-                ])
-                inv_view_matrix = np.linalg.inv(view_matrix)
-                
-                camera_pos = [ inv_view_matrix[0][3], inv_view_matrix[1][3], inv_view_matrix[2][3] ]
-                
-                # FIXME: get the rotation matrix for the camera!
-                
-                print('0: ' + str(camera_pos))
-                
-            
-                
-            else:
-#            if onum == 28:
-
-            
-                #print('object: ' + str(onum) + str(objects_in_u2_engine[onum]))
-                # TODO: 33fps?
-                
-                print('t:' + str("{:.2f}".format(frame_nr/33)) # + ' o: ' + str(onum) 
-                                 + ' x:' + str("{:.2f}".format(objects_in_u2_engine[onum]['x']))
-                                 + ' y:' + str("{:.2f}".format(objects_in_u2_engine[onum]['y']))
-                                 + ' z:' + str("{:.2f}".format(objects_in_u2_engine[onum]['z']))
-                                 + '  [' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][0][0])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][0][1])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][0][2])) + '], '
-                                 + ' [' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][1][0])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][1][1])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][1][2])) + '], '
-                                 + ' [' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][2][0])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][2][1])) + ', ' + str("{:.2f}".format(objects_in_u2_engine[onum]['m'][2][2])) + ']'
-                                 )
-                
-                            
-                # https://help.autodesk.com/view/3DSMAX/2023/ENU/?guid=GUID-BEADCF00-3BBA-4722-9D7D-C07C15F8A33B
-                r3_m = objects_in_u2_engine[onum]['m']
-                r_xyz = objects_in_u2_engine[onum]
-                r_matrix = np.array([
-                    [ r3_m[0][0], r3_m[1][0], r3_m[2][0], r_xyz['x'] ],
-                    [ r3_m[0][1], r3_m[1][1], r3_m[2][1], r_xyz['y'] ],
-                    [ r3_m[0][2], r3_m[1][2], r3_m[2][2], r_xyz['z'] ],
-                    [          0,          0,          0,          1 ],
-                ])
-
-                # FIXME: HARDCODED!
-                # org: {'x': -107.04296875, 'y': -125.140625, 'z': 4.98046875 }
-                ship_coords = np.array([ -107.04296875, -125.140625, 4.98046875, 1 ])
-                
-                new_ship_coords = r_matrix.dot(ship_coords)
-                
-                print('t:' + str("{:.2f} ".format(frame_nr/33)) + str(new_ship_coords.tolist()[0:3]))
-                
-            
-            '''
             
 
             #print('---')
@@ -463,7 +379,7 @@ def parse_object_file(u2_bin, file_name):
             nr_of_words_in_list = int.from_bytes(u2_bin[pos:pos+2], byteorder='little')
             pos += 2
             
-            # FIXME: WHAT IS THIS???? -> a way to quickly sort polygons of an object given a certain camera position/angle, maybe?
+            # TODO: WHAT IS THIS???? -> a way to quickly sort polygons of an object given a certain camera position/angle, maybe?
             sort_polygon_for_this_list = int.from_bytes(u2_bin[pos:pos+2], byteorder='little')
             pos += 2
             

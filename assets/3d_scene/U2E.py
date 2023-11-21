@@ -108,22 +108,7 @@ for frame_nr in range(1,nr_of_frames+1):
         r_matrix_corrected = np.matmul(r_rotate_180_x_matrix, r_matrix)
         
         r_inv = np.linalg.inv(r_matrix_corrected).tolist()
-        #r_inv = np.linalg.inv(r_matrix).tolist()
         
-        #dump(r_inv)
-
-        #r_matrix = [
-        #    [ r3_m[0][0], r3_m[0][1], r3_m[0][2], r_inv[0][3] ],
-        #    [ r3_m[1][0], r3_m[1][1], r3_m[1][2], r_inv[1][3] ],
-        #    [ r3_m[2][0], r3_m[2][1], r3_m[2][2], r_inv[2][3] ],
-        #    [           0,           0,           0,              1 ],
-        #]
-        #r_matrix = [
-        #    [ -r_inv[0][0], -r_inv[0][1], -r_inv[0][2], r_inv[0][3] ],
-        #    [ -r_inv[1][0], -r_inv[1][1], -r_inv[1][2], r_inv[1][3] ],
-        #    [ -r_inv[2][0], -r_inv[2][1], -r_inv[2][2], r_inv[2][3] ],
-        #    [           0,           0,           0,              1 ],
-        #]
         r_matrix = [
             [ r_inv[0][0], r_inv[0][1], r_inv[0][2], r_inv[0][3] ],
             [ r_inv[1][0], r_inv[1][1], r_inv[1][2], r_inv[1][3] ],
@@ -139,12 +124,6 @@ for frame_nr in range(1,nr_of_frames+1):
         #    break
 
                 
-        #rot_angles = obj.matrix_world.to_euler()
-        #rot = obj.rotation_euler
-        #rot.x = math.pi - rot.x
-        #obj.rotation_euler = rot
-        #print()
-
         obj.keyframe_insert(data_path="location", frame=frame_nr)
         obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr)
         
