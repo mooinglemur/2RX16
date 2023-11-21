@@ -52,6 +52,16 @@ def load_city_object_file():
         up_axis='Z')
 
 
+def load_object_names_file():
+    object_names_file_to_import = "U2E_object_names.json"
+    print('- Importing the objects names file: ' + object_names_file_to_import)
+    obj_names_file_name = os.path.join(base_dir, object_names_file_to_import)
+    obj_names_file = open(obj_names_file_name, mode='r')
+    object_nr_to_name = json.loads(obj_names_file.read())
+    obj_names_file.close()
+
+    return object_nr_to_name
+
 def load_animation_file():
     animation_file_to_import = "U2E_animation.json"
     print('- Importing the animation file: ' + animation_file_to_import)
@@ -60,19 +70,14 @@ def load_animation_file():
     objects_xyz_and_matrix_per_frame = json.loads(anim_file.read())
     anim_file.close()
 
-    # FIXME: get this from a source!
-    object_nr_to_name = {
-        '0' : 'Camera',
-        '28' : '"s01"',
-    }
-    
-    return (object_nr_to_name, objects_xyz_and_matrix_per_frame)
+    return objects_xyz_and_matrix_per_frame
 
 cls()
 
 clean_scene()
 load_city_object_file()
-(object_nr_to_name, objects_xyz_and_matrix_per_frame) = load_animation_file()
+objects_xyz_and_matrix_per_frame = load_animation_file()
+object_nr_to_name = load_object_names_file()
 
 nr_of_frames = 1800
 bpy.context.scene.frame_end = nr_of_frames
@@ -129,7 +134,7 @@ for frame_nr in range(1,nr_of_frames+1):
         
 
     # All other objects
-    for object_nr in range(28,29):
+    for object_nr in range(58):
 
         #dump(objects_xyz_and_matrix_per_frame[str(frame_nr)])
 

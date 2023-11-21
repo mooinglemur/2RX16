@@ -49,8 +49,7 @@ def parse_animation_file(u2_bin, nr_of_objects):
     
     # We need to keep track of the ORIGINAL matrices and xyz
     objects_in_u2_engine = {}
-    # Note: +1 because of the camera at index 0
-    for i in range(nr_of_objects+1):
+    for i in range(nr_of_objects):
         objects_in_u2_engine[i] = copy.deepcopy(default_invisible_object)
 
     # We also need to keep track of the OUTPUT object matrices and xyz's. We do this for each frame! (and only when something changes)
@@ -424,9 +423,10 @@ def parse_material_file(u2_material_binary):
     objects_and_material_info['nr_of_objects'] = nr_of_objects
     
     object_file_indexes = []
-    object_index = 0
-    # TODO: its a bit weird we have to do -1 here.
-    while (object_index < nr_of_objects-1):
+    # Object index 0 is the camera, but this doesnt have a file index, so we set it to None
+    object_file_indexes.append(None)
+    object_index = 1 # Since we added the camera, we start at index 1
+    while (object_index < nr_of_objects):
         object_file_index = int.from_bytes(u2_bin[pos:pos+2], byteorder='little')
         pos+=2
         object_file_indexes.append(object_file_index)
@@ -478,7 +478,7 @@ u2_material_binary = u2_material_file.read()
 u2_material_file.close()
 objects_and_material_info = parse_material_file(u2_material_binary)
 
-nr_of_objects = objects_and_material_info['nr_of_objects']  # This does *not* include the camera!
+nr_of_objects = objects_and_material_info['nr_of_objects']  # This includes the camera!
 
 # FIXME: we need MATERIAL *NAMES*!!
 # FIXME: we need MATERIAL *NAMES*!!
@@ -500,9 +500,14 @@ objs_text += "s off\n"
 vertex_index_start = 1
 
 subnr_per_object_file_index = {}
-object_index_to_name = []
+object_nr_to_name = {}
 
 for (object_index, object_file_index) in enumerate(objects_and_material_info['object_file_indexes']):
+    
+    if object_file_index is None:
+        # The camera has no file, so we skip it
+        object_nr_to_name[str(object_index)] = 'Camera'
+        continue
     
     object_file_name = scene_name +'.' + "{:03d}".format(object_file_index)
     full_object_file_name = os.path.join(scene_dir, object_file_name)
@@ -522,7 +527,7 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
         subnr_per_object_file_index[object_file_index] += 1
         u2_object['name'] = u2_object['name'] + '_' + str(subnr_per_object_file_index[object_file_index])
     
-    object_index_to_name.append(u2_object['name'])
+    object_nr_to_name[str(object_index)] = u2_object['name']
     
     #if (u2_object['name'] == '"s01"'):
     #    print(u2_object['vertices'])
@@ -536,7 +541,7 @@ with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
     obj_file.write(objs_text)
     
 with open("../assets/3d_scene/" + scene_name + "_object_names.json", "w") as object_names_file:
-    object_names_file.write(json.dumps(object_index_to_name, indent=4))
+    object_names_file.write(json.dumps(object_nr_to_name, indent=4))
 
     
 # ------------------ ANIMATION --------------------
