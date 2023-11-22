@@ -164,6 +164,7 @@ def parse_animation_file(u2_bin, nr_of_objects):
             }
             
             # TODO: by how MUCH do we have to divide here? /256?
+# FIXME: we might USE THE ORIGINAL int values here, to increase PRECISION!            
             divider_pos = 256
 
             (x_delta, incr_pos) = lsget (pflag, u2_bin, pos)
@@ -181,6 +182,7 @@ def parse_animation_file(u2_bin, nr_of_objects):
                 pos += incr_pos
                 delta['z'] = z_delta/divider_pos
 
+# FIXME: we might USE THE ORIGINAL int values here, to increase PRECISION!            
             divider_matrix = 256*64
             
             if(pflag&0x40):
@@ -271,6 +273,7 @@ def parse_object_file(u2_bin):
             vertices = []
             for vert_index in range(nr_of_vertices):
             
+# FIXME: we might USE THE ORIGINAL int values here, to increase PRECISION!            
                 # FIXME: by what do we have to divide this? -> if we compare the ship.obj with the city.obj (which we generate here) maybe 300-350?
                 x = int.from_bytes(u2_bin[pos:pos+4], byteorder='little', signed=True)/256
                 pos += 4
@@ -298,6 +301,7 @@ def parse_object_file(u2_bin):
             
             normals = []
             for norm_index in range(nr_of_normals):
+# FIXME: we might USE THE ORIGINAL int values here, to increase PRECISION!            
                 x = int.from_bytes(u2_bin[pos:pos+2], byteorder='little', signed=True)/16384
                 pos += 2
                 y = int.from_bytes(u2_bin[pos:pos+2], byteorder='little', signed=True)/16384
@@ -332,9 +336,23 @@ def parse_object_file(u2_bin):
                 
                 sides = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
                 pos += 1
-                # FIXME: we probably want to extract the individual bits from this flag-byte!
                 flags = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
                 pos += 1
+                
+                # FIXME: we probably want to extract the individual bits from this flag-byte!
+                # flags for objects & faces (lower 8 bits in face flags are the side number) */
+                    #define F_DEFAULT	0xf001	/* for objects only - all enabled, visible */
+                    #define F_VISIBLE	0x0001	/* object visible */
+                    #define F_FLIP		0x0100
+                    #define F_2SIDE		0x0200
+                    #define F_SHADE8	0x0400	/* only one shade can be selected at a time */
+                    #define F_SHADE16	0x0800
+                    #define F_SHADE32	0x0C00
+                    #define F_GOURAUD	0x1000
+                    #define F_TEXTURE	0x2000
+                
+                # FIXME: We might need to implement FLIPPING an object?
+                
                 color_index = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
                 pos += 1
                 # RESERVED
@@ -434,31 +452,27 @@ def parse_material_file(u2_material_binary):
         
     objects_and_material_info['object_file_indexes'] = object_file_indexes
     
-    
-    # FIXME: read the palette!
-    # FIXME: read the palette!
-    # FIXME: read the palette!
-    
-    # Note that the last two colors (254 and 255) are WHITE and BLACK! (see U2E.C)
-    
-    # QUESTION: how did the original engine know long the color range would be? 16 or 32 colors?
-    # ANSWER: its in the flags of the objects!
-    
-        # flags for objects & faces (lower 8 bits in face flags are the side number) */
-        #define F_DEFAULT	0xf001	/* for objects only - all enabled, visible */
-        #define F_VISIBLE	0x0001	/* object visible */
-        #define F_FLIP		0x0100
-        #define F_2SIDE		0x0200
-        #define F_SHADE8	0x0400	/* only one shade can be selected at a time */
-        #define F_SHADE16	0x0800
-        #define F_SHADE32	0x0C00
-        #define F_GOURAUD	0x1000
-        #define F_TEXTURE	0x2000
+    # Read the palette (3 * 256 bytes: each byte contains 6-bits of R, G and B)
+    pos = 16
+    palette_colors = []
+    for color_index in range(256):
         
-    # FIXME: We might need to implement FLIPPING an object?
-    
-    
+        red = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
+        pos += 1
+        green = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
+        pos += 1
+        blue = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
+        pos += 1
 
+        # FIXME: should we convert the 6-bits to 4-bits here ALREADY? Or do we do this later?
+        rgb_color = { 'r': red, 'g': green, 'b': blue }
+        
+        # FIXME: the last FOUR colors (252, 253, 254 and 255) are WHITE and BLACK! (see U2E.C)
+        
+        palette_colors.append(rgb_color)
+    
+    objects_and_material_info['palette_colors'] = palette_colors
+    
     return objects_and_material_info
 
 
@@ -489,6 +503,42 @@ def generate_obj_text_for_u2_object(u2_object, vertex_index_start):
     return (obj_text, nr_of_vertices)
 
 
+def parse_mat_file(u2_mat_file):
+
+    #  Note: U2C uses these starting-color-indexes (based on color_index of parsed objects):
+    #        0, 8, 16, 32, 64, 96, 128, 192, 208
+    #  Note: U2A uses these starting-color-indexes (based on color_index of parsed objects):
+    #        0, 4?, 32, 64, 96, 128
+    
+    materials_by_color_index = {}
+    
+    lines = u2_mat_file.readlines()
+    
+    for line_raw in lines:
+        line = line_raw.strip()
+        
+        if (line == ''):
+            continue
+        elif line.startswith(';'):
+            continue
+        else:
+            line_parts = line.split()
+            
+            name = line_parts[0]
+            start_color_index = int(line_parts[1])
+            fade_length = int(line_parts[2][1:])
+            # FIXME: check if line_parts[3] exists: gouraud = line_parts[3]
+
+            if (start_color_index not in materials_by_color_index):
+                materials_by_color_index[start_color_index] = {}
+    
+            materials_by_color_index[start_color_index][fade_length] = {
+                'name' : name
+            }
+                
+    return materials_by_color_index
+    
+
 # ------------------ MATERIAL --------------------
 
 full_material_file_name = os.path.join(scene_dir, scene_name +'.00M')
@@ -499,14 +549,20 @@ objects_and_material_info = parse_material_file(u2_material_binary)
 
 nr_of_objects = objects_and_material_info['nr_of_objects']  # This includes the camera!
 
-# FIXME: we need MATERIAL *NAMES*!!
-# FIXME: we need MATERIAL *NAMES*!!
-# FIXME: we need MATERIAL *NAMES*!!
-print(objects_and_material_info)
+# Note the original engine knew long the color range would be (16 or 32) using flags of the objects
+# We try to use the contents of the .MAT file instead
+full_mat_file_name = os.path.join(scene_dir, scene_name +'.MAT')
+u2_mat_file = open(full_mat_file_name, 'r')
+mat_info = parse_mat_file(u2_mat_file)
+u2_mat_file.close()
 
-# FIXME: GENERATE MTL FILE!
-# FIXME: GENERATE MTL FILE!
-# FIXME: GENERATE MTL FILE!
+objects_and_material_info['mat_info'] = mat_info
+
+#print(objects_and_material_info)
+
+with open("../assets/3d_scene/" + scene_name + "_material.json", "w") as material_file:
+    material_file.write(json.dumps(objects_and_material_info, indent=4))
+
 
 # ------------------ OBJECT DATA --------------------
 
@@ -537,6 +593,7 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
     u2_object_binary = u2_object_file.read()
     u2_object_file.close()
     
+# FIXME: pass the MATERIAL names and the PALETTE here?
     u2_object = parse_object_file(u2_object_binary)
     
     if (object_file_index not in subnr_per_object_file_index):
@@ -558,6 +615,11 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
     
 with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
     obj_file.write(objs_text)
+    
+    
+# FIXME: add color_index and color_length to object_names file!
+# FIXME: add color_index and color_length to object_names file!
+# FIXME: add color_index and color_length to object_names file!
     
 with open("../assets/3d_scene/" + scene_name + "_object_names.json", "w") as object_names_file:
     object_names_file.write(json.dumps(object_nr_to_name, indent=4))
