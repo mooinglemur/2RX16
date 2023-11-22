@@ -439,6 +439,25 @@ def parse_material_file(u2_material_binary):
     # FIXME: read the palette!
     # FIXME: read the palette!
     
+    # Note that the last two colors (254 and 255) are WHITE and BLACK! (see U2E.C)
+    
+    # QUESTION: how did the original engine know long the color range would be? 16 or 32 colors?
+    # ANSWER: its in the flags of the objects!
+    
+        # flags for objects & faces (lower 8 bits in face flags are the side number) */
+        #define F_DEFAULT	0xf001	/* for objects only - all enabled, visible */
+        #define F_VISIBLE	0x0001	/* object visible */
+        #define F_FLIP		0x0100
+        #define F_2SIDE		0x0200
+        #define F_SHADE8	0x0400	/* only one shade can be selected at a time */
+        #define F_SHADE16	0x0800
+        #define F_SHADE32	0x0C00
+        #define F_GOURAUD	0x1000
+        #define F_TEXTURE	0x2000
+        
+    # FIXME: We might need to implement FLIPPING an object?
+    
+    
 
     return objects_and_material_info
 
