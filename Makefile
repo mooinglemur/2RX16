@@ -13,19 +13,44 @@ OBJ		:= ./obj
 SRCS	:= $(wildcard $(SRC)/*.s)
 OBJS    := $(patsubst $(SRC)/%.s,$(OBJ)/%.o,$(SRCS))
 EXE		:= $(call UC,$(PROJECT).PRG)
+EXE2	:= ./SECOND.PRG
 SDCARD	:= ./sdcard.img
 MAPFILE := ./$(PROJECT).map
 SYMFILE := ./$(PROJECT).sym
+
+ifdef ASSETBLOB
+	ASFLAGS += -D ASSETBLOB=1
+endif
+
 
 default: all
 
 all: $(EXE)
 
+blob: $(EXE2)
+
+$(EXE2):
+	make clean
+	make all
+	(cd scripts; ./create-blob-offsets.py)
+	rm -f blob.tmp
+	# keep building until the loadfile blob is consistent
+	# it seems to take three passes to do so
+	until diff -q blob.tmp src/blob_loadfile.inc; do \
+		cp -v src/blob_loadfile.inc blob.tmp ; \
+		make clean ; \
+		ASSETBLOB=1 make all ; \
+		(cd scripts; ./create-blob-offsets.py) ; \
+		diff -q blob.tmp src/blob_loadfile.inc ; \
+	done
+	rm -f blob.tmp
+	mv -v $(EXE) $(EXE2)
+	
 $(EXE): $(OBJS) $(CONFIG)
 	$(LD) $(LDFLAGS) $(OBJS) -m $(MAPFILE) -Ln $(SYMFILE) extern/zsmkit.lib -o $@ 
 	cp -v $(EXE) ROOT/
 
-$(OBJ)/%.o: $(SRC)/%.s | $(OBJ)
+$(OBJ)/%.o: $(SRC)/%.s $(SRC)/*.inc | $(OBJ)
 	$(AS) $(ASFLAGS) $< -o $@
 
 $(OBJ):
@@ -40,7 +65,7 @@ $(SDCARD): $(EXE)
 
 .PHONY: clean run
 clean:
-	$(RM) $(EXE) $(OBJS) $(SDCARD) $(MAPFILE) $(SYMFILE) ROOT/*.BIN ROOT/*.PRG
+	$(RM) $(EXE) $(EXE2) $(OBJS) $(SDCARD) $(MAPFILE) $(SYMFILE) ROOT/*.BIN ROOT/*.PRG
 
 box: $(EXE) $(SDCARD)
 	box16 -sdcard $(SDCARD) -prg $(EXE) -run -ram 1024
