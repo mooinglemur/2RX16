@@ -2,5 +2,7 @@ ROOT/*.BIN
 *.PRG
 *.map
 *.sym
+*.X16
 obj/
 sdcard.img
+sdcard2.img
