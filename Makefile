@@ -41,7 +41,6 @@ $(EXE2):
 		make clean ; \
 		ASSETBLOB=1 make all ; \
 		(cd scripts; ./create-blob-offsets.py) ; \
-		diff -q blob.tmp src/blob_loadfile.inc ; \
 	done
 	rm -f blob.tmp
 	mv -v $(EXE) $(EXE2)
