@@ -4,5 +4,6 @@ ROOT/*.BIN
 *.sym
 *.X16
 obj/
+src/blob_loadfile.inc
 sdcard.img
 sdcard2.img
