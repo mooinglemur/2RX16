@@ -56,7 +56,7 @@ clock=pygame.time.Clock()
 
 # Set up the display
 screen_width, screen_height = 320, 200
-screen = pygame.display.set_mode((screen_width, screen_height))
+screen = pygame.display.set_mode((screen_width*3, screen_height*3))
 pygame.display.set_caption("3D Scene")
 
 
@@ -79,7 +79,7 @@ def load_vertices_and_faces(frame_nr):
     #  - File->Export->Wavefront (obj)
     #  - Forward Axis: Y
     #  - Upward Axis: Z
-    #  - Select: Normals, Triangulated Mesh, Materials (Export)
+    #  - Select: Normals, Triangulated Mesh, Materials->Export
     #  - TODO: also export Animation
     
     # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
@@ -423,6 +423,7 @@ def advance_cube():
     for face in sorted_visible_faces:
 
         # find angle relative to Z axis
+        '''
 # FIXME: clean this up!
         vert1 = np.array([unscaled_rotated_vertices[face['vertex_indices'][0]][0],unscaled_rotated_vertices[face['vertex_indices'][0]][1],unscaled_rotated_vertices[face['vertex_indices'][0]][2]])
         vert2 = np.array([unscaled_rotated_vertices[face['vertex_indices'][1]][0],unscaled_rotated_vertices[face['vertex_indices'][1]][1],unscaled_rotated_vertices[face['vertex_indices'][1]][2]])
@@ -445,23 +446,31 @@ def advance_cube():
 
         print(f"Angle relative to the light source: {angle_deg} degrees")
         
-        
 # FIXME!        color_idx = (face['color_index'] % 2) + (2*int(angle_deg/15))
+        '''
+        
         color_idx = face['color_index']
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
 
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         
+        # The vertices are y-flipped and scaled up for the screen
         for rotated_vertex in projected_vertices:
             y_flipped_vertex = [
-                rotated_vertex[0],
-                screen_height - rotated_vertex[1],
+                rotated_vertex[0]*3,
+                (screen_height - rotated_vertex[1])*3,
             ]
             y_flipped_projected_vertices.append(y_flipped_vertex)
         
+# FIXME!
+        #if (color_idx != 7):
+        #    continue
+            
         pygame.draw.polygon(screen, colors[color_idx], [y_flipped_projected_vertices[i] for i in face_vertex_indices], 0)
         
+# FIXME!
+        continue
         
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
@@ -709,8 +718,8 @@ running = True
 f = open("trilist.bin", "wb")
 
 frame_nr = 1
-#increment_frame_by = 0
-increment_frame_by = 1
+increment_frame_by = 0
+#increment_frame_by = 1
 max_frame_nr = 100
 
 while running:
