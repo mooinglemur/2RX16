@@ -250,14 +250,16 @@ def transform_objects_into_view_space(objects, camera_info):
 
     # Careful with numpy issues: https://stackoverflow.com/questions/21562986/numpy-matrix-vector-multiplication
     
+    # -
+    
+    # Note: we are a bit lazy here and do this in two steps (not efficient)
+    #       we first translate (aka move) the vertices (*not* the normals btw) so that the camera is at 0,0
+    #       then we only have to rotate all objects so the camera points in the negative Z direction.
+    #       this simplifies our view-matrix
+    
     cam_x = camera_info['pos'][0]
     cam_y = camera_info['pos'][1]
     cam_z = camera_info['pos'][2]
-    
-    # FIXME: we are a bit lazy here and do this in two steps (not efficient)
-    #        we first translate (aka move) everything so that the camera is at 0,0
-    #        then we only have to rotate all objects so the camera points in the negative Z direction.
-    #        this simplifies our view-matrix
     
     for current_object_name in objects:
         current_object = objects[current_object_name]
@@ -267,19 +269,13 @@ def transform_objects_into_view_space(objects, camera_info):
             old_z = current_object['vertices'][idx][2]
             current_object['vertices'][idx] = (old_x - cam_x, old_y - cam_y, old_z - cam_z)
             
+            
     # We now construct a view-matrix (but without the translation part, making it a bit simpler)
-    #  (See Javidx9 video for naming of these variables)
-    up_dir = camera_info['up_dir']
-# FIXME: naming!
-    target = camera_info['looking_dir']  # current point_at - camera_pos (0,0,0)??
-    pos = [0, 0, 0]      # current camera_pos (0,0,0)
-
-# FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
-# FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
-# FIXME: is this correct? Why is z POSITIVE for all vertices, even though the camera should be looking at NEGATIVE z?
-#    new_forward = target # target - pos (0,0,0) - Note: this is already NORMALIZED!
-    new_forward = np.negative(target) # target - pos (0,0,0) - Note: this is already NORMALIZED!
+    #  (See Javidx9 video #3 about this)
     
+    up_dir = camera_info['up_dir']
+    looking_dir = camera_info['looking_dir']
+    new_forward = np.negative(looking_dir)  # I think we need to negate because we want the forward direction (of the camera) to be *negative* Z
     
     up_dot_forward = np.dot(np.array(up_dir), np.array(new_forward))
     a = np.array(new_forward) * up_dot_forward
@@ -297,21 +293,22 @@ def transform_objects_into_view_space(objects, camera_info):
     # We transform all vertices by the view_matrix
     for current_object_name in objects:
         current_object = objects[current_object_name]
+        
+        # Vertices
         for idx, vertex in enumerate(current_object['vertices']):
             old_vertex = np.array(current_object['vertices'][idx])
             current_object['vertices'][idx] = view_matrix.dot(old_vertex)
             
-# FIXME: ALSO DO THE NORMALS!
-# FIXME: ALSO DO THE NORMALS!
-# FIXME: ALSO DO THE NORMALS!
-# FIXME: ALSO DO THE NORMALS!
-# FIXME: ALSO DO THE NORMALS!
-# FIXME: ALSO DO THE NORMALS!
-    
+        # Normals
+        for idx, normal in enumerate(current_object['normals']):
+            old_normal = np.array(current_object['normals'][idx])
+            current_object['normals'][idx] = view_matrix.dot(old_normal)
     
     
 
+# FIXME: calculate the scale differently!
 scale = 37
+
 center_offset = (screen_width // 2, screen_height // 2)
 
 # FIXME: we should use objects that have vertices and faces (and bounding boxes)
@@ -334,7 +331,7 @@ def slope2bytes(slope):
     b1[1] |= x32
     return b1
 
-def advance_cube():
+def project_light_draw_and_export():
 
     def face_sorter(item):
         return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
@@ -358,16 +355,14 @@ def advance_cube():
         new_y = y
         new_z = z
 
-# FIXME: what should we do here?
-# FIXME: what should we do here?
-# FIXME: what should we do here?
-        #z_ratio = (1-camera[2]) / (new_z + camera[2]) # camera position
-# FIXME: -z??
-        z_ratio = 1/-new_z
+        # FIXME: we should use a ~42? degree FOV!
+        
+        # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
+        z_ratio = 1 / -new_z
 
-# FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-# FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-# FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+        # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+        # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+        # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
 
         new_x *= (z_ratio*6)
         new_y *= (z_ratio*6)
@@ -773,14 +768,15 @@ while running:
     '''
     
     #print(objects)
-    #exit()
+# FIXME!
+#    exit()
 
     # FIXME: this is a temporary workaround. We should get all objects but the camera here!
     vertices = objects['Cube']['vertices']
     faces = objects['Cube']['faces']
 
     screen.fill(BLACK)
-    tris_seen = advance_cube()
+    tris_seen = project_light_draw_and_export()
     if tris_seen:
         f.write(b'\xff') # end of frame
 
