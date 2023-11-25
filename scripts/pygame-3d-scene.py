@@ -233,7 +233,7 @@ def get_camera_info_from_camera_box(camera_box):
     return camera_info
 
 
-def transform_objects_into_view_space(objects, camera_info):
+def transform_objects_into_view_space(world_objects, camera_info):
 
     # More info on: Model space, World space, View/Camera space, Projection Space:
     #   http://www.codinglabs.net/article_world_view_projection_matrix.aspx
@@ -254,15 +254,15 @@ def transform_objects_into_view_space(objects, camera_info):
     
     # Note: we are a bit lazy here and do this in two steps (not efficient)
     #       we first translate (aka move) the vertices (*not* the normals btw) so that the camera is at 0,0
-    #       then we only have to rotate all objects so the camera points in the negative Z direction.
+    #       then we only have to rotate all world_objects so the camera points in the negative Z direction.
     #       this simplifies our view-matrix
     
     cam_x = camera_info['pos'][0]
     cam_y = camera_info['pos'][1]
     cam_z = camera_info['pos'][2]
     
-    for current_object_name in objects:
-        current_object = objects[current_object_name]
+    for current_object_name in world_objects:
+        current_object = world_objects[current_object_name]
         for idx, vertex in enumerate(current_object['vertices']):
             old_x = current_object['vertices'][idx][0]
             old_y = current_object['vertices'][idx][1]
@@ -291,29 +291,56 @@ def transform_objects_into_view_space(objects, camera_info):
     ])
 
     # We transform all vertices by the view_matrix
-    for current_object_name in objects:
-        current_object = objects[current_object_name]
+    view_objects = {}
+    for current_object_name in world_objects:
+        world_object = world_objects[current_object_name]
+        view_object = copy.deepcopy(world_objects[current_object_name])
         
         # Vertices
-        for idx, vertex in enumerate(current_object['vertices']):
-            old_vertex = np.array(current_object['vertices'][idx])
-            current_object['vertices'][idx] = view_matrix.dot(old_vertex)
+        for idx, vertex in enumerate(world_object['vertices']):
+            world_vertex = np.array(world_object['vertices'][idx])
+            view_object['vertices'][idx] = view_matrix.dot(world_vertex)
             
         # Normals
-        for idx, normal in enumerate(current_object['normals']):
-            old_normal = np.array(current_object['normals'][idx])
-            current_object['normals'][idx] = view_matrix.dot(old_normal)
+        for idx, normal in enumerate(world_object['normals']):
+            world_normal = np.array(world_object['normals'][idx])
+            view_object['normals'][idx] = view_matrix.dot(world_normal)
+            
+        view_objects[current_object_name] = view_object
+        
+    return view_objects
     
     
+def cull_objects(view_objects):
+
+    culled_view_objects = {}
+    
+    for current_object_name in view_objects:
+    
+        view_object = view_objects[current_object_name]
+        culled_view_object = copy.deepcopy(view_object)
+        
+        culled_view_object['faces'] = []
+        
+        for face in view_object['faces']:
+           
+            # FIXME: add LOGIC here!
+            if face['color_index'] == 7:
+                continue
+        
+            culled_view_object['faces'].append(face)
+        
+        culled_view_objects[current_object_name] = culled_view_object
+    
+    return culled_view_objects
+
+
+
 
 # FIXME: calculate the scale differently!
 scale = 37
 
 center_offset = (screen_width // 2, screen_height // 2)
-
-# FIXME: we should use objects that have vertices and faces (and bounding boxes)
-vertices = []
-faces = []
 
 # FIXME: REMOVE or set to 0,0,0!
 camera = (0, 0, 6)
@@ -331,7 +358,7 @@ def slope2bytes(slope):
     b1[1] |= x32
     return b1
 
-def project_light_draw_and_export():
+def project_light_draw_and_export(vertices, faces):
 
     def face_sorter(item):
         return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
@@ -726,23 +753,23 @@ while running:
             #if event.key == pygame.K_RIGHT:
             #    increment_frame_by = 1
 
-    objects = load_vertices_and_faces(frame_nr)
+    world_objects = load_vertices_and_faces(frame_nr)
 
-    camera_box = objects['CameraBox']
+    camera_box = world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
-
-    transform_objects_into_view_space(objects, camera_info)
     
+    # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
+    view_objects = transform_objects_into_view_space(world_objects, camera_info)
+
+    culled_view_objects = cull_objects(view_objects)
+
     '''
      === Implement this ===
     
-    # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and direction becomes 0,0,-1 (+up = 0,1,0)
-    objects_in_view_space = transform_objects_into_view_space(objects, camera_info)
-
     # Backface cull where face/triangle-normal points away from camera
     # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
     # Clip 4 sides of the camera -> creating NEW triangles!
-    culled_and_clipped_triangles = cull_and_clip_objects_into_visible_triangles(objects_in_view_space, camera_info)
+    culled_and_clipped_triangles = cull_and_clip_objects_into_visible_triangles(view_objects, camera_info)
 
     # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
     lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
@@ -767,16 +794,16 @@ while running:
     export_projected_triangles(minimized_projected_triangles)
     '''
     
-    #print(objects)
+    #print(world_objects)
 # FIXME!
 #    exit()
 
     # FIXME: this is a temporary workaround. We should get all objects but the camera here!
-    vertices = objects['Cube']['vertices']
-    faces = objects['Cube']['faces']
+    vertices = culled_view_objects['Cube']['vertices']
+    faces = culled_view_objects['Cube']['faces']
 
     screen.fill(BLACK)
-    tris_seen = project_light_draw_and_export()
+    tris_seen = project_light_draw_and_export(vertices, faces)
     if tris_seen:
         f.write(b'\xff') # end of frame
 
