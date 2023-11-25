@@ -311,7 +311,7 @@ def transform_objects_into_view_space(world_objects, camera_info):
     return view_objects
     
     
-def cull_objects(view_objects):
+def cull_faces_of_objects(view_objects):
 
     culled_view_objects = {}
     
@@ -324,8 +324,15 @@ def cull_objects(view_objects):
         
         for face in view_object['faces']:
            
-            # FIXME: add LOGIC here!
-            if face['color_index'] == 7:
+            # We need to check whether a face of an object is facing away from the camera. If it is, we should remove it.
+            # We do this check by doing the dot-product with the normal of the face and the direction of any vertex of that face (from the camera, which is at 0,0,0)
+            face_normal = np.array(view_object['normals'][face['normal_index']])
+            first_vertex = np.array(view_object['vertices'][face['vertex_indices'][0]])
+            normalized_vector_towards_first_vertex = first_vertex / np.linalg.norm(first_vertex)
+            dot_product = np.dot(normalized_vector_towards_first_vertex, face_normal)
+            
+            # When it is facing away form the camera, we cull it
+            if dot_product > 0:
                 continue
         
             culled_view_object['faces'].append(face)
@@ -761,7 +768,7 @@ while running:
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
-    culled_view_objects = cull_objects(view_objects)
+    culled_view_objects = cull_faces_of_objects(view_objects)
 
     '''
      === Implement this ===
