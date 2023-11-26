@@ -419,12 +419,44 @@ def project_objects(view_objects, camera_info):
 
             projected_vertices.append((round(x_proj), round(y_proj)))
             
-        projected_object['projected_vertices'] = projected_vertices
+        projected_object['vertices'] = projected_vertices
         
         projected_objects[current_object_name] = projected_object
         
     return projected_objects
     
+def clip_face_against_edge(non_clipped_face, non_clipped_vertices, edge_name):
+    clipped_faces = []
+    clipped_vertices = []
+
+    # FIXME: add logic checking against an EDGE! 0, 1 or 2 edges as output!
+    # FIXME: add logic checking against an EDGE! 0, 1 or 2 edges as output!
+    # FIXME: add logic checking against an EDGE! 0, 1 or 2 edges as output!
+    
+    # FIXME: use edge_name!
+    # FIXME: use edge_name!
+    # FIXME: use edge_name!
+
+    new_clipped_face = copy.deepcopy(non_clipped_face)
+    new_clipped_face['vertex_indices'] = []
+    current_vertex_index = 0
+    for vertex_index in non_clipped_face['vertex_indices']:
+        non_clipped_vertex = non_clipped_vertices[vertex_index]
+        
+        clipped_vertex = copy.deepcopy(non_clipped_vertex)
+        
+        # FIXME: we need to adjust this vertex!
+        
+        clipped_vertices.append(clipped_vertex)
+        
+        new_clipped_face['vertex_indices'].append(current_vertex_index)
+        current_vertex_index += 1
+        
+    # FIXME: we might need to add 0, 1 or 2!
+    clipped_faces.append(new_clipped_face)
+
+    return (clipped_faces, clipped_vertices)
+
 
 def camera_clip_projected_objects(projected_objects, camera_info):
 
@@ -434,9 +466,51 @@ def camera_clip_projected_objects(projected_objects, camera_info):
         projected_object = projected_objects[current_object_name]
         camera_clipped_projected_object = copy.deepcopy(projected_object)
         
-        # FIXME: implement this!
-        # FIXME: implement this!
-        # FIXME: implement this!
+        camera_clipped_projected_object['faces'] = []
+        camera_clipped_projected_object['vertices'] = []
+        
+        non_clipped_vertices = projected_object['vertices']
+
+# FIXME: maybe we should work with clipped EDGES first? -> these get replaced ONCE
+#        replaced_edges_by_vertex_indices = {}
+# FIDME: whenever you want to replace an edge, (by replacing one of the vertexes) you first check if its already in this list?
+        
+        # We determine -for each face in the object- whether it should be clipped against the edges of the screen
+        for non_clipped_face in projected_object['faces']:
+# FIXME: REMOVE!
+            #non_clipped_face_vertex_indices = non_clipped_face['vertex_indices']
+            
+# FIXME: REMOVE!
+            #vertex1 = view_vertices[non_clipped_face_vertex_indices[0]]
+            #vertex2 = view_vertices[non_clipped_face_vertex_indices[1]]
+            #vertex3 = view_vertices[non_clipped_face_vertex_indices[2]]
+            
+# FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
+
+# FIXME: iterate over LEFT/TOP/RIGHT/BOTTOM edge!
+            edge_name = 'LEFT'
+            (clipped_faces, clipped_vertices) = clip_face_against_edge(non_clipped_face, non_clipped_vertices, edge_name)
+            
+            old_nr_of_vertices = len(camera_clipped_projected_object['vertices'])
+            camera_clipped_projected_object['vertices'] += clipped_vertices
+            for clipped_face in clipped_faces:
+                # The vertex indices in this face have to be adjusted, since the vertices has just been added to a larger list
+                # of vertices. So we adjust the vertice_indexes accordingly
+                
+                clipped_face['vertex_indices'][0] += old_nr_of_vertices
+                clipped_face['vertex_indices'][1] += old_nr_of_vertices
+                clipped_face['vertex_indices'][2] += old_nr_of_vertices
+            
+                camera_clipped_projected_object['faces'].append(clipped_face)
+                
+        
+        print(projected_object['faces'])
+        print(projected_object['vertices'])
+        print()
+        print(camera_clipped_projected_object['faces'])
+        print(camera_clipped_projected_object['vertices'])
+        
+        # FIXME: iterate over all SCREEN EDGE and feed it the NEW list each time!
         
         camera_clipped_projected_objects[current_object_name] = camera_clipped_projected_object
     
@@ -812,6 +886,7 @@ while running:
 
     camera_box = world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
+    del world_objects['CameraBox']
     
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
@@ -865,7 +940,7 @@ while running:
 #    exit()
 
     # FIXME: this is a temporary workaround. We should get all objects but the camera here!
-    projected_vertices = camera_clipped_projected_objects['Cube']['projected_vertices']
+    projected_vertices = camera_clipped_projected_objects['Cube']['vertices']
     faces = camera_clipped_projected_objects['Cube']['faces']
 
     screen.fill(BLACK)
