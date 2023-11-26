@@ -424,7 +424,24 @@ def project_objects(view_objects, camera_info):
         projected_objects[current_object_name] = projected_object
         
     return projected_objects
-            
+    
+
+def camera_clip_projected_objects(projected_objects, camera_info):
+
+    camera_clipped_projected_objects = {}
+    
+    for current_object_name in projected_objects:
+        projected_object = projected_objects[current_object_name]
+        camera_clipped_projected_object = copy.deepcopy(projected_object)
+        
+        # FIXME: implement this!
+        # FIXME: implement this!
+        # FIXME: implement this!
+        
+        camera_clipped_projected_objects[current_object_name] = camera_clipped_projected_object
+    
+    return camera_clipped_projected_objects
+    
 
 def slope2bytes(slope):
     x1 = (slope / 2)
@@ -803,6 +820,7 @@ while running:
     culled_view_objects = cull_faces_of_objects(view_objects)
     
     # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
+# FIXME: implement this!
     z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
     
     # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
@@ -810,12 +828,14 @@ while running:
     
     # Project all vertices to screen-space
     projected_objects = project_objects(z_clipped_view_objects, camera_info)
+    
+    # Clip 4 sides of the camera -> creating NEW triangles!
+# FIXME: implement this!
+    camera_clipped_projected_objects = camera_clip_projected_objects(projected_objects, camera_info)
 
     '''
      === Implement this ===
     
-    # Clip 4 sides of the camera -> creating NEW triangles!
-    camera_clipped_triangles = camera_clip_objects(view_objects, camera_info)
 
     # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
     lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
@@ -845,8 +865,8 @@ while running:
 #    exit()
 
     # FIXME: this is a temporary workaround. We should get all objects but the camera here!
-    projected_vertices = projected_objects['Cube']['projected_vertices']
-    faces = projected_objects['Cube']['faces']
+    projected_vertices = camera_clipped_projected_objects['Cube']['projected_vertices']
+    faces = camera_clipped_projected_objects['Cube']['faces']
 
     screen.fill(BLACK)
     tris_seen = light_draw_and_export(projected_vertices, faces)
