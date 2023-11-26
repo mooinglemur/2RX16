@@ -341,7 +341,21 @@ def cull_faces_of_objects(view_objects):
     
     return culled_view_objects
 
+def z_clip_faces_of_objects (view_objects):
 
+    z_clipped_view_objects = {}
+    
+    for current_object_name in view_objects:
+        view_object = view_objects[current_object_name]
+        z_clipped_view_object = copy.deepcopy(view_object)
+        
+        # FIXME: implement this!
+        # FIXME: implement this!
+        # FIXME: implement this!
+        
+        z_clipped_view_objects[current_object_name] = z_clipped_view_object
+
+    return z_clipped_view_objects
 
 
 # FIXME: calculate the scale differently!
@@ -351,6 +365,66 @@ center_offset = (screen_width // 2, screen_height // 2)
 
 # FIXME: REMOVE or set to 0,0,0!
 camera = (0, 0, 6)
+
+def project_objects(view_objects, camera_info):
+
+    projected_objects = {}
+    
+    for current_object_name in view_objects:
+        view_object = view_objects[current_object_name]
+        projected_object = copy.deepcopy(view_object)
+    
+        view_vertices = view_object['vertices']
+        
+        # We calculate the sum of z for every face
+        for face in projected_object['faces']:
+            face_vertex_indices = face['vertex_indices']
+            
+            vertex1 = view_vertices[face_vertex_indices[0]]
+            vertex2 = view_vertices[face_vertex_indices[1]]
+            vertex3 = view_vertices[face_vertex_indices[2]]
+            
+            sum_of_z = vertex1[2] + vertex2[2] + vertex3[2]
+            
+            face['sum_of_z'] = sum_of_z
+        
+        projected_vertices = []
+        
+        # Projection of the vertices of the visible faces
+        for vertex in view_object['vertices']:
+            x = vertex[0]
+            y = vertex[1]
+            z = vertex[2]
+            
+            new_x = x
+            new_y = y
+            new_z = z
+
+            # FIXME: we should use a ~42? degree FOV!
+            # --> use camera_info for this!
+            
+            # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
+            z_ratio = 1 / -new_z
+
+            # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+            # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+            # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
+
+            new_x *= (z_ratio*6)
+            new_y *= (z_ratio*6)
+            
+            x_proj = new_x * scale + center_offset[0]
+            y_proj = new_y * scale + center_offset[1]
+            z_proj = new_z * scale
+
+            projected_vertices.append((round(x_proj), round(y_proj)))
+            
+        projected_object['projected_vertices'] = projected_vertices
+        
+        projected_objects[current_object_name] = projected_object
+        
+    return projected_objects
+            
 
 def slope2bytes(slope):
     x1 = (slope / 2)
@@ -365,64 +439,21 @@ def slope2bytes(slope):
     b1[1] |= x32
     return b1
 
-def project_light_draw_and_export(vertices, faces):
+def light_draw_and_export(projected_vertices, faces):
 
+# FIXME: remove!
+    #def face_sorter(item):
+    #    return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
+    
     def face_sorter(item):
-        return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
-
+        return item['sum_of_z']
+        
     def y_sorter(item):
         return y_flipped_projected_vertices[item][1]
 
     tris_seen = False
-    y_flipped_projected_vertices = []
-    projected_vertices = []
-    unscaled_rotated_vertices = []
-    zees = []
     
-    # Projection of the vertices of the visible faces
-    for vertex in vertices:
-        x = vertex[0]
-        y = vertex[1]
-        z = vertex[2]
-        
-        new_x = x
-        new_y = y
-        new_z = z
-
-        # FIXME: we should use a ~42? degree FOV!
-        
-        # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
-        z_ratio = 1 / -new_z
-
-        # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-        # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-        # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-
-        new_x *= (z_ratio*6)
-        new_y *= (z_ratio*6)
-        
-        x_proj = new_x * scale + center_offset[0]
-        y_proj = new_y * scale + center_offset[1]
-        z_proj = new_z * scale
-
-        projected_vertices.append((round(x_proj), round(y_proj)))
-        zees.append(z_proj)
-        unscaled_rotated_vertices.append((new_x, new_y, new_z))
-        
-    # We calculate the sum of z for every face
-    '''
-    for face in faces:
-        face_vertex_indices = face['vertex_indices']
-        
-        vertex1 = vertices[face_vertex_indices[0]]
-        vertex2 = vertices[face_vertex_indices[1]]
-        vertex3 = vertices[face_vertex_indices[2]]
-        
-        sum_of_z = vertex1[2] + vertex2[2] + vertex3[2]
-        
-        face['sum_of_z']
-       ''' 
-
+    y_flipped_projected_vertices = []
     
 # FIXME: should we reverse here?
     sorted_faces = sorted(faces, key=face_sorter, reverse=True)
@@ -768,15 +799,23 @@ while running:
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
+    # Backface cull where face/triangle-normal points away from camera
     culled_view_objects = cull_faces_of_objects(view_objects)
+    
+    # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
+    z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
+    
+    # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
+    # FIXME: lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
+    
+    # Project all vertices to screen-space
+    projected_objects = project_objects(z_clipped_view_objects, camera_info)
 
     '''
      === Implement this ===
     
-    # Backface cull where face/triangle-normal points away from camera
-    # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
     # Clip 4 sides of the camera -> creating NEW triangles!
-    culled_and_clipped_triangles = cull_and_clip_objects_into_visible_triangles(view_objects, camera_info)
+    camera_clipped_triangles = camera_clip_objects(view_objects, camera_info)
 
     # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
     lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
@@ -785,7 +824,7 @@ while running:
     z_sorted_triangles = sort_triangles_by_z(lit_triangles)
     
     # Project all vertices to screen-space
-    # Flip y
+# FIXME! Flip y
     projected_triangles = project_triangles_onto_screen(z_sorted_triangles, camera_info)
     
     # Shrink triangles when overdrawn
@@ -806,11 +845,11 @@ while running:
 #    exit()
 
     # FIXME: this is a temporary workaround. We should get all objects but the camera here!
-    vertices = culled_view_objects['Cube']['vertices']
-    faces = culled_view_objects['Cube']['faces']
+    projected_vertices = projected_objects['Cube']['projected_vertices']
+    faces = projected_objects['Cube']['faces']
 
     screen.fill(BLACK)
-    tris_seen = project_light_draw_and_export(vertices, faces)
+    tris_seen = light_draw_and_export(projected_vertices, faces)
     if tris_seen:
         f.write(b'\xff') # end of frame
 
