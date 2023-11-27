@@ -417,7 +417,8 @@ def project_objects(view_objects, camera_info):
             y_proj = new_y * scale + center_offset[1]
             z_proj = new_z * scale
 
-            projected_vertices.append((round(x_proj), round(y_proj)))
+            # Note: we also flip the y here!
+            projected_vertices.append((round(x_proj), screen_height - round(y_proj)))
             
         projected_object['vertices'] = projected_vertices
         
@@ -425,35 +426,121 @@ def project_objects(view_objects, camera_info):
         
     return projected_objects
     
+LEFT_EDGE_X = 0
+RIGHT_EDGE_X = 320
+TOP_EDGE_Y = 0
+BOTTOM_EDGE_Y = 200
+    
+def is_2d_vertex_inside_edge(vertex, edge_name):
+
+    x = vertex[0]
+    y = vertex[1]
+    
+    vertex_is_inside = True
+    
+    if edge_name == 'LEFT':
+        if x < LEFT_EDGE_X:
+            vertex_is_inside = False
+    elif edge_name == 'RIGHT':
+        if x >= RIGHT_EDGE_X:
+            vertex_is_inside = False
+    elif edge_name == 'TOP':
+        if y < TOP_EDGE_Y:
+            vertex_is_inside = False
+    elif edge_name == 'BOTTOM':
+        if y >= BOTTOM_EDGE_Y:
+            vertex_is_inside = False
+            
+    return vertex_is_inside
+    
+
+def clip_2d_vertex_against_edge(inside_vertex, outside_vertex, edge_name):
+
+    if edge_name == 'LEFT':
+        percentage_to_keep = (inside_vertex[0] - LEFT_EDGE_X) / (inside_vertex[0] - outside_vertex[0])
+        y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
+        clipped_vertex = (LEFT_EDGE_X, y_clipped)
+    elif edge_name == 'RIGHT':
+# FIXME: should we do -1 here too?
+        percentage_to_keep = (RIGHT_EDGE_X - inside_vertex[0]) / (outside_vertex[0] - inside_vertex[0])
+        y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
+        clipped_vertex = (RIGHT_EDGE_X-1, y_clipped)
+    elif edge_name == 'TOP':
+        percentage_to_keep = (inside_vertex[1] - TOP_EDGE_Y) / (inside_vertex[1] - outside_vertex[1])
+        x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
+        clipped_vertex = (x_clipped, TOP_EDGE_Y)
+    elif edge_name == 'BOTTOM':
+# FIXME: should we do -1 here too?
+        percentage_to_keep = (BOTTOM_EDGE_Y - inside_vertex[1]) / (outside_vertex[1] - inside_vertex[1])
+        x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
+        clipped_vertex = (x_clipped, BOTTOM_EDGE_Y-1)
+    
+    return clipped_vertex
+    
+    
 def clip_face_against_edge(non_clipped_face, non_clipped_vertices, edge_name):
     clipped_faces = []
     clipped_vertices = []
 
-    # FIXME: add logic checking against an EDGE! 0, 1 or 2 edges as output!
-    # FIXME: add logic checking against an EDGE! 0, 1 or 2 edges as output!
-    # FIXME: add logic checking against an EDGE! 0, 1 or 2 edges as output!
+    # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
     
-    # FIXME: use edge_name!
-    # FIXME: use edge_name!
-    # FIXME: use edge_name!
-
-    new_clipped_face = copy.deepcopy(non_clipped_face)
-    new_clipped_face['vertex_indices'] = []
-    current_vertex_index = 0
-    for vertex_index in non_clipped_face['vertex_indices']:
-        non_clipped_vertex = non_clipped_vertices[vertex_index]
+    inside_vertices = []
+    outside_vertices = []
+    for vertex_index in range(3):
+        non_clipped_vertex = non_clipped_vertices[non_clipped_face['vertex_indices'][vertex_index]]
         
-        clipped_vertex = copy.deepcopy(non_clipped_vertex)
+        vertex_is_inside = is_2d_vertex_inside_edge(non_clipped_vertex, edge_name)
         
-        # FIXME: we need to adjust this vertex!
+        if vertex_is_inside:
+            # Since this is an inside vertex, there is no need to clip it, so we just copy it
+            inside_vertices.append(copy.deepcopy(non_clipped_vertex))
+        else:
+            # We clip the 2d vertex against the edge
+            outside_vertices.append(non_clipped_vertex)
+    
+    
+    if (len(inside_vertices) == 0):
+        # The triangle is completely outside the edge, we dont add it
+        pass
+    elif (len(inside_vertices) == 3):
+        # The triangle is completely inside the edge, we add it as-is
+        clipped_vertices += inside_vertices
+        clipped_face = copy.deepcopy(non_clipped_face)
+        clipped_face['vertex_indices'] = [0,1,2]
+        clipped_faces.append(clipped_face)
+    elif (len(inside_vertices) == 1):
+        # Out triangle gets shorter, so we return one smaller triangle
+        clipped_vertices.append(inside_vertices[0])
+        clipped_vertex_0 = clip_2d_vertex_against_edge(inside_vertices[0], outside_vertices[0], edge_name)
+        clipped_vertices.append(clipped_vertex_0)
+        clipped_vertex_1 = clip_2d_vertex_against_edge(inside_vertices[0], outside_vertices[1], edge_name)
+        clipped_vertices.append(clipped_vertex_1)
+        clipped_face = copy.deepcopy(non_clipped_face)
+# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
+        clipped_face['vertex_indices'] = [0,1,2]
+        clipped_faces.append(clipped_face)
+    elif (len(inside_vertices) == 2):
+        # We have a quad we have to split into two triangles
         
-        clipped_vertices.append(clipped_vertex)
+        # First triangle
+        clipped_vertices.append(inside_vertices[0])
+        clipped_vertex_1 = clip_2d_vertex_against_edge(inside_vertices[1], outside_vertices[0], edge_name)
+        clipped_vertices.append(clipped_vertex_1)
+        clipped_vertices.append(inside_vertices[1])
         
-        new_clipped_face['vertex_indices'].append(current_vertex_index)
-        current_vertex_index += 1
+        clipped_face = copy.deepcopy(non_clipped_face)
+# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
+        clipped_face['vertex_indices'] = [0,1,2]
+        clipped_faces.append(clipped_face)
         
-    # FIXME: we might need to add 0, 1 or 2!
-    clipped_faces.append(new_clipped_face)
+        # Second triangle
+        clipped_vertex_0 = clip_2d_vertex_against_edge(inside_vertices[0], outside_vertices[0], edge_name)
+        clipped_vertices.append(clipped_vertex_0)
+        
+        clipped_face = copy.deepcopy(non_clipped_face)
+# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
+        clipped_face['vertex_indices'] = [0,3,1]
+        clipped_faces.append(clipped_face)
 
     return (clipped_faces, clipped_vertices)
 
@@ -471,25 +558,17 @@ def camera_clip_projected_objects(projected_objects, camera_info):
         
         non_clipped_vertices = projected_object['vertices']
 
-# FIXME: maybe we should work with clipped EDGES first? -> these get replaced ONCE
-#        replaced_edges_by_vertex_indices = {}
-# FIDME: whenever you want to replace an edge, (by replacing one of the vertexes) you first check if its already in this list?
+        # FIXME: maybe we should work with clipped EDGES first? -> these get replaced ONCE
+        # replaced_edges_by_vertex_indices = {}
+        # FIDME: whenever you want to replace an edge, (by replacing one of the vertexes) you first check if its already in this list?
         
         # We determine -for each face in the object- whether it should be clipped against the edges of the screen
         for non_clipped_face in projected_object['faces']:
-# FIXME: REMOVE!
-            #non_clipped_face_vertex_indices = non_clipped_face['vertex_indices']
             
-# FIXME: REMOVE!
-            #vertex1 = view_vertices[non_clipped_face_vertex_indices[0]]
-            #vertex2 = view_vertices[non_clipped_face_vertex_indices[1]]
-            #vertex3 = view_vertices[non_clipped_face_vertex_indices[2]]
-            
-# FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
+            # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
 
 # FIXME: iterate over LEFT/TOP/RIGHT/BOTTOM edge!
-            edge_name = 'LEFT'
-            (clipped_faces, clipped_vertices) = clip_face_against_edge(non_clipped_face, non_clipped_vertices, edge_name)
+            (clipped_faces, clipped_vertices) = clip_face_against_edge(non_clipped_face, non_clipped_vertices, 'LEFT')
             
             old_nr_of_vertices = len(camera_clipped_projected_object['vertices'])
             camera_clipped_projected_object['vertices'] += clipped_vertices
@@ -504,10 +583,10 @@ def camera_clip_projected_objects(projected_objects, camera_info):
                 camera_clipped_projected_object['faces'].append(clipped_face)
                 
         
-        print(projected_object['faces'])
+        #print(projected_object['faces'])
         print(projected_object['vertices'])
         print()
-        print(camera_clipped_projected_object['faces'])
+        #print(camera_clipped_projected_object['faces'])
         print(camera_clipped_projected_object['vertices'])
         
         # FIXME: iterate over all SCREEN EDGE and feed it the NEW list each time!
@@ -532,93 +611,34 @@ def slope2bytes(slope):
 
 def light_draw_and_export(projected_vertices, faces):
 
-# FIXME: remove!
-    #def face_sorter(item):
-    #    return zees[item['vertex_indices'][0]]+zees[item['vertex_indices'][1]]+zees[item['vertex_indices'][2]]
-    
     def face_sorter(item):
         return item['sum_of_z']
         
     def y_sorter(item):
-        return y_flipped_projected_vertices[item][1]
+        return projected_vertices[item][1]
 
-    tris_seen = False
-    
-    y_flipped_projected_vertices = []
-    
-# FIXME: should we reverse here?
+    # The vertices are scaled up for the pygame screen
+    scaled_up_vertices = []
+    for projected_vertex in projected_vertices:
+        scaled_up_vertex = [
+            projected_vertex[0]*3,
+            projected_vertex[1]*3,
+        ]
+        scaled_up_vertices.append(scaled_up_vertex)
+        
     sorted_faces = sorted(faces, key=face_sorter, reverse=True)
 
-    visible_faces = []
-    visible_polys = []
-
     for face in sorted_faces:
-        face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
-        fc = Polygon([projected_vertices[i] for i in face_vertex_indices])
-        covers = False
 
-        if len(visible_faces) > 0:
-            u = visible_polys[0]
-            for p in visible_polys[1:]:
-                u = u.union(p)
-            if u.contains(fc):
-                covers = True
-            
-        if not covers:
-            visible_faces.append(face)
-            visible_polys.append(fc)
-
-# FIXME: should we reverse here?
-    sorted_visible_faces = sorted(visible_faces, key=face_sorter, reverse=False)
-
-    for face in sorted_visible_faces:
-
-        # find angle relative to Z axis
-        '''
-# FIXME: clean this up!
-        vert1 = np.array([unscaled_rotated_vertices[face['vertex_indices'][0]][0],unscaled_rotated_vertices[face['vertex_indices'][0]][1],unscaled_rotated_vertices[face['vertex_indices'][0]][2]])
-        vert2 = np.array([unscaled_rotated_vertices[face['vertex_indices'][1]][0],unscaled_rotated_vertices[face['vertex_indices'][1]][1],unscaled_rotated_vertices[face['vertex_indices'][1]][2]])
-        vert3 = np.array([unscaled_rotated_vertices[face['vertex_indices'][2]][0],unscaled_rotated_vertices[face['vertex_indices'][2]][1],unscaled_rotated_vertices[face['vertex_indices'][2]][2]])
-
-        edge1 = vert2 - vert1
-        edge2 = vert3 - vert1
-
-        normal = np.cross(edge1, edge2)
-
-        lightsource = np.array([100, -100, -100])
-
-        dot_product = np.dot(normal, lightsource)
-
-        angle_rad = np.arccos(dot_product / (np.linalg.norm(normal) * np.linalg.norm(lightsource)))
-
-        angle_deg = np.degrees(angle_rad)
-        if angle_deg >= 89.9:
-            angle_deg = 89.9
-
-        print(f"Angle relative to the light source: {angle_deg} degrees")
-        
-# FIXME!        color_idx = (face['color_index'] % 2) + (2*int(angle_deg/15))
-        '''
-        
+# FIXME: do the light calculation earlier in the pipeline!
         color_idx = face['color_index']
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
 
+        # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         
-        # The vertices are y-flipped and scaled up for the screen
-        for rotated_vertex in projected_vertices:
-            y_flipped_vertex = [
-                rotated_vertex[0]*3,
-                (screen_height - rotated_vertex[1])*3,
-            ]
-            y_flipped_projected_vertices.append(y_flipped_vertex)
-        
-# FIXME!
-        #if (color_idx != 7):
-        #    continue
-            
-        pygame.draw.polygon(screen, colors[color_idx], [y_flipped_projected_vertices[i] for i in face_vertex_indices], 0)
+        pygame.draw.polygon(screen, colors[color_idx], [scaled_up_vertices[i] for i in face_vertex_indices], 0)
         
 # FIXME!
         continue
@@ -688,16 +708,13 @@ def light_draw_and_export(projected_vertices, faces):
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         sorted_points = sorted(face_vertex_indices, key=y_sorter, reverse=False)
 
-        v0 = list(copy.deepcopy(y_flipped_projected_vertices[sorted_points[0]]))
-        v1 = list(copy.deepcopy(y_flipped_projected_vertices[sorted_points[1]]))
-        v2 = list(copy.deepcopy(y_flipped_projected_vertices[sorted_points[2]]))
+        v0 = list(copy.deepcopy(projected_vertices[sorted_points[0]]))
+        v1 = list(copy.deepcopy(projected_vertices[sorted_points[1]]))
+        v2 = list(copy.deepcopy(projected_vertices[sorted_points[2]]))
 
         if v2[1] < 0:
             print("Fully offscreen")
             continue # fully offscreen
-
-        tris_seen = True
-
 
         if v1[1] <= 0 and v0[1] < 0:
             print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
@@ -860,6 +877,8 @@ def light_draw_and_export(projected_vertices, faces):
                 f.write(slope2bytes(slope_x1_new)) # 09-0a - new X1 inc
                 f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
 
+# FIXME: what should we do here?
+    tris_seen = True
     return tris_seen
     
 
