@@ -549,6 +549,8 @@ def camera_clip_projected_objects(projected_objects, camera_info):
 
     camera_clipped_projected_objects = {}
     
+    edge_names = ['LEFT', 'TOP', 'RIGHT', 'BOTTOM']
+    
     for current_object_name in projected_objects:
         projected_object = projected_objects[current_object_name]
         camera_clipped_projected_object = copy.deepcopy(projected_object)
@@ -558,16 +560,15 @@ def camera_clip_projected_objects(projected_objects, camera_info):
         
         non_clipped_vertices = projected_object['vertices']
 
-        # FIXME: maybe we should work with clipped EDGES first? -> these get replaced ONCE
-        # replaced_edges_by_vertex_indices = {}
-        # FIDME: whenever you want to replace an edge, (by replacing one of the vertexes) you first check if its already in this list?
-        
         # We determine -for each face in the object- whether it should be clipped against the edges of the screen
         for non_clipped_face in projected_object['faces']:
             
             # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
-
+            
+            
 # FIXME: iterate over LEFT/TOP/RIGHT/BOTTOM edge!
+#            for edge_name in edge_names
+
             (clipped_faces, clipped_vertices) = clip_face_against_edge(non_clipped_face, non_clipped_vertices, 'LEFT')
             
             old_nr_of_vertices = len(camera_clipped_projected_object['vertices'])
