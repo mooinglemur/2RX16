@@ -742,7 +742,7 @@ def slope2bytes(slope):
 def sort_light_draw_and_export(projected_vertices, faces):
 
     def face_sorter(item):
-        return item['sum_of_z']
+        return -item['sum_of_z']
         
     def y_sorter(item):
         return projected_vertices[item][1]
@@ -758,10 +758,14 @@ def sort_light_draw_and_export(projected_vertices, faces):
         
     sorted_faces = sorted(faces, key=face_sorter, reverse=True)
 
-    for face in sorted_faces:
+    for face_index, face in enumerate(sorted_faces):
 
 # FIXME: do the light calculation earlier in the pipeline!
         color_idx = face['color_index']
+        
+# FIXME! HACK!        
+        color_idx = face_index % 16
+        
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
 
