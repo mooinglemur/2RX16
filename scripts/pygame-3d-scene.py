@@ -341,6 +341,99 @@ def cull_faces_of_objects(view_objects):
     
     return culled_view_objects
 
+Z_EDGE = -1.0
+
+def is_vertex_inside_z_edge(vertex):
+
+    z = vertex[2]
+    
+    vertex_is_inside = True
+
+    if z > Z_EDGE:
+        vertex_is_inside = False
+            
+    return vertex_is_inside
+    
+
+def clip_vertex_against_z_edge(inside_vertex, outside_vertex):
+
+    percentage_to_keep = (inside_vertex[2] - Z_EDGE) / (inside_vertex[2] - outside_vertex[2])
+    x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
+    y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
+    clipped_vertex = (x_clipped, y_clipped, Z_EDGE)
+    
+    return clipped_vertex
+
+
+def clip_face_against_z_edge(non_clipped_face, combined_vertices):
+    clipped_faces = []
+
+# FIXME: we should try to REUSE vertices!
+    start_vertex_index = len(combined_vertices)
+    svi = start_vertex_index
+
+    # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
+    
+    inside_vertices = []
+    outside_vertices = []
+    for vertex_index in range(3):
+        non_clipped_vertex = combined_vertices[non_clipped_face['vertex_indices'][vertex_index]]
+        
+        vertex_is_inside = is_vertex_inside_z_edge(non_clipped_vertex)
+        
+        if vertex_is_inside:
+            # Since this is an inside vertex, there is no need to clip it, so we just copy it
+            inside_vertices.append(copy.deepcopy(non_clipped_vertex))
+        else:
+            # We clip the vertex against the edge
+            outside_vertices.append(non_clipped_vertex)
+    
+    if (len(inside_vertices) == 0):
+        # The triangle is completely outside the edge, we dont add it
+        pass
+    elif (len(inside_vertices) == 3):
+        # The triangle is completely inside the edge, we add it as-is
+        combined_vertices += inside_vertices
+        clipped_face = copy.deepcopy(non_clipped_face)
+        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        clipped_faces.append(clipped_face)
+    elif (len(inside_vertices) == 1):
+        # Out triangle gets shorter, so we return one smaller triangle
+        combined_vertices.append(inside_vertices[0])
+        clipped_vertex_0 = clip_vertex_against_z_edge(inside_vertices[0], outside_vertices[0])
+        combined_vertices.append(clipped_vertex_0)
+        clipped_vertex_1 = clip_vertex_against_z_edge(inside_vertices[0], outside_vertices[1])
+        combined_vertices.append(clipped_vertex_1)
+        clipped_face = copy.deepcopy(non_clipped_face)
+# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
+        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        clipped_faces.append(clipped_face)
+    elif (len(inside_vertices) == 2):
+        # We have a quad we have to split into two triangles
+        
+        # First triangle
+        combined_vertices.append(inside_vertices[0])
+        clipped_vertex_1 = clip_vertex_against_z_edge(inside_vertices[1], outside_vertices[0])
+        combined_vertices.append(clipped_vertex_1)
+        combined_vertices.append(inside_vertices[1])
+        
+        clipped_face = copy.deepcopy(non_clipped_face)
+# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
+        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        clipped_faces.append(clipped_face)
+        
+        # Second triangle
+        clipped_vertex_0 = clip_vertex_against_z_edge(inside_vertices[0], outside_vertices[0])
+        combined_vertices.append(clipped_vertex_0)
+        
+        clipped_face = copy.deepcopy(non_clipped_face)
+# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
+        clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
+        clipped_faces.append(clipped_face)
+
+    return clipped_faces
+
+
 def z_clip_faces_of_objects (view_objects):
 
     z_clipped_view_objects = {}
@@ -349,9 +442,22 @@ def z_clip_faces_of_objects (view_objects):
         view_object = view_objects[current_object_name]
         z_clipped_view_object = copy.deepcopy(view_object)
         
-        # FIXME: implement this!
-        # FIXME: implement this!
-        # FIXME: implement this!
+        z_clipped_view_object['faces'] = []
+       
+        # For this object we keep track of all clipped vertices being created
+        combined_vertices = z_clipped_view_object['vertices']
+
+        # We determine -for each face in the object- whether it should be clipped against the edges of the screen
+        for non_clipped_face in view_object['faces']:
+
+            # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
+            
+            # The clipped_vertices is an OUPUT vertex-array!
+            clipped_faces_against_z_edge = clip_face_against_z_edge(non_clipped_face, combined_vertices)
+
+            # After clipping against the Z-edge we are left with only clipped faces
+            z_clipped_view_object['faces'] += clipped_faces_against_z_edge
+        
         
         z_clipped_view_objects[current_object_name] = z_clipped_view_object
 
@@ -487,7 +593,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
 
     # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
     
-    print(non_clipped_face['vertex_indices'])
+    #print(non_clipped_face['vertex_indices'])
     
     inside_vertices = []
     outside_vertices = []
@@ -575,7 +681,7 @@ def camera_clip_projected_objects(projected_objects, camera_info):
             # We start with the non-clipped face we want to clip along all 4 edges
             queue_faces = [ non_clipped_face ]
             
-            print(queue_faces)
+            #print(queue_faces)
             for edge_name in edge_names:
 
                 clipped_faces_against_this_edge = []
@@ -596,10 +702,10 @@ def camera_clip_projected_objects(projected_objects, camera_info):
                 
         
         #print(projected_object['faces'])
-        print(projected_object['vertices'])
-        print()
+        #print(projected_object['vertices'])
+        #print()
         #print(camera_clipped_projected_object['faces'])
-        print(camera_clipped_projected_object['vertices'])
+        #print(camera_clipped_projected_object['vertices'])
         
         # FIXME: iterate over all SCREEN EDGE and feed it the NEW list each time!
         
