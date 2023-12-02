@@ -143,12 +143,12 @@ def load_vertices_and_faces(frame_nr):
         elif line.startswith('f '):
             line_parts = line.split()
             line_parts.pop(0)  # first element contains the 'f '
-            vertex_indexes = []
+            vertex_indices = []
             normal_index = None
             for line_part in line_parts:
                 # There are in fact two indexes: one for the vertex and one for the normal.
                 vertex_index = int(line_part.split('//')[0])-1   
-                vertex_indexes.append(vertex_index)
+                vertex_indices.append(vertex_index)
                 # Note: we overwrite the normal index, since we assume this is a triangle and has ONE normal for each face
                 normal_index = int(line_part.split('//')[1])-1   
                 
@@ -165,9 +165,9 @@ def load_vertices_and_faces(frame_nr):
             # FIXME?: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
             objects[current_object_name]['faces'].append({
                 'vertex_indices' : [ 
-                    vertex_indexes[0] - object_start_vertex_index,
-                    vertex_indexes[1] - object_start_vertex_index,
-                    vertex_indexes[2] - object_start_vertex_index 
+                    vertex_indices[0] - object_start_vertex_index,
+                    vertex_indices[1] - object_start_vertex_index,
+                    vertex_indices[2] - object_start_vertex_index 
                 ],
                 'normal_index' : normal_index - object_start_normal_index,
                 'color_index' : color_index,
@@ -739,7 +739,7 @@ def slope2bytes(slope):
     b1[1] |= x32
     return b1
 
-def light_draw_and_export(projected_vertices, faces):
+def sort_light_draw_and_export(projected_vertices, faces):
 
     def face_sorter(item):
         return item['sum_of_z']
@@ -1088,12 +1088,28 @@ while running:
 # FIXME!
 #    exit()
 
-    # FIXME: this is a temporary workaround. We should get all objects but the camera here!
-    projected_vertices = camera_clipped_projected_objects['Cube']['vertices']
-    faces = camera_clipped_projected_objects['Cube']['faces']
+    projected_vertices = []
+    faces = []
+    for current_object_name in camera_clipped_projected_objects:
+        # We assemble all objects but the camera(box) here
+        
+        if (current_object_name == 'CameraBox'):
+            continue
+        
+        object_projected_vertices = camera_clipped_projected_objects[current_object_name]['vertices']
+        object_faces = camera_clipped_projected_objects[current_object_name]['faces']
+        
+        start_vertex_index = len(projected_vertices)
+        projected_vertices += object_projected_vertices
+        for object_face in object_faces:
+            object_face['vertex_indices'][0] += start_vertex_index
+            object_face['vertex_indices'][1] += start_vertex_index
+            object_face['vertex_indices'][2] += start_vertex_index
+            
+            faces.append(object_face)
 
     screen.fill(BLACK)
-    tris_seen = light_draw_and_export(projected_vertices, faces)
+    tris_seen = sort_light_draw_and_export(projected_vertices, faces)
     if tris_seen:
         f.write(b'\xff') # end of frame
 
