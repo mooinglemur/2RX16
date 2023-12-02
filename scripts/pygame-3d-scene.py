@@ -59,7 +59,7 @@ screen_width, screen_height = 320, 200
 screen = pygame.display.set_mode((screen_width*3, screen_height*3))
 pygame.display.set_caption("3D Scene")
 
-
+DEBUG_COLORS = False
 
 material_name_to_color_index = {
     None : 0,
@@ -407,6 +407,8 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        if (DEBUG_COLORS):
+            clipped_face['color_index'] = 3
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 2):
         # We have a quad we have to split into two triangles
@@ -420,6 +422,8 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        if (DEBUG_COLORS):
+            clipped_face['color_index'] = 2
         clipped_faces.append(clipped_face)
         
         # Second triangle
@@ -429,6 +433,8 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
+        if (DEBUG_COLORS):
+            clipped_face['color_index'] = 4
         clipped_faces.append(clipped_face)
 
     return clipped_faces
@@ -629,6 +635,8 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        if (DEBUG_COLORS):
+            clipped_face['color_index'] = 8
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 2):
         # We have a quad we have to split into two triangles
@@ -642,6 +650,8 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        if (DEBUG_COLORS):
+            clipped_face['color_index'] = 9
         clipped_faces.append(clipped_face)
         
         # Second triangle
@@ -651,6 +661,8 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
+        if (DEBUG_COLORS):
+            clipped_face['color_index'] = 10
         clipped_faces.append(clipped_face)
 
     return clipped_faces
