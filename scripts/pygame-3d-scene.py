@@ -478,16 +478,21 @@ def clip_2d_vertex_against_edge(inside_vertex, outside_vertex, edge_name):
     return clipped_vertex
     
     
-def clip_face_against_edge(non_clipped_face, non_clipped_vertices, edge_name):
+def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
     clipped_faces = []
-    clipped_vertices = []
+
+# FIXME: we should try to REUSE vertices!
+    start_vertex_index = len(combined_vertices)
+    svi = start_vertex_index
 
     # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
+    
+    print(non_clipped_face['vertex_indices'])
     
     inside_vertices = []
     outside_vertices = []
     for vertex_index in range(3):
-        non_clipped_vertex = non_clipped_vertices[non_clipped_face['vertex_indices'][vertex_index]]
+        non_clipped_vertex = combined_vertices[non_clipped_face['vertex_indices'][vertex_index]]
         
         vertex_is_inside = is_2d_vertex_inside_edge(non_clipped_vertex, edge_name)
         
@@ -504,45 +509,45 @@ def clip_face_against_edge(non_clipped_face, non_clipped_vertices, edge_name):
         pass
     elif (len(inside_vertices) == 3):
         # The triangle is completely inside the edge, we add it as-is
-        clipped_vertices += inside_vertices
+        combined_vertices += inside_vertices
         clipped_face = copy.deepcopy(non_clipped_face)
-        clipped_face['vertex_indices'] = [0,1,2]
+        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 1):
         # Out triangle gets shorter, so we return one smaller triangle
-        clipped_vertices.append(inside_vertices[0])
+        combined_vertices.append(inside_vertices[0])
         clipped_vertex_0 = clip_2d_vertex_against_edge(inside_vertices[0], outside_vertices[0], edge_name)
-        clipped_vertices.append(clipped_vertex_0)
+        combined_vertices.append(clipped_vertex_0)
         clipped_vertex_1 = clip_2d_vertex_against_edge(inside_vertices[0], outside_vertices[1], edge_name)
-        clipped_vertices.append(clipped_vertex_1)
+        combined_vertices.append(clipped_vertex_1)
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
-        clipped_face['vertex_indices'] = [0,1,2]
+        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 2):
         # We have a quad we have to split into two triangles
         
         # First triangle
-        clipped_vertices.append(inside_vertices[0])
+        combined_vertices.append(inside_vertices[0])
         clipped_vertex_1 = clip_2d_vertex_against_edge(inside_vertices[1], outside_vertices[0], edge_name)
-        clipped_vertices.append(clipped_vertex_1)
-        clipped_vertices.append(inside_vertices[1])
+        combined_vertices.append(clipped_vertex_1)
+        combined_vertices.append(inside_vertices[1])
         
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
-        clipped_face['vertex_indices'] = [0,1,2]
+        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
         clipped_faces.append(clipped_face)
         
         # Second triangle
         clipped_vertex_0 = clip_2d_vertex_against_edge(inside_vertices[0], outside_vertices[0], edge_name)
-        clipped_vertices.append(clipped_vertex_0)
+        combined_vertices.append(clipped_vertex_0)
         
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
-        clipped_face['vertex_indices'] = [0,3,1]
+        clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
         clipped_faces.append(clipped_face)
 
-    return (clipped_faces, clipped_vertices)
+    return clipped_faces
 
 
 def camera_clip_projected_objects(projected_objects, camera_info):
@@ -553,35 +558,41 @@ def camera_clip_projected_objects(projected_objects, camera_info):
     
     for current_object_name in projected_objects:
         projected_object = projected_objects[current_object_name]
+        
         camera_clipped_projected_object = copy.deepcopy(projected_object)
-        
         camera_clipped_projected_object['faces'] = []
-        camera_clipped_projected_object['vertices'] = []
-        
-        non_clipped_vertices = projected_object['vertices']
+        # We KEEP the old vertices! (even though they are all not being used at the end!
+        # camera_clipped_projected_object['vertices'] = []
+       
+        # For this object we keep track of all clipped vertices being created
+        combined_vertices = camera_clipped_projected_object['vertices']
 
+        #non_clipped_vertices = projected_object['vertices']
+ 
         # We determine -for each face in the object- whether it should be clipped against the edges of the screen
         for non_clipped_face in projected_object['faces']:
-            
-            # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
-            
-            
-# FIXME: iterate over LEFT/TOP/RIGHT/BOTTOM edge!
-#            for edge_name in edge_names
 
-            (clipped_faces, clipped_vertices) = clip_face_against_edge(non_clipped_face, non_clipped_vertices, 'LEFT')
+            # We start with the non-clipped face we want to clip along all 4 edges
+            queue_faces = [ non_clipped_face ]
             
-            old_nr_of_vertices = len(camera_clipped_projected_object['vertices'])
-            camera_clipped_projected_object['vertices'] += clipped_vertices
-            for clipped_face in clipped_faces:
-                # The vertex indices in this face have to be adjusted, since the vertices has just been added to a larger list
-                # of vertices. So we adjust the vertice_indexes accordingly
+            print(queue_faces)
+            for edge_name in edge_names:
+
+                clipped_faces_against_this_edge = []
+                for queue_face in queue_faces:
+                    
+                    # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
+                    
+                    # The clipped_vertices is an OUPUT vertex-array that gets extended each time!
+                    # We *extend* clipped_faces_against_this_edge here
+                    clipped_faces_against_this_edge += clip_face_against_edge(queue_face, combined_vertices, edge_name)
+
+                # The output faces (left over after clipping) become the input faces for the next edge
+                queue_faces = clipped_faces_against_this_edge
                 
-                clipped_face['vertex_indices'][0] += old_nr_of_vertices
-                clipped_face['vertex_indices'][1] += old_nr_of_vertices
-                clipped_face['vertex_indices'][2] += old_nr_of_vertices
             
-                camera_clipped_projected_object['faces'].append(clipped_face)
+            # After clipping against all 4 edges we are left with only clipped faces in the queue
+            camera_clipped_projected_object['faces'] += queue_faces
                 
         
         #print(projected_object['faces'])
