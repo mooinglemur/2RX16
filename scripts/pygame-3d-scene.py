@@ -1031,28 +1031,36 @@ while running:
             #if event.key == pygame.K_RIGHT:
             #    increment_frame_by = 1
 
+    print("Loading vertices and faces")
     world_objects = load_vertices_and_faces(frame_nr)
 
+    print("Getting camera info")
     camera_box = world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
     del world_objects['CameraBox']
     
+    print("Transform into view space")
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
+    print("Backface cull")
     # Backface cull where face/triangle-normal points away from camera
     culled_view_objects = cull_faces_of_objects(view_objects)
     
+    print("Z clipping")
     # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
 # FIXME: implement this!
     z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
     
+    # print("Apply light")
     # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
     # FIXME: lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
     
+    print("Project")
     # Project all vertices to screen-space
     projected_objects = project_objects(z_clipped_view_objects, camera_info)
     
+    print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
 # FIXME: implement this!
     camera_clipped_projected_objects = camera_clip_projected_objects(projected_objects, camera_info)
@@ -1088,6 +1096,7 @@ while running:
 # FIXME!
 #    exit()
 
+    print("Assemble all objects")
     projected_vertices = []
     faces = []
     for current_object_name in camera_clipped_projected_objects:
@@ -1108,6 +1117,7 @@ while running:
             
             faces.append(object_face)
 
+    print("Sort, draw and export")
     screen.fill(BLACK)
     tris_seen = sort_light_draw_and_export(projected_vertices, faces)
     if tris_seen:
