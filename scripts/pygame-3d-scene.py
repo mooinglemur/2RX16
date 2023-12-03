@@ -8,10 +8,12 @@ import copy
 import time
 from shapely.geometry import Polygon, GeometryCollection
 import numpy as np
+import json
 
 # Initialize Pygame
 pygame.init()
 
+'''
 # FIXME: quick and dirty colors here (somewhat akin to VERA's first 16 colors0
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -50,7 +52,7 @@ colors = [
     SKYBLUE,
     LIGHTGRAY,
 ]
-
+'''
 
 clock=pygame.time.Clock()
 
@@ -61,6 +63,7 @@ pygame.display.set_caption("3D Scene")
 
 DEBUG_COLORS = False
 
+'''
 material_name_to_color_index = {
     None : 0,
     'None' : 1,
@@ -71,7 +74,14 @@ material_name_to_color_index = {
     'Blue' : 6,
     'Yellow' : 7,
 }
+'''
 
+def load_material_info():
+    material_file_to_import = "U2E_material.json"
+    material_file = open('assets/3d_scene/' + material_file_to_import, 'r')
+    material_info = json.loads(material_file.read())
+    material_file.close()
+    return material_info
 
 def load_vertices_and_faces(frame_nr):
 
@@ -153,13 +163,16 @@ def load_vertices_and_faces(frame_nr):
                 normal_index = int(line_part.split('//')[1])-1   
                 
             
-            # FIXME: we need a proper way to map colors!
-            #   Its probably best to read in the .mtl (material file)
-            if current_material_name in material_name_to_color_index:
-                color_index = material_name_to_color_index[current_material_name]
+            if current_material_name in mat_name_to_index_and_shades:
+                color_index_and_shades = mat_name_to_index_and_shades[current_material_name]
+                color_index = color_index_and_shades['color_index']
+                nr_of_shades = color_index_and_shades['nr_of_shades']
             else:
-                print("Unknown material")
-                exit()
+                # FIXME: These materials should never be shown, so we set the to None for now, but this isnt really correct
+                color_index = None
+                nr_of_shades = None
+                print("Unknown material: " + current_material_name)
+                #exit()
                 
             # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
             # FIXME?: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
@@ -171,6 +184,7 @@ def load_vertices_and_faces(frame_nr):
                 ],
                 'normal_index' : normal_index - object_start_normal_index,
                 'color_index' : color_index,
+                'nr_of_shades' : nr_of_shades,
                 'material_name' : current_material_name
             })
             
@@ -764,7 +778,7 @@ def sort_light_draw_and_export(projected_vertices, faces):
         color_idx = face['color_index']
         
 # FIXME! HACK!        
-        color_idx = face_index % 16
+        #color_idx = face_index % 16
         
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
@@ -1026,6 +1040,29 @@ increment_frame_by = 0
 #increment_frame_by = 1
 max_frame_nr = 100
 
+material_info = load_material_info()
+mat_info = material_info['mat_info']
+palette_colors = material_info['palette_colors']
+
+colors = []
+
+for rgb64 in palette_colors:
+    # FIXME: 63 * 4 isnt exactly 255!
+    r = rgb64['r']*4
+    g = rgb64['g']*4
+    b = rgb64['b']*4
+    colors.append((r,g,b))
+
+mat_name_to_index_and_shades = {}
+for color_index in mat_info:
+    for nr_of_shades in mat_info[color_index]:
+        mat_name = mat_info[color_index][nr_of_shades]['name']
+        mat_name_to_index_and_shades[mat_name] = {
+            'color_index' : int(color_index),
+            'nr_of_shades' : int(nr_of_shades)
+        }
+#print(mat_name_to_index_and_shades)
+
 while running:
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -1122,7 +1159,7 @@ while running:
             faces.append(object_face)
 
     print("Sort, draw and export")
-    screen.fill(BLACK)
+    screen.fill((0,0,0))
     tris_seen = sort_light_draw_and_export(projected_vertices, faces)
     if tris_seen:
         f.write(b'\xff') # end of frame
