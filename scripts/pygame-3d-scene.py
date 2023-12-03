@@ -94,7 +94,7 @@ def load_vertices_and_faces(frame_nr):
     
     # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
-    obj_file = open('assets/3d_scene/test_cube' + str(frame_nr) + '.obj', 'r')
+    obj_file = open('assets/3d_scene/U2E_anim' + str(frame_nr) + '.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube1.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube50.obj', 'r')
     lines = obj_file.readlines()
@@ -482,6 +482,31 @@ def z_clip_faces_of_objects (view_objects):
         z_clipped_view_objects[current_object_name] = z_clipped_view_object
 
     return z_clipped_view_objects
+
+
+def apply_light_to_faces_of_objects(view_objects, camera_light):
+
+    lit_view_objects = {}
+    
+    for current_object_name in view_objects:
+        view_object = view_objects[current_object_name]
+        #lit_view_object = copy.deepcopy(view_object)
+
+        # for each face we change the dot-product with the camera light
+        for face in view_object['faces']:
+            normal_index = face['normal_index']
+            normal = view_object['normals'][normal_index]
+            
+# FIXME!
+            light_dot = np.dot(np.array(camera_light), np.array(normal)) + 1.0
+            
+            face['color_index'] = int((light_dot) * face['nr_of_shades']) + face['color_index']
+        
+    
+        lit_view_objects[current_object_name] = view_object
+    
+    #exit()
+    return lit_view_objects
 
 
 # FIXME: calculate the scale differently!
@@ -1036,8 +1061,8 @@ running = True
 f = open("trilist.bin", "wb")
 
 frame_nr = 1
-increment_frame_by = 0
-#increment_frame_by = 1
+#increment_frame_by = 0
+increment_frame_by = 1
 max_frame_nr = 100
 
 material_info = load_material_info()
@@ -1093,33 +1118,26 @@ while running:
 # FIXME: implement this!
     z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
     
-    # print("Apply light")
-    # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
-    # FIXME: lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
+    print("Applying light")
+    # Change color of faces/triangles according to the amount of light they get
+    
+# FIXME: change this!
+# FIXME: change this!
+# FIXME: change this!
+    camera_light = [0,0,-1]
+    lit_view_objects = apply_light_to_faces_of_objects(z_clipped_view_objects, camera_light)
     
     print("Project")
     # Project all vertices to screen-space
-    projected_objects = project_objects(z_clipped_view_objects, camera_info)
+    projected_objects = project_objects(lit_view_objects, camera_info)
     
     print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
-# FIXME: implement this!
     camera_clipped_projected_objects = camera_clip_projected_objects(projected_objects, camera_info)
 
     '''
      === Implement this ===
-    
 
-    # Change color of faces/triangles according to the amount of light they get. Possibly multiple lights (with a certain range)
-    lit_triangles = apply_light_to_triangles(culled_and_clipped_triangles, lights)
-    
-    # Sort triangles by Z
-    z_sorted_triangles = sort_triangles_by_z(lit_triangles)
-    
-    # Project all vertices to screen-space
-# FIXME! Flip y
-    projected_triangles = project_triangles_onto_screen(z_sorted_triangles, camera_info)
-    
     # Shrink triangles when overdrawn
     minimized_projected_triangles = shrink_triangles_when_overdrawn(projected_triangles)
     
