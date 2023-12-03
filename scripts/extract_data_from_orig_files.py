@@ -353,6 +353,16 @@ def parse_object_file(u2_bin):
                 
                 # FIXME: We might need to implement FLIPPING an object?
                 
+                nr_of_shades = None
+                if (flags & 0x0C == 0x0C):
+                    nr_of_shades = 32
+                elif (flags & 0x08 == 0x08):
+                    nr_of_shades = 16
+                elif (flags & 0x04 == 0x04):
+                    nr_of_shades = 8
+                else:
+                    print('WARNING: invalid nr of shades!')
+                
                 color_index = int.from_bytes(u2_bin[pos:pos+1], byteorder='little' )
                 pos += 1
                 # RESERVED
@@ -371,6 +381,7 @@ def parse_object_file(u2_bin):
                     'sides' : sides,
                     'flags' : flags,
                     'color_index' : color_index,
+                    'nr_of_shades' : nr_of_shades,
                     'normal_index' : normal_index,
                     'vertex_indices' : vertex_indices
                 }
@@ -476,7 +487,7 @@ def parse_material_file(u2_material_binary):
     return objects_and_material_info
 
 
-def generate_obj_text_for_u2_object(u2_object, vertex_index_start):
+def generate_obj_text_for_u2_object(u2_object, vertex_index_start, mat_info):
     obj_text = ""
     
     obj_text += "o " + u2_object['name'] + "\n"
@@ -489,9 +500,25 @@ def generate_obj_text_for_u2_object(u2_object, vertex_index_start):
         obj_text += str(vertex['z'])
         obj_text += "\n"
         
-    
+    previous_material_name = 'None'
     for data_pos in u2_object['polygon_data_by_pos']:
         polygon_data = u2_object['polygon_data_by_pos'][data_pos]
+        
+        color_index = polygon_data['color_index']
+        nr_of_shades = polygon_data['nr_of_shades']
+        
+        material_name = None
+        if (color_index in mat_info and nr_of_shades in mat_info[color_index]):
+            material_name = mat_info[color_index][nr_of_shades]['name']
+        else:
+            print('WARNING: unknown combination of color_index and nr_of_shades!')
+        
+        if (material_name != previous_material_name):
+            obj_text += "usemtl " 
+            obj_text += material_name
+            obj_text += "\n"
+        
+            previous_material_name = material_name
         
         #print(polygon_data)
         obj_text += "f "
@@ -609,7 +636,7 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
     #    print(u2_object['vertices'])
     
     # FIXME: also export NORMALS and use this: normal_index_start = 0
-    (obj_text, nr_of_vertices) = generate_obj_text_for_u2_object(u2_object, vertex_index_start)
+    (obj_text, nr_of_vertices) = generate_obj_text_for_u2_object(u2_object, vertex_index_start, mat_info)
     objs_text += obj_text
     vertex_index_start += nr_of_vertices
     
