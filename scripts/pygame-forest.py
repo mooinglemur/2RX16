@@ -12,7 +12,7 @@ screen_height = 200
 scale = 3
 
 DEBUG = False
-DEBUG_SHIFT_PALETTE = True  # FIXME: remove this!
+DEBUG_SHIFT_PALETTE = False  # FIXME: remove this!
 DRAW_ORIG_PALETTE = True
 DRAW_NEW_PALETTE = True
 DO_SCROLL = True
@@ -64,6 +64,15 @@ From reverse engineering READ2.PAS:
 
    --> BUT: how do we deal with the CORRESPONDING scroll text colors?
        - For now: just remove the SAME corresponding indexes...
+       
+       
+   New palette chart:
+   
+        - first 32 colors are not used -> 0 is black (IS BLACK USED?)
+        - next 96 colors: forest/green colors (like now)
+        
+        - Normal 'blue' colors start with 0x80: 16 colors from 128-143
+        - Next 7*16 colors add more 'light' according to the 3-bit value coming from the scroll text
    
 '''
 
