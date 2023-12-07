@@ -12,7 +12,7 @@ screen_height = 200
 scale = 3
 
 DEBUG = False
-DRAW_PALETTE = False
+DRAW_PALETTE = True
 DO_SCROLL = True
 
 '''
@@ -385,6 +385,7 @@ def run():
 
             x = 0
             y = 0
+            '''
             while (byte_index < nr_of_palette_bytes):
                 
                 red = palette_bytes[byte_index]
@@ -399,11 +400,14 @@ def run():
                 #blue = blue & 0xF0
                 
                 pixel_color = (red, green, blue)
+                '''
+            for old_clr_idx in range(256):
+                pixel_color = new_colors_with_old_index[old_clr_idx]
                 
                 pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 8*scale, 8*scale))
                 
-                
-                if (byte_index % 16 == 0 and byte_index != 0):
+                # if (byte_index % 16 == 0 and byte_index != 0):
+                if (old_clr_idx % 16 == 15):
                     y += 8
                     x = 0
                 else:
