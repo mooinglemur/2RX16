@@ -12,9 +12,9 @@ screen_height = 200
 scale = 3
 
 DEBUG = False
-DEBUG_SHIFT_PALETTE = True
-DRAW_ORIG_PALETTE = False
-DRAW_NEW_PALETTE = False
+DEBUG_SHIFT_PALETTE = True  # FIXME: remove this!
+DRAW_ORIG_PALETTE = True
+DRAW_NEW_PALETTE = True
 DO_SCROLL = True
 
 '''
@@ -35,6 +35,36 @@ From reverse engineering READ2.PAS:
 
   -> IMPORTANT: we should *REMOVE* the mappings of pixels that are not <16 in color_index! (so basicly NOT include them in the reverse-mapping)
 
+'''
+
+'''
+
+    - Palette shrinking from 1-18 colors to 1-16 colors: (note: original color 0 is never overwritten)
+
+        RGB (hex)
+        000  <- REMOVE: never overwritten
+        001  -> 002   -> REMOVE: hardly noticable
+        002
+        113
+        114  -> 113   <- REMOVE same blue value as next one, same red and green as previous one
+        124
+        225
+        236
+        247
+        348
+        358
+        469
+        47a
+        57c
+        58d
+        69f
+        79f
+        7af
+        8bf
+
+   --> BUT: how do we deal with the CORRESPONDING scroll text colors?
+       - For now: just remove the SAME corresponding indexes...
+   
 '''
 
 # FIXME: change this!
