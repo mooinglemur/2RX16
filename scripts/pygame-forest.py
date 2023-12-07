@@ -19,8 +19,8 @@ DO_SCROLL = True
 From reverse engineering READ2.PAS:
 
   - O2.SCI contains the scroll text
-    - 10 + 768 bytes for palette = 778 bytes --> NOT USED!?
-    - 640 * 32 for pixels =  20480 bytes
+    - 10 + 768 bytes for palette = 778 bytes --> This is NOT used!
+    - 640 * 32 for pixels = 20480 bytes
     - total is: 21258 bytes
     - Note: font pixels get a +128 on their color index!
 
@@ -41,14 +41,6 @@ source_image_width = 320
 source_image_height = 200
 
 scroll_text_image_filename = 'O2.SCI'
-
-def load_background_image_png(png_filename):
-
-    im = Image.open(png_filename)
-    palette_bytes = im.getpalette()
-    px = im.load()
-    
-    return (palette_bytes, px)
 
 def parse_sci_file(sci_bin):
 
