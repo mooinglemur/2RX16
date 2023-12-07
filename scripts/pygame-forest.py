@@ -11,7 +11,8 @@ screen_width = 320
 screen_height = 200
 scale = 3
 
-DEBUG = True
+DEBUG = False
+DEBUG_SHIFT_PALETTE = True
 DRAW_ORIG_PALETTE = False
 DRAW_NEW_PALETTE = False
 DO_SCROLL = True
@@ -31,6 +32,8 @@ From reverse engineering READ2.PAS:
   - This is compiled into BGR.TPU
   - READ2.PAS uses bgr (meaning: BGR.TPU). This becomes implicitily available as 'hback' in the code
   - The palette inside hback (first 10 dummy + 768 palette bytes) is actually used!
+
+  -> IMPORTANT: we should *REMOVE* the mappings of pixels that are not <16 in color_index! (so basicly NOT include them in the reverse-mapping)
 
 '''
 
@@ -347,6 +350,11 @@ def run():
                     y_screen = destination['y']
                     
                     clr_idx = pixels[x_screen + y_screen * 320]
+                    
+                    if (DEBUG_SHIFT_PALETTE):
+                        if (clr_idx < 3):
+                            clr_idx = 3
+                    
                     
                     pixel_color = None
                     if (scroll_text_clr_idx > 0):
