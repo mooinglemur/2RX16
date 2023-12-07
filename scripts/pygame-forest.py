@@ -13,9 +13,10 @@ scale = 3
 
 DEBUG = False
 DEBUG_SHIFT_PALETTE = False  # FIXME: remove this!
-DRAW_ORIG_PALETTE = True
-DRAW_NEW_PALETTE = True
-DO_SCROLL = True
+DEBUG_POS_COLORS = True
+DRAW_ORIG_PALETTE = False
+DRAW_NEW_PALETTE = False
+DO_SCROLL = False
 
 '''
 From reverse engineering READ2.PAS:
@@ -365,15 +366,6 @@ def run():
                 
         for pos_file_nr in range(3):
         
-            '''
-            if (pos_file_nr == 0):
-                pixel_color = (0xFF, 0xFF, 0x00)
-            elif (pos_file_nr == 1):
-                pixel_color = (0xFF, 0x00, 0xFF)
-            elif (pos_file_nr == 2):
-                pixel_color = (0x00, 0xFF, 0xFF)
-            '''
-            
             for pos_index, pos_info in enumerate(positions_info[pos_file_nr]):
             
                 # FIXME: we have a source of 640 pixels here, so we convert from 237 width (which is the pos_index based on) to 640 here
@@ -413,7 +405,15 @@ def run():
                         if (clr_idx == 18):
                         #if (clr_idx > 18):
                             pixel_color = (0xFF, 0xFF, 0x00)
-                        
+
+                    if (DEBUG_POS_COLORS):
+                        if (pos_file_nr == 0):
+                            pixel_color = (0xFF, 0xFF, 0x00)
+                        elif (pos_file_nr == 1):
+                            pixel_color = (0xFF, 0x00, 0xFF)
+                        elif (pos_file_nr == 2):
+                            pixel_color = (0x00, 0xFF, 0xFF)
+                    
                     pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
         
         
