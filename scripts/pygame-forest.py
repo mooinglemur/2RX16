@@ -11,8 +11,9 @@ screen_width = 320
 screen_height = 200
 scale = 3
 
-DEBUG = False
-DRAW_PALETTE = True
+DEBUG = True
+DRAW_ORIG_PALETTE = False
+DRAW_NEW_PALETTE = False
 DO_SCROLL = True
 
 '''
@@ -178,17 +179,6 @@ while (byte_index < nr_of_palette_bytes):
     red = red & 0xF0
     green = green & 0xF0
     blue = blue & 0xF0
-    
-# FIXME: what about GREY colors?
-#  
-    if (blue > green and blue > red) and (not (blue == 0x10 and green == 0x00 and red == 0x00)):
-        pass
-    else:
-# FIXME: we should MARK this color as NON-BLUE and put it somewhere else in the PALETTE!
-        pass
-        #red = 0xFF
-        #green = 0xFF
-        #blue = 0x00
     
     color_str = format(red, "02x") + format(green, "02x") + format(blue, "02x") 
     
@@ -372,20 +362,21 @@ def run():
                         pixel_color = new_colors_with_old_index[clr_idx]
                         
                     if (DEBUG):
-                        if (clr_idx > 18):
+                        # Findings: only (oroginal) color index 1-18 are being overwritten by the scroller (so NOT index 0! which is black)
+                        if (clr_idx == 18):
+                        #if (clr_idx > 18):
                             pixel_color = (0xFF, 0xFF, 0x00)
                         
                     pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
         
         
-        if (DRAW_PALETTE):
-            # screen.fill(background_color)
-            
+        if (DRAW_ORIG_PALETTE):
+        
             byte_index = 0
 
-            x = 0
+            x = 192
             y = 0
-            '''
+        
             while (byte_index < nr_of_palette_bytes):
                 
                 red = palette_bytes[byte_index]
@@ -395,12 +386,22 @@ def run():
                 blue = palette_bytes[byte_index]
                 byte_index += 1
                 
-                #red = red & 0xF0
-                #green = green & 0xF0
-                #blue = blue & 0xF0
-                
                 pixel_color = (red, green, blue)
-                '''
+        
+                pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 8*scale, 8*scale))
+                
+                if (byte_index % 16 == 0 and byte_index != 0):
+                    y += 8
+                    x = 192
+                else:
+                    x += 8
+                    
+        if (DRAW_NEW_PALETTE):
+            # screen.fill(background_color)
+            
+            x = 0
+            y = 0
+            
             for old_clr_idx in range(256):
                 pixel_color = new_colors_with_old_index[old_clr_idx]
                 
