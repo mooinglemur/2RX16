@@ -13,9 +13,9 @@ scale = 3
 
 DEBUG = False
 DEBUG_SHIFT_PALETTE = False  # FIXME: remove this!
-DEBUG_POS_COLORS = True
+DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
-DRAW_NEW_PALETTE = False
+DRAW_NEW_PALETTE = True
 DO_SCROLL = False
 
 '''
@@ -198,14 +198,8 @@ scroll_text_pixels = parse_sci_file(scroll_text_binary)
 
 # We first determine all unique 12-bit COLORS, so we can re-index the image (pixels) with the new color indexes
 
-new_colors = []
 new_colors_with_old_index = []
-unique_12bit_colors = {}
-old_color_index_to_new_color_index = []
 
-old_color_index = 0
-new_color_index_offset = 0    # We  start at index 0! (NOT preserving the first 16 colors)
-new_color_index = new_color_index_offset
 byte_index = 0
 
 nr_of_palette_bytes = 3*256
@@ -225,22 +219,11 @@ while (byte_index < nr_of_palette_bytes):
     
     color_str = format(red, "02x") + format(green, "02x") + format(blue, "02x") 
     
-    if color_str in unique_12bit_colors:
-        old_color_index_to_new_color_index.append(unique_12bit_colors.get(color_str))
-    else:
-        old_color_index_to_new_color_index.append(new_color_index)
-        unique_12bit_colors[color_str] = new_color_index
-        new_colors.append((red, green, blue))
-        new_color_index += 1
-    
     new_colors_with_old_index.append((red, green, blue))
-    
-    old_color_index += 1
 
 
 # Using the POSx.DAT info, we determine which pixels should be in the first 16 colors.
 background_colors_overwritten_by_scroller = {}
-background_new_colors_overwritten_by_scroller = {}
 nr_of_pixels_overdrawn_by_scroller = 0
 for pos_file_nr in range(3):
     
@@ -256,23 +239,15 @@ for pos_file_nr in range(3):
             nr_of_pixels_overdrawn_by_scroller += 1
             
             background_colors_overwritten_by_scroller[clr_idx] = True
-            new_clr_idx = old_color_index_to_new_color_index[clr_idx]
-            background_new_colors_overwritten_by_scroller[new_clr_idx] = True
             
 #print(len(background_colors_overwritten_by_scroller.keys()))
-
-#print(len(background_new_colors_overwritten_by_scroller.keys()))
-
 #print(nr_of_pixels_overdrawn_by_scroller)
 
     
 # Printing out asm for palette:
 
-# FIXME: THIS IS WRONG! We need to use the new_colors_with_old_index-array!
-# FIXME: THIS IS WRONG! We need to use the new_colors_with_old_index-array!
-# FIXME: THIS IS WRONG! We need to use the new_colors_with_old_index-array!
 palette_string = ""
-for new_color in new_colors:
+for new_color in new_colors_with_old_index:
     red = new_color[0]
     green = new_color[1]
     blue = new_color[2]
@@ -289,7 +264,6 @@ print(palette_string)
 
 
 background_color = (0,0,0)
-
 
 
 pygame.init()
@@ -315,7 +289,6 @@ def run():
             
             clr_idx = pixels[source_x + source_y * 320]
             
-            # NOT USING THIS ANYMORE: pixel_color = new_colors[old_color_index_to_new_color_index[clr_idx] - new_color_index_offset]
             pixel_color = new_colors_with_old_index[clr_idx]
             
             pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
@@ -354,11 +327,7 @@ def run():
                 
                 clr_idx = pixels[source_x + source_y * 320]
                     
-                # FIXME: use new_colors_with_old_index !!
-                # FIXME: use new_colors_with_old_index !!
-                # FIXME: use new_colors_with_old_index !!
-                    
-                pick_color = new_colors[old_color_index_to_new_color_index[clr_idx] - new_color_index_offset]
+                pick_color = new_colors_with_old_index[clr_idx]
                 
                 print((source_x,source_y))
                 print(pick_color)
