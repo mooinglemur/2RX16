@@ -16,7 +16,7 @@ DEBUG_SHIFT_PALETTE = False  # FIXME: remove this!
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
 DRAW_NEW_PALETTE = True
-DO_SCROLL = False
+DO_SCROLL = True
 
 '''
 From reverse engineering READ2.PAS:
@@ -198,12 +198,10 @@ scroll_text_pixels = parse_sci_file(scroll_text_binary)
 
 # We first determine all unique 12-bit COLORS, so we can re-index the image (pixels) with the new color indexes
 
-new_colors_with_old_index = []
+colors_12bit = []
 
 byte_index = 0
-
 nr_of_palette_bytes = 3*256
-
 while (byte_index < nr_of_palette_bytes):
     
     red = palette_bytes[byte_index]
@@ -217,9 +215,63 @@ while (byte_index < nr_of_palette_bytes):
     green = green & 0xF0
     blue = blue & 0xF0
     
-    color_str = format(red, "02x") + format(green, "02x") + format(blue, "02x") 
+    colors_12bit.append((red, green, blue))
     
-    new_colors_with_old_index.append((red, green, blue))
+# We remove 2 colors from the first part and 2 colors from the upper part of the palette and change the image accordingly
+
+
+# First we re-map the pixels that use the colors that are about to be removed to the nearby colors.
+
+color_indexes_to_remove = [ 128+4, 128+1, 4, 1 ] # should be in reverse order! (since we delete!)
+
+remap_color_indexes = []
+remap_color_indexes.extend(range(256))
+
+remap_color_indexes[1] = 2
+remap_color_indexes[4] = 3
+remap_color_indexes[128+1] = 128+2
+remap_color_indexes[128+4] = 128+3
+
+# Remap the color indexes (that are to be remove) to the nearby colors
+for pixel_index in range(len(pixels)):
+    old_pixel = pixels[pixel_index]
+    pixels[pixel_index] = remap_color_indexes[old_pixel]
+
+# We actually remove the colors from the palette
+for color_index_to_remove in color_indexes_to_remove:
+    del colors_12bit[color_index_to_remove]
+
+colors_12bit.append((0xFF, 0xFF, 0x00))
+colors_12bit.append((0xFF, 0xFF, 0x00))
+colors_12bit.append((0xFF, 0xFF, 0x00))
+colors_12bit.append((0xFF, 0xFF, 0x00))
+
+new_color_indexes = []
+
+new_color_index = 0
+for color_index in range(256):
+    new_color_indexes.append(new_color_index)
+    
+    if (color_index in color_indexes_to_remove):
+        pass
+    else:
+        if (new_color_index <= 255):
+            new_color_index += 1
+
+# We change all color index of all pixels accordingly    
+for pixel_index in range(len(pixels)):
+    old_pixel = pixels[pixel_index]
+    pixels[pixel_index] = new_color_indexes[old_pixel]
+
+#print(pixels)
+#print(new_color_indexes)
+
+
+# We re-map all colors ...
+
+# FIXME: implement this!
+
+
 
 
 # Using the POSx.DAT info, we determine which pixels should be in the first 16 colors.
@@ -247,7 +299,7 @@ for pos_file_nr in range(3):
 # Printing out asm for palette:
 
 palette_string = ""
-for new_color in new_colors_with_old_index:
+for new_color in colors_12bit:
     red = new_color[0]
     green = new_color[1]
     blue = new_color[2]
@@ -289,7 +341,7 @@ def run():
             
             clr_idx = pixels[source_x + source_y * 320]
             
-            pixel_color = new_colors_with_old_index[clr_idx]
+            pixel_color = colors_12bit[clr_idx]
             
             pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
 
@@ -327,13 +379,14 @@ def run():
                 
                 clr_idx = pixels[source_x + source_y * 320]
                     
-                pick_color = new_colors_with_old_index[clr_idx]
+                pick_color = colors_12bit[clr_idx]
                 
                 print((source_x,source_y))
                 print(pick_color)
                 
                 
         for pos_file_nr in range(3):
+#        for pos_file_nr in range(0):
         
             for pos_index, pos_info in enumerate(positions_info[pos_file_nr]):
             
@@ -365,9 +418,9 @@ def run():
                         # FIXME: WORKAROUND!! WHY IS THIS SOMETIMES @256?
                         if (combined_clr_idx > 255):
                             combined_clr_idx = 255
-                        pixel_color = new_colors_with_old_index[combined_clr_idx]
+                        pixel_color = colors_12bit[combined_clr_idx]
                     else:
-                        pixel_color = new_colors_with_old_index[clr_idx]
+                        pixel_color = colors_12bit[clr_idx]
                         
                     if (DEBUG):
                         # Findings: only (oroginal) color index 1-18 are being overwritten by the scroller (so NOT index 0! which is black)
@@ -419,7 +472,7 @@ def run():
             y = 0
             
             for old_clr_idx in range(256):
-                pixel_color = new_colors_with_old_index[old_clr_idx]
+                pixel_color = colors_12bit[old_clr_idx]
                 
                 pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 8*scale, 8*scale))
                 
