@@ -12,11 +12,10 @@ screen_height = 200
 scale = 3
 
 DEBUG = False
-DEBUG_SHIFT_PALETTE = False  # FIXME: remove this!
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
 DRAW_NEW_PALETTE = True
-DO_SCROLL = False
+DO_SCROLL = True
 
 '''
 From reverse engineering READ2.PAS:
@@ -294,11 +293,32 @@ for color_index in range(1, 17):
     new_colors_12bit[new_color_index] = colors_12bit[color_index]
     new_color_index += 1
 
-# Colors 128+1 -> 128+18 are mapped to 128+16 -> 128+16+15 (so *shrunk* by 2 colors)
-# Colors 128+1+1 -> 128+18+1 are mapped to 128+32 -> 128+32+15 (so *shrunk* by 2 colors)
-new_color_index = 128+16
-for color_index in range(128+1, 128+17):
-    new_color_indexes[color_index] = new_color_index
+# Colors 128+1 -> 128+16 are mapped to 128+16 -> 128+16+15
+# Colors 128+2 -> 128+17 are mapped to 128+32 -> 128+32+15
+# etc.
+new_color_index = 128
+for color_index in range(128, 128+16):
+    new_color_indexes[color_index+1] = new_color_index+16
+    new_colors_12bit[new_color_index+16] = colors_12bit[color_index+1]
+    
+    new_color_indexes[color_index+2] = new_color_index+32
+    new_colors_12bit[new_color_index+32] = colors_12bit[color_index+2]
+    
+    new_color_indexes[color_index+3] = new_color_index+48
+    new_colors_12bit[new_color_index+48] = colors_12bit[color_index+3]
+    
+    new_color_indexes[color_index+4] = new_color_index+64
+    new_colors_12bit[new_color_index+64] = colors_12bit[color_index+4]
+    
+    new_color_indexes[color_index+5] = new_color_index+80
+    new_colors_12bit[new_color_index+80] = colors_12bit[color_index+5]
+    
+    new_color_indexes[color_index+6] = new_color_index+96
+    new_colors_12bit[new_color_index+96] = colors_12bit[color_index+6]
+    
+    new_color_indexes[color_index+7] = new_color_index+112
+    new_colors_12bit[new_color_index+112] = colors_12bit[color_index+7]
+    
     new_color_index += 1
 
 
@@ -435,9 +455,8 @@ def run():
                 print(pick_color)
                 
 
-#FIXME!                
-#        for pos_file_nr in range(3):
-        for pos_file_nr in range(0):
+        for pos_file_nr in range(3):
+#        for pos_file_nr in range(0):
         
             for pos_index, pos_info in enumerate(positions_info[pos_file_nr]):
             
@@ -455,20 +474,17 @@ def run():
                     
                     clr_idx = pixels[x_screen + y_screen * 320]
                     
-                    if (DEBUG_SHIFT_PALETTE):
-                        if (clr_idx < 3):
-                            clr_idx = 3
-                    
-                    
                     pixel_color = None
-                    if (scroll_text_clr_idx > 0):
-                        combined_clr_idx = clr_idx + scroll_text_clr_idx + 128
+                    # Note: We should only change pixels that are blue-ish (so they should be >=128)
+                    if (scroll_text_clr_idx > 0 and clr_idx >= 128):
+                        combined_clr_idx = clr_idx + scroll_text_clr_idx * 16
                         
                         # FIXME: WORKAROUND!! WHY IS THIS SOMETIMES @256?
                         # FIXME: WORKAROUND!! WHY IS THIS SOMETIMES @256?
                         # FIXME: WORKAROUND!! WHY IS THIS SOMETIMES @256?
                         if (combined_clr_idx > 255):
                             combined_clr_idx = 255
+                            print('ERROR: too high combined_clr_idx!')
                         pixel_color = colors_12bit[combined_clr_idx]
                     else:
                         pixel_color = colors_12bit[clr_idx]
