@@ -35,6 +35,7 @@ From reverse engineering READ2.PAS:
   - The palette inside hback (first 10 dummy + 768 palette bytes) is actually used!
 
   -> IMPORTANT: we should *REMOVE* the mappings of pixels that are not <16 in color_index! (so basicly NOT include them in the reverse-mapping)
+    --> YOU CAN SEE THIS AS A YELLOW DOT BLINKING NOW!
 
 '''
 
