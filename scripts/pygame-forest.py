@@ -16,7 +16,7 @@ DEBUG_SHIFT_PALETTE = False  # FIXME: remove this!
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
 DRAW_NEW_PALETTE = True
-DO_SCROLL = True
+DO_SCROLL = False
 
 '''
 From reverse engineering READ2.PAS:
@@ -218,12 +218,8 @@ while (byte_index < nr_of_palette_bytes):
     
     colors_12bit.append((red, green, blue))
     
-# We remove 2 colors from the first part and 2 colors from the upper part of the palette and change the image accordingly
-
 
 # First we re-map the pixels that use the colors that are about to be removed to the nearby colors.
-
-color_indexes_to_remove = [ 128+4, 128+1, 4, 1 ] # should be in reverse order! (since we delete!)
 
 remap_color_indexes = []
 remap_color_indexes.extend(range(256))
@@ -238,14 +234,23 @@ for pixel_index in range(len(pixels)):
     old_pixel = pixels[pixel_index]
     pixels[pixel_index] = remap_color_indexes[old_pixel]
 
+colors_12bit[1] = (0xFF, 0xFF, 0x00)
+colors_12bit[4] = (0xFF, 0xFF, 0x00)
+colors_12bit[128+1] = (0xFF, 0xFF, 0x00)
+colors_12bit[128+4] = (0xFF, 0xFF, 0x00)
+
+color_indexes_to_remove = [ 128+4, 128+1, 4, 1 ]
+
+
 # We actually remove the colors from the palette
+
 for color_index_to_remove in color_indexes_to_remove:
     del colors_12bit[color_index_to_remove]
 
-colors_12bit.append((0xFF, 0xFF, 0x00))
-colors_12bit.append((0xFF, 0xFF, 0x00))
-colors_12bit.append((0xFF, 0xFF, 0x00))
-colors_12bit.append((0xFF, 0xFF, 0x00))
+colors_12bit.insert(30, (0xFF, 0xFF, 0x00))
+colors_12bit.insert(31, (0xFF, 0xFF, 0x00))
+colors_12bit.insert(128+30, (0xFF, 0xFF, 0x00))
+colors_12bit.insert(128+31, (0xFF, 0xFF, 0x00))
 
 new_color_indexes = []
 
@@ -258,19 +263,63 @@ for color_index in range(256):
     else:
         if (new_color_index <= 255):
             new_color_index += 1
+            if (new_color_index == 30):
+                new_color_index += 2
 
 # We change all color index of all pixels accordingly    
 for pixel_index in range(len(pixels)):
     old_pixel = pixels[pixel_index]
     pixels[pixel_index] = new_color_indexes[old_pixel]
 
+
+# We build the new color index map and a new color palette
+
+new_colors_12bit = []
+for new_color_index in range(256):
+    new_colors_12bit.append((0xFF, 0X00, 0xFF))
+
+new_color_indexes = []
+new_color_indexes.extend(range(256))
+
+# Color 0 stays the same 
+# Colors 1 -> 31 are allowed to stay the same, but it doesnt really matter (NOT USED)
+# Colors 32 -> 127 stay the same (GREEN + BROWN colors)
+for color_index in range(0, 128):
+    new_colors_12bit[color_index] = colors_12bit[color_index]
+
+# Colors 1 -> 16 are mapped to 128 -> 128+15
+new_color_index = 128
+for color_index in range(1, 17):
+    new_color_indexes[color_index] = new_color_index
+    new_colors_12bit[new_color_index] = colors_12bit[color_index]
+    new_color_index += 1
+
+# Colors 128+1 -> 128+18 are mapped to 128+16 -> 128+16+15 (so *shrunk* by 2 colors)
+# Colors 128+1+1 -> 128+18+1 are mapped to 128+32 -> 128+32+15 (so *shrunk* by 2 colors)
+new_color_index = 128+16
+for color_index in range(128+1, 128+17):
+    new_color_indexes[color_index] = new_color_index
+    new_color_index += 1
+
+
+
+# We change all color index of all pixels accordingly    
+for pixel_index in range(len(pixels)):
+    old_pixel = pixels[pixel_index]
+    
+    # SAFETY: maybe old pixels are in the high indexes (>=128). We set those to be in the low indexes (since these have the same color). 
+    if (old_pixel >= 128):
+        old_pixel -= 128
+        
+    pixels[pixel_index] = new_color_indexes[old_pixel]
+
 #print(pixels)
 #print(new_color_indexes)
 
 
-# We re-map all colors ...
+# FIXME: use new_colors_12bit instead!
+colors_12bit = new_colors_12bit
 
-# FIXME: implement this!
 
 
 
@@ -385,9 +434,10 @@ def run():
                 print((source_x,source_y))
                 print(pick_color)
                 
-                
-        for pos_file_nr in range(3):
-#        for pos_file_nr in range(0):
+
+#FIXME!                
+#        for pos_file_nr in range(3):
+        for pos_file_nr in range(0):
         
             for pos_index, pos_info in enumerate(positions_info[pos_file_nr]):
             
