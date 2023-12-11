@@ -26,7 +26,6 @@ scrolltext_image_height = 32
 
 SCROLLER_BUFFER_ADDRESS = 0x6000
 
-DEBUG = False
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
 DRAW_NEW_PALETTE = False
@@ -47,9 +46,6 @@ From reverse engineering READ2.PAS:
   - This is compiled into BGR.TPU
   - READ2.PAS uses bgr (meaning: BGR.TPU). This becomes implicitily available as 'hback' in the code
   - The palette inside hback (first 10 dummy + 768 palette bytes) is actually used!
-
-  -> IMPORTANT: we should *REMOVE* the mappings of pixels that are not <16 in color_index! (so basicly NOT include them in the reverse-mapping)
-    --> YOU CAN SEE THIS AS A YELLOW DOT BLINKING NOW!
 
 '''
 
@@ -643,7 +639,6 @@ def run():
                 
 
         for pos_file_nr in range(3):
-#        for pos_file_nr in range(0):
         
             for pos_index, pos_info in enumerate(positions_info[pos_file_nr]):
             
@@ -665,23 +660,10 @@ def run():
                     # Note: We should only change pixels that are blue-ish (so they should be >=128)
                     if (scroll_text_clr_idx > 0 and clr_idx >= 128):
                         combined_clr_idx = clr_idx + scroll_text_clr_idx * 16
-                        
-                        # FIXME: WORKAROUND!! WHY IS THIS SOMETIMES @256?
-                        # FIXME: WORKAROUND!! WHY IS THIS SOMETIMES @256?
-                        # FIXME: WORKAROUND!! WHY IS THIS SOMETIMES @256?
-                        if (combined_clr_idx > 255):
-                            combined_clr_idx = 255
-                            print('ERROR: too high combined_clr_idx!')
                         pixel_color = colors_12bit[combined_clr_idx]
                     else:
                         pixel_color = colors_12bit[clr_idx]
                         
-                    if (DEBUG):
-                        # Findings: only (oroginal) color index 1-18 are being overwritten by the scroller (so NOT index 0! which is black)
-                        if (clr_idx == 18):
-                        #if (clr_idx > 18):
-                            pixel_color = (0xFF, 0xFF, 0x00)
-
                     if (DEBUG_POS_COLORS):
                         if (pos_file_nr == 0):
                             pixel_color = (0xFF, 0xFF, 0x00)
