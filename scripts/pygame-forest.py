@@ -387,7 +387,7 @@ for source_x in range(scrolltext_image_width):
         # But note: only 31*237 are going to be copied into the scroller buffer!
         
         # We set bit3 to 1 and shift 4 bits to the left  ( we want to set the high nibble of the pixel byte, with bit7 set to 1)
-        clr_idx = (clr_idx + 8) << 4
+        clr_idx = (clr_idx + 8) * 16
         
         scrolltext_data.append(clr_idx)
         
