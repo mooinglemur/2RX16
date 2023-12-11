@@ -1,4 +1,4 @@
-# To install pygame: pip install pygame      (my version: pygame-2.1.2)
+# To install pygame: pip install pygame      (my scrolltext_image_heightversion: pygame-2.1.2)
 from PIL import Image
 import pygame
 import math
@@ -9,12 +9,27 @@ import os
 
 screen_width = 320
 screen_height = 200
-scale = 3
+scale = 2
+
+# FIXME: rename to .DAT files?!
+# FIXME: rename to .DAT files?!
+# FIXME: rename to .DAT files?!
+
+# FIXME: we should place this file in ROOT/ at some point!
+bitmap_filename = "FOREST.BIN"
+scrolltext_filename = "SCROLLTEXT.BIN"
+scroll_copy_code_filename = "SCROLLCOPY.BIN"
+bitmap_image_width = 320
+bitmap_image_height = 200
+scrolltext_image_width = 640
+scrolltext_image_height = 32
+
+SCROLLER_BUFFER_ADDRESS = 0x6000
 
 DEBUG = False
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
-DRAW_NEW_PALETTE = True
+DRAW_NEW_PALETTE = False
 DO_SCROLL = True
 
 '''
@@ -342,11 +357,51 @@ colors_12bit = new_colors_12bit
 
 
 
+bitmap_data = []
+for source_y in range(bitmap_image_height):
+
+    for source_x in range(bitmap_image_width):
+
+        clr_idx = pixels[source_x + source_y * 320]
+        
+        bitmap_data.append(clr_idx)
+        
+bitmapFile = open(bitmap_filename, "wb")
+bitmapFile.write(bytearray(bitmap_data))
+bitmapFile.close()
+print("bitmap written to file: " + bitmap_filename)
+
+
+
+# Note: we store the scrolltext pixels in a different way: column by column (from left to right)
+scrolltext_data = []
+for source_x in range(scrolltext_image_width):
+
+    for source_y in range(scrolltext_image_height):
+
+        clr_idx = scroll_text_pixels[source_x + source_y * 640]
+        
+        # We want to this be nicely divided into 8kB chunks, we *for now* we store 256 * 32 pixels in each RAM bank
+        # There is no real need to actually split this file (for now) since the LOAD kernal function on the X16 does
+        # the spliting for us.
+        # But note: only 31*237 are going to be copied into the scroller buffer!
+        
+        # We set bit3 to 1 and shift 4 bits to the left  ( we want to set the high nibble of the pixel byte, with bit7 set to 1)
+        clr_idx = (clr_idx + 8) << 4
+        
+        scrolltext_data.append(clr_idx)
+        
+scrollTextFile = open(scrolltext_filename, "wb")
+scrollTextFile.write(bytearray(scrolltext_data))
+scrollTextFile.close()
+print("scroll text written to file: " + scrolltext_filename)
 
 
 # Using the POSx.DAT info, we determine which pixels should be in the first 16 colors.
+# Also: reversing the mapping: source_pos -> screen_x/y ==> screen_x/y -> source_pos
 background_colors_overwritten_by_scroller = {}
 nr_of_pixels_overdrawn_by_scroller = 0
+screen_xy_to_source_pos = {}
 for pos_file_nr in range(3):
     
     for pos_index, pos_info in enumerate(positions_info[pos_file_nr]):
@@ -358,9 +413,141 @@ for pos_file_nr in range(3):
             
             clr_idx = pixels[x_screen + y_screen * 320]
             
-            nr_of_pixels_overdrawn_by_scroller += 1
+            # Note: We should only change pixels that are blue-ish (so they should be >=128)
+            if (clr_idx >= 128):
             
-            background_colors_overwritten_by_scroller[clr_idx] = True
+                nr_of_pixels_overdrawn_by_scroller += 1
+                background_colors_overwritten_by_scroller[clr_idx] = True
+                
+                if (not (y_screen in screen_xy_to_source_pos)):
+                    screen_xy_to_source_pos[y_screen] = {}
+                    
+                screen_xy_to_source_pos[y_screen][x_screen] = pos_index
+            
+
+print('nr of pixels overdrawn by scroller: ' + str(nr_of_pixels_overdrawn_by_scroller))
+
+# Now we go through the screen coordinates (left to right, then top to bottom)
+# and for a pixel that has a source_pos we start to create hor-line-draw code
+# to draw on that row. If we encounter a pixel that has no source_pos anymore
+# to end that hor-line-draw code (and if it fits into 8kb) we add it to a block of code.
+# And we keep doing this until we reach the end of the screen.
+
+def hor_line_source_pixels_to_code(start_x, start_y, hor_line_source_pixels):
+    hor_line_code = []
+    
+    # We first have to set the ADDR medium and low
+    #   IMPORTANT: we *assume* that the bitmap address starts at $00000 ! (320x200@8bpp, single buffer)
+    
+    # Using start_x and start_y we determine the ADDRESS_LOW and ADDRESS_MED
+    
+    start_address = start_y * 320 + start_x
+    start_address_low = start_address % 256
+    start_address_med = start_address // 256
+    
+    # lda #ADDRESS_LOW
+    hor_line_code.append(0xA9)  # lda #..
+    hor_line_code.append(start_address_low)  # #ADDRESS_LOW
+    
+    # sta ADDRx_L ($9F20)
+    hor_line_code.append(0x8D)  # sta ....
+    hor_line_code.append(0x20)  # $20
+    hor_line_code.append(0x9F)  # $9F
+    
+    # lda #ADDRESS_MED
+    hor_line_code.append(0xA9)  # lda #..
+    hor_line_code.append(start_address_med)  # #ADDRESS_MED
+    
+    # sta ADDRx_M ($9F21)
+    hor_line_code.append(0x8D)  # sta ....
+    hor_line_code.append(0x21)  # $21
+    hor_line_code.append(0x9F)  # $9F
+    
+    # We then load and store store each consecutive pixel
+    
+    for source_pixel_pos in hor_line_source_pixels:
+        # The source pixel position assumes 237 wide, 31 high. We need to convert this to 31 high, 237 wide
+        source_pixel_pos_x = source_pixel_pos % 237
+        source_pixel_pos_y = source_pixel_pos // 237
+        source_pixel_address = SCROLLER_BUFFER_ADDRESS + source_pixel_pos_x*31 + source_pixel_pos_y
+        
+        source_pixel_address_low = source_pixel_address % 256
+        source_pixel_address_high = source_pixel_address // 256
+        
+        # lda SOURCE_PIXEL_ADDRESS
+        hor_line_code.append(0xAD)  # lda ....
+        hor_line_code.append(source_pixel_address_low)   # SOURCE_PIXEL_ADDRESS_LOW
+        hor_line_code.append(source_pixel_address_high)  # SOURCE_PIXEL_ADDRESS_HIGH
+        
+        # sta VERA_DATA0 ($9F23)  -> this increments ADDR0 one pixel horizontally
+        hor_line_code.append(0x8D)  # sta ....
+        hor_line_code.append(0x23)  # $23
+        hor_line_code.append(0x9F)  # $9F
+    
+
+    return hor_line_code
+
+current_hor_line_source_pixels = []
+current_start_x = None
+current_start_y = None
+
+code_chunks = []
+current_code_chunk = []
+
+for y_screen in range(200):
+    
+    for x_screen in range(320):
+        
+        hor_line_ended = False
+        if (y_screen in screen_xy_to_source_pos and x_screen in screen_xy_to_source_pos[y_screen]):
+            if (len(current_hor_line_source_pixels) == 0):
+                current_start_x = x_screen
+                current_start_y = y_screen
+            current_hor_line_source_pixels.append(screen_xy_to_source_pos[y_screen][x_screen])
+        else:
+            hor_line_ended = True
+
+        if (x_screen == 200-1) or (hor_line_ended):
+        
+            if (len(current_hor_line_source_pixels) > 0):
+                #print((current_start_x, current_start_y, current_hor_line_source_pixels))
+            
+                hor_line_code = hor_line_source_pixels_to_code(current_start_x, current_start_y, current_hor_line_source_pixels)
+                
+                if (len(current_code_chunk) + len(hor_line_code) + 1 > 8*1024):  # +1 for the 'rts'
+                    # This hor line code does not fit into 8kB anymore, so we need to create a new chunk
+                    current_code_chunk.append(0x60)  # rts
+                    nr_of_padding_zeros = 8*1024 - len(current_code_chunk)
+                    current_code_chunk += [0] * nr_of_padding_zeros
+                    code_chunks.append(current_code_chunk)
+                    current_code_chunk = []
+                    
+                # We add the hor line code to the current chunk of code
+                current_code_chunk += hor_line_code
+                
+                # Starting a new hor line
+                current_hor_line_source_pixels = []
+                current_start_x = None
+                current_start_y = None
+
+if (len(current_code_chunk) > 0):
+    current_code_chunk.append(0x60)  # rts
+    nr_of_padding_zeros = 8*1024 - len(current_code_chunk)
+    # There is no need to add padding here
+    code_chunks.append(current_code_chunk)
+    
+    
+scroll_copy_code = []
+for code_chunk in code_chunks:
+    scroll_copy_code += code_chunk
+
+
+scroll_copy_file = open(scroll_copy_code_filename, "wb")
+scroll_copy_file.write(bytearray(scroll_copy_code))
+scroll_copy_file.close()
+print("scroll copy code written to file: " + scroll_copy_code_filename)
+
+            
             
 #print(len(background_colors_overwritten_by_scroller.keys()))
 #print(nr_of_pixels_overdrawn_by_scroller)
