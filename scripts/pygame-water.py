@@ -65,7 +65,16 @@ def parse_sci_file(sci_bin):
     pos = 10
     
     # Note: we IGNORE the palette of the scroll sword in this file!
-    pos += 768
+    # pos += 768
+    
+    palette_bytes = []
+    for palette_byte_index in range(768):
+        
+        palette_byte = int.from_bytes(sci_bin[pos:pos+1], byteorder='little')
+        pos+=1
+        # Note: the RGB is 6-bits (0-63) and must be multiplied by 4 here
+        palette_bytes.append(palette_byte*4)
+        
     
     pixels = []
     for pixel_byte_index in range(400*35):
@@ -74,20 +83,23 @@ def parse_sci_file(sci_bin):
         pos+=1
         pixels.append(pixel_byte)
 
-    return pixels
+    return (palette_bytes, pixels)
 
 def parse_clx_file(clx_bin):
 
     # The file essentially starts at position 10
     pos = 10
     
-    palette_bytes = []
-    for palette_byte_index in range(768):
-        
-        palette_byte = int.from_bytes(clx_bin[pos:pos+1], byteorder='little')
-        pos+=1
-        # Note: the RGB is 6-bits (0-63) and must be multiplied by 4 here
-        palette_bytes.append(palette_byte*4)
+    # Note: we IGNORE the palette of the scroll sword in this file!
+    pos += 768
+    
+    #palette_bytes = []
+    #for palette_byte_index in range(768):
+    #    
+    #    palette_byte = int.from_bytes(clx_bin[pos:pos+1], byteorder='little')
+    #    pos+=1
+    #    # Note: the RGB is 6-bits (0-63) and must be multiplied by 4 here
+    #    palette_bytes.append(palette_byte*4)
         
         
     pixels = []
@@ -97,7 +109,7 @@ def parse_clx_file(clx_bin):
         pos+=1
         pixels.append(pixel_byte)
         
-    return (palette_bytes, pixels)
+    return pixels
 
 
 def parse_pos_file(pos_bin):
@@ -168,13 +180,13 @@ full_bgr_file_name = os.path.join(base_dir, background_image_filename)
 bgr_file = open(full_bgr_file_name, 'rb')
 bgr_binary = bgr_file.read()
 bgr_file.close()
-(palette_bytes, pixels) = parse_clx_file(bgr_binary)
+pixels = parse_clx_file(bgr_binary)
 
 full_scroll_sword_file_name = os.path.join(base_dir, scroll_sword_image_filename)
 scroll_sword_file = open(full_scroll_sword_file_name, 'rb')
 scroll_sword_binary = scroll_sword_file.read()
 scroll_sword_file.close()
-scroll_sword_pixels = parse_sci_file(scroll_sword_binary)
+(palette_bytes, scroll_sword_pixels) = parse_sci_file(scroll_sword_binary)
 
 # We first determine all unique 12-bit COLORS, so we can re-index the image (pixels) with the new color indexes
 
