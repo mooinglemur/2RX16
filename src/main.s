@@ -1,5 +1,6 @@
 .export syncval
 .exportzp ptr1, ptr2, pstart, pend, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp, tmp10zp
+.exportzp blob_to_read, blob_target_ptr
 
 .segment "LOADADDR"
 	.word $0801
@@ -44,6 +45,10 @@ tmp9zp:
 	.res 1
 tmp10zp:
 	.res 1
+blob_to_read:
+	.res 3
+blob_target_ptr:
+	.res 2
 
 .segment "CODE"
 
@@ -67,6 +72,8 @@ SCENE = $4800
 ; see flow.inc for short-circuiting the demo while testing
 
 .proc main
+	stz X16::Reg::ROMBank ; kernal API calls are faster
+	jsr measure_machine_speed
 	jsr setup_zsmkit
 	jsr setup_irq_handler
 
@@ -153,6 +160,15 @@ SCENE = $4800
 	jsr zsmkit::zsm_close
 .endif
 	LOADFILE "MUSIC5.ZSM", SONG_BANK, $a000
+
+	; set up 50 Hz VIA timer
+	lda #50
+	jsr setup_via_timer
+	; tell ZSMKit about the 50 Hz timer
+	lda #50
+	ldy #0
+	jsr zsmkit::zsm_set_int_rate
+
 	jsr play_song
 	LOADFILE "CRAFT.BIN", 0, SCENE
 	jsr SCENE
@@ -163,6 +179,22 @@ SCENE = $4800
 	LOADFILE "CREDITS.BIN", 0, SCENE
 	jsr SCENE
 
+	; fade out song
+	ldy #0
+:	phy
+	WAITVSYNC
+	WAITVSYNC
+	WAITVSYNC
+	ply
+	phy
+	tya
+	ldx #0
+	jsr zsmkit::zsm_setatten
+	ply
+	iny
+	cpy #64
+	bne :-
+	
 	; stop song
 	ldx #0
 	jsr zsmkit::zsm_close
@@ -336,11 +368,11 @@ via_timer_iter:
 	stz tmp1
 	stz tmp1+1
 	
-    lda #<8000000
+    lda machine_speed
 	sta tmp2
-	lda #>8000000
+	lda machine_speed+1
 	sta tmp2+1
-	lda #^8000000
+	lda machine_speed+2
 	sta tmp2+2
 
 	; initialize divisor to int_rate (default 60)
@@ -435,3 +467,112 @@ tmp3:
     plp
     rts
 .endproc
+
+.proc measure_machine_speed: near
+	WAITVSYNC
+	; grab the least significant byte of the timer
+	jsr X16::Kernal::RDTIM
+	sta delta1
+
+	lda #5
+	ldx #0
+	ldy #0
+busyloop:
+	dey
+	bne busyloop
+	dex
+	bne busyloop
+	dec
+	bne busyloop
+
+.assert (<busyloop) < 246, error, "measure_machine_speed busyloop crosses a page boundary within the loop, it must be moved"
+
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc delta1
+
+	cmp #8
+	bcc mhz14
+	cmp #9
+	bcc mhz12
+	cmp #12
+	bcc mhz10
+	cmp #14
+	bcc mhz8
+	cmp #18
+	bcc mhz6
+	cmp #28
+	bcc mhz4
+	cmp #56
+	bcc mhz2
+
+mhz1:
+	lda #<1000000
+	sta machine_speed
+	lda #>1000000
+	sta machine_speed+1
+	lda #^1000000
+	sta machine_speed+2
+	rts
+mhz14:
+	lda #<14000000
+	sta machine_speed
+	lda #>14000000
+	sta machine_speed+1
+	lda #^14000000
+	sta machine_speed+2
+	rts
+mhz12:
+	lda #<12000000
+	sta machine_speed
+	lda #>12000000
+	sta machine_speed+1
+	lda #^12000000
+	sta machine_speed+2
+	rts
+mhz10:
+	lda #<10000000
+	sta machine_speed
+	lda #>10000000
+	sta machine_speed+1
+	lda #^10000000
+	sta machine_speed+2
+	rts
+mhz8:
+	lda #<8000000
+	sta machine_speed
+	lda #>8000000
+	sta machine_speed+1
+	lda #^8000000
+	sta machine_speed+2
+	rts
+mhz6:
+	lda #<6000000
+	sta machine_speed
+	lda #>6000000
+	sta machine_speed+1
+	lda #^6000000
+	sta machine_speed+2
+	rts
+mhz4:
+	lda #<4000000
+	sta machine_speed
+	lda #>4000000
+	sta machine_speed+1
+	lda #^4000000
+	sta machine_speed+2
+	rts
+mhz2:
+	lda #<2000000
+	sta machine_speed
+	lda #>2000000
+	sta machine_speed+1
+	lda #^2000000
+	sta machine_speed+2
+	rts
+delta1:
+	.byte 0
+.endproc
+
+machine_speed:
+	.dword 8000000

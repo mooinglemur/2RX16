@@ -9,6 +9,13 @@ macros_inc = 1
 .import addrm_per_row_8bit
 .import addrl_per_row_spr_4bit
 .import addrm_per_row_spr_4bit
+.import blobload
+.import blobseek
+.import blobopen
+.ifndef blob_to_read
+.importzp blob_to_read
+.endif
+.import blobseekfn
 
 .ifndef syncval
 .import syncval
@@ -16,6 +23,7 @@ macros_inc = 1
 .import sprite_text_pos
 .import sprite_text_do
 
+.ifndef ASSETBLOB
 .macro LOADFILE name, bank, addr, vbank
 .local fn
 .local FNLEN
@@ -46,6 +54,9 @@ fn:
 FNLEN = * - fn
 cont:
 .endmacro
+.else
+.include "blob_loadfile.inc"
+.endif
 
 .macro WAITVSYNC
 .local endless
