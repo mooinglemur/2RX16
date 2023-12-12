@@ -2,7 +2,6 @@
 from PIL import Image
 import pygame
 import math
-# FIXME: remove this
 import time
 import random
 import os
@@ -11,16 +10,24 @@ screen_width = 320
 screen_height = 200
 scale = 2
 
-# FIXME: rename to .DAT files?!
-# FIXME: rename to .DAT files?!
-# FIXME: rename to .DAT files?!
+base_assets_dir = 'assets/forest/'
+base_output_dir = 'scripts/forest/' # TODO: you want to output to ROOT/ probably! (or just copy-and-paste the files)
 
-# FIXME: we should place this file in ROOT/ at some point!
-bitmap_filename = "FOREST.BIN"
-scrolltext_filename = "SCROLLTEXT.BIN"
-scroll_copy_code_filename = "SCROLLCOPY.BIN"
+# input (asset) files
+background_image_filename = 'HILLBACK.CLX'
+scroll_text_image_filename = 'O2.SCI'
+
+# output files
+bitmap_filename = "FOREST.DAT"
+scrolltext_filename = "SCROLLTEXT.DAT"
+scroll_copy_code_filename = "SCROLLCOPY.DAT"
+
+source_image_width = 320
+source_image_height = 200
+
 bitmap_image_width = 320
 bitmap_image_height = 200
+
 scrolltext_image_width = 640
 scrolltext_image_height = 32
 
@@ -87,15 +94,6 @@ From reverse engineering READ2.PAS:
         - Next 7*16 colors add more 'light' according to the 3-bit value coming from the scroll text
    
 '''
-
-# FIXME: change this!
-base_dir = 'assets/forest/'
-
-background_image_filename = 'HILLBACK.CLX'
-source_image_width = 320
-source_image_height = 200
-
-scroll_text_image_filename = 'O2.SCI'
 
 def parse_sci_file(sci_bin):
 
@@ -174,32 +172,32 @@ def parse_pos_file(pos_bin):
 
 positions_info = [ None, None, None ]
 
-full_pos1_file_name = os.path.join(base_dir, 'POS1.DAT')
+full_pos1_file_name = os.path.join(base_assets_dir, 'POS1.DAT')
 pos1_file = open(full_pos1_file_name, 'rb')
 pos1_binary = pos1_file.read()
 pos1_file.close()
 positions_info[0] = parse_pos_file(pos1_binary)
 
-full_pos2_file_name = os.path.join(base_dir, 'POS2.DAT')
+full_pos2_file_name = os.path.join(base_assets_dir, 'POS2.DAT')
 pos2_file = open(full_pos2_file_name, 'rb')
 pos2_binary = pos2_file.read()
 pos2_file.close()
 positions_info[1] = parse_pos_file(pos2_binary)
 
-full_pos3_file_name = os.path.join(base_dir, 'POS3.DAT')
+full_pos3_file_name = os.path.join(base_assets_dir, 'POS3.DAT')
 pos3_file = open(full_pos3_file_name, 'rb')
 pos3_binary = pos3_file.read()
 pos3_file.close()
 positions_info[2] = parse_pos_file(pos3_binary)
 
 
-full_bgr_file_name = os.path.join(base_dir, background_image_filename)
+full_bgr_file_name = os.path.join(base_assets_dir, background_image_filename)
 bgr_file = open(full_bgr_file_name, 'rb')
 bgr_binary = bgr_file.read()
 bgr_file.close()
 (palette_bytes, pixels) = parse_clx_file(bgr_binary)
 
-full_scroll_text_file_name = os.path.join(base_dir, scroll_text_image_filename)
+full_scroll_text_file_name = os.path.join(base_assets_dir, scroll_text_image_filename)
 scroll_text_file = open(full_scroll_text_file_name, 'rb')
 scroll_text_binary = scroll_text_file.read()
 scroll_text_file.close()
@@ -348,7 +346,6 @@ for pixel_index in range(len(pixels)):
 #print(new_color_indexes)
 
 
-# FIXME: use new_colors_12bit instead!
 colors_12bit = new_colors_12bit
 
 
@@ -361,11 +358,12 @@ for source_y in range(bitmap_image_height):
         clr_idx = pixels[source_x + source_y * 320]
         
         bitmap_data.append(clr_idx)
-        
-bitmapFile = open(bitmap_filename, "wb")
+
+full_bitmap_file_name = os.path.join(base_output_dir, bitmap_filename)
+bitmapFile = open(full_bitmap_file_name, "wb")
 bitmapFile.write(bytearray(bitmap_data))
 bitmapFile.close()
-print("bitmap written to file: " + bitmap_filename)
+print("bitmap written to file: " + full_bitmap_file_name)
 
 
 
@@ -387,10 +385,11 @@ for source_x in range(scrolltext_image_width):
         
         scrolltext_data.append(clr_idx)
         
-scrollTextFile = open(scrolltext_filename, "wb")
+full_scrolltext_file_name = os.path.join(base_output_dir, scrolltext_filename)
+scrollTextFile = open(full_scrolltext_file_name, "wb")
 scrollTextFile.write(bytearray(scrolltext_data))
 scrollTextFile.close()
-print("scroll text written to file: " + scrolltext_filename)
+print("scroll text written to file: " + full_scrolltext_file_name)
 
 
 # Using the POSx.DAT info, we determine which pixels should be in the first 16 colors.
@@ -538,13 +537,13 @@ for code_chunk in code_chunks:
     scroll_copy_code += code_chunk
 
 
-scroll_copy_file = open(scroll_copy_code_filename, "wb")
+full_scroll_copy_file_name = os.path.join(base_output_dir, scroll_copy_code_filename)
+scroll_copy_file = open(full_scroll_copy_file_name, "wb")
 scroll_copy_file.write(bytearray(scroll_copy_code))
 scroll_copy_file.close()
-print("scroll copy code written to file: " + scroll_copy_code_filename)
+print("scroll copy code written to file: " + full_scroll_copy_file_name)
 
-            
-            
+                        
 #print(len(background_colors_overwritten_by_scroller.keys()))
 #print(nr_of_pixels_overdrawn_by_scroller)
 
@@ -579,7 +578,6 @@ clock = pygame.time.Clock()
 
 
 def run():
-
 
 
     # FIXME: we have to do this ONLY ONCE!

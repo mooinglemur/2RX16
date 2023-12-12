@@ -2,7 +2,6 @@
 from PIL import Image
 import pygame
 import math
-# FIXME: remove this
 import time
 import random
 import os
@@ -11,18 +10,25 @@ screen_width = 320
 screen_height = 200
 scale = 2
 
-# FIXME: rename to .DAT files?!
-# FIXME: rename to .DAT files?!
-# FIXME: rename to .DAT files?!
+base_assets_dir = 'assets/water/'
+base_output_dir = 'scripts/water/' # TODO: you want to output to ROOT/ probably! (or just copy-and-paste the files)
 
-# FIXME: we should place this file in ROOT/ at some point!
-bitmap_filename = "WATER.BIN"
-scrollsword_filename = "SCROLLSWORD.BIN"
-scroll_copy_code_filename = "SCROLLCOPY.BIN"
+# input (asset) files
+background_image_filename = 'BKG.CLX'
+scroll_sword_image_filename = 'MIEKKA.SCI'
+
+# output files
+bitmap_filename = "WATER.DAT"
+scrollsword_filename = "SCROLLSWORD.DAT"
+scroll_copy_code_filename = "SCROLLCOPY.DAT"
+
+source_image_width = 320
+source_image_height = 200
+
 bitmap_image_width = 320
 bitmap_image_height = 200
+
 scrollsword_image_width = 400
-# FIXME: is this correct?
 scrollsword_image_height = 34
 
 SCROLLER_BUFFER_ADDRESS = 0x6000
@@ -49,15 +55,6 @@ From reverse engineering DEMO.PAS:
 
 '''
 
-
-# FIXME: change this!
-base_dir = 'assets/water/'
-
-background_image_filename = 'BKG.CLX'
-source_image_width = 320
-source_image_height = 200
-
-scroll_sword_image_filename = 'MIEKKA.SCI'
 
 def parse_sci_file(sci_bin):
 
@@ -116,9 +113,6 @@ def parse_pos_file(pos_bin):
 
     positions_info = []
 
-# FIXME!?
-# FIXME!?
-# FIXME!?
     nr_of_positions_to_read = 158*34
     
     pos = 0
@@ -151,38 +145,35 @@ def parse_pos_file(pos_bin):
 
 positions_info = [ None, None, None ]
 
-full_pos1_file_name = os.path.join(base_dir, 'WAT1.DAT')
+full_pos1_file_name = os.path.join(base_assets_dir, 'WAT1.DAT')
 pos1_file = open(full_pos1_file_name, 'rb')
 pos1_binary = pos1_file.read()
 pos1_file.close()
 positions_info[0] = parse_pos_file(pos1_binary)
 
-full_pos2_file_name = os.path.join(base_dir, 'WAT2.DAT')
+full_pos2_file_name = os.path.join(base_assets_dir, 'WAT2.DAT')
 pos2_file = open(full_pos2_file_name, 'rb')
 pos2_binary = pos2_file.read()
 pos2_file.close()
 positions_info[1] = parse_pos_file(pos2_binary)
 
-full_pos3_file_name = os.path.join(base_dir, 'WAT3.DAT')
+full_pos3_file_name = os.path.join(base_assets_dir, 'WAT3.DAT')
 pos3_file = open(full_pos3_file_name, 'rb')
 pos3_binary = pos3_file.read()
 pos3_file.close()
 positions_info[2] = parse_pos_file(pos3_binary)
 
-# FIXME! WHAT ABOUT WAT4.DAT??
-# FIXME! WHAT ABOUT WAT4.DAT??
-# FIXME! WHAT ABOUT WAT4.DAT??
-# FIXME! WHAT ABOUT WAT4.DAT??
-# FIXME! WHAT ABOUT WAT4.DAT??
+
+# TODO? WHAT ABOUT WAT4.DAT?
 
 
-full_bgr_file_name = os.path.join(base_dir, background_image_filename)
+full_bgr_file_name = os.path.join(base_assets_dir, background_image_filename)
 bgr_file = open(full_bgr_file_name, 'rb')
 bgr_binary = bgr_file.read()
 bgr_file.close()
 pixels = parse_clx_file(bgr_binary)
 
-full_scroll_sword_file_name = os.path.join(base_dir, scroll_sword_image_filename)
+full_scroll_sword_file_name = os.path.join(base_assets_dir, scroll_sword_image_filename)
 scroll_sword_file = open(full_scroll_sword_file_name, 'rb')
 scroll_sword_binary = scroll_sword_file.read()
 scroll_sword_file.close()
@@ -219,10 +210,11 @@ for source_y in range(bitmap_image_height):
         
         bitmap_data.append(clr_idx)
         
-bitmapFile = open(bitmap_filename, "wb")
+full_bitmap_file_name = os.path.join(base_output_dir, bitmap_filename)
+bitmapFile = open(full_bitmap_file_name, "wb")
 bitmapFile.write(bytearray(bitmap_data))
 bitmapFile.close()
-print("bitmap written to file: " + bitmap_filename)
+print("bitmap written to file: " + full_bitmap_file_name)
 '''
 
 
@@ -246,10 +238,12 @@ for source_x in range(scrollsword_image_width):
         
         scrollsword_data.append(clr_idx)
         
-scrollSwordFile = open(scrollsword_filename, "wb")
+full_scrollsword_file_name = os.path.join(base_output_dir, scrollsword_filename)
+scrollSwordFile = open(full_scrollsword_file_name, "wb")
 scrollSwordFile.write(bytearray(scrollsword_data))
 scrollSwordFile.close()
-print("scroll sword written to file: " + scrollsword_filename)
+print("scroll sword written to file: " + full_scrollsword_file_name)
+
 '''
 
 
@@ -407,11 +401,11 @@ scroll_copy_code = []
 for code_chunk in code_chunks:
     scroll_copy_code += code_chunk
 
-
-scroll_copy_file = open(scroll_copy_code_filename, "wb")
+full_scroll_copy_file_name = os.path.join(base_output_dir, scroll_copy_code_filename)
+scroll_copy_file = open(full_scroll_copy_file_name, "wb")
 scroll_copy_file.write(bytearray(scroll_copy_code))
 scroll_copy_file.close()
-print("scroll copy code written to file: " + scroll_copy_code_filename)
+print("scroll copy code written to file: " + full_scroll_copy_file_name)
 '''
             
     
@@ -439,7 +433,7 @@ background_color = (0,0,0)
 
 pygame.init()
 
-pygame.display.set_caption('X16 2R Forest test')
+pygame.display.set_caption('X16 2R Water test')
 screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 clock = pygame.time.Clock()
 
