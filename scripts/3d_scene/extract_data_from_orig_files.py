@@ -4,8 +4,7 @@ import sys
 import copy
 import json
 
-# FIXME: HARDCODED!!
-scene_dir = '../../2R_test/SCENE'
+scene_dir = 'assets/3d_scene/SCENE'
 scene_name = 'U2E'
 
 def lsget (f, u2_bin, pos):
@@ -587,7 +586,7 @@ objects_and_material_info['mat_info'] = mat_info
 
 #print(objects_and_material_info)
 
-with open("../assets/3d_scene/" + scene_name + "_material.json", "w") as material_file:
+with open("assets/3d_scene/" + scene_name + "_material.json", "w") as material_file:
     material_file.write(json.dumps(objects_and_material_info, indent=4))
 
 
@@ -640,7 +639,7 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
     objs_text += obj_text
     vertex_index_start += nr_of_vertices
     
-with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
+with open("assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
     obj_file.write(objs_text)
     
     
@@ -648,7 +647,7 @@ with open("../assets/3d_scene/" + scene_name + ".obj", "w") as obj_file:
 # FIXME: add color_index and color_length to object_names file!
 # FIXME: add color_index and color_length to object_names file!
     
-with open("../assets/3d_scene/" + scene_name + "_object_names.json", "w") as object_names_file:
+with open("assets/3d_scene/" + scene_name + "_object_names.json", "w") as object_names_file:
     object_names_file.write(json.dumps(object_nr_to_name, indent=4))
 
     
@@ -661,7 +660,7 @@ u2_animation_binary = u2_animation_file.read()
 u2_animation_file.close()
 objects_xyz_and_matrix_per_frame = parse_animation_file(u2_animation_binary, nr_of_objects)
 
-with open("../assets/3d_scene/" + scene_name + "_animation.json", "w") as animation_file:
+with open("assets/3d_scene/" + scene_name + "_animation.json", "w") as animation_file:
     animation_file.write(json.dumps(objects_xyz_and_matrix_per_frame, indent=4))
 
 
