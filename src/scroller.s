@@ -93,7 +93,6 @@ SCROLL_ITERATION: .res 2
 CURRENT_SCROLLTEXT_BANK: .res 1
 
 .segment "SCROLLER_BSS"
-
 SCROLLER_BUFFER_ADDRESS: .res 7378
 SHIFT_PIXEL_CODE_ADDRESS: .res 1423
 
@@ -436,96 +435,25 @@ next_packed_color_256:
 
 .proc load_bitmap_into_vram
 
-    lda #(end_bitmap_filename-bitmap_filename) ; Length of filename
-    ldx #<bitmap_filename      ; Low byte of Fname address
-    ldy #>bitmap_filename      ; High byte of Fname address
-    jsr SETNAM
- 
-    lda #1            ; Logical file number
-    ldx #8            ; Device 8 = sd card
-    ldy #2            ; 0=ignore address in bin file (2 first bytes)
-                      ; 1=use address in bin file
-                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
-    jsr SETLFS
- 
-    lda #2            ; load into Bank 0 of VRAM (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
-    ldx #<BITMAP_VRAM_ADDRESS
-    ldy #>BITMAP_VRAM_ADDRESS
-    jsr LOAD
-    bcc bitmap_loaded
-    ; FIXME: do proper error handling!
-    stp
+	LOADFILE "FOREST.DAT", 0, .loword(BITMAP_VRAM_ADDRESS), <(.hiword(BITMAP_VRAM_ADDRESS))
 
-bitmap_loaded:
     rts
-bitmap_filename:      .byte    "forest.dat" 
-end_bitmap_filename:
 .endproc
 
 
 .proc load_scrolltext_into_banked_ram
 
-    lda #(end_scrolltext_filename-scrolltext_filename) ; Length of filename
-    ldx #<scrolltext_filename      ; Low byte of Fname address
-    ldy #>scrolltext_filename      ; High byte of Fname address
-    jsr SETNAM
- 
-    lda #1            ; Logical file number
-    ldx #8            ; Device 8 = sd card
-    ldy #2            ; 0=ignore address in bin file (2 first bytes)
-                      ; 1=use address in bin file
-                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
-    
-    jsr SETLFS
-    
-    lda #SCROLLTEXT_RAM_BANK
-    sta RAM_BANK
-    
-    lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
-    ldx #<SCROLLTEXT_RAM_ADDRESS
-    ldy #>SCROLLTEXT_RAM_ADDRESS
-    jsr LOAD
-    bcc scrolltext_loaded
-    ; FIXME: do proper error handling!
-    stp
-scrolltext_loaded:
+	LOADFILE "SCROLLTEXT.DAT", SCROLLTEXT_RAM_BANK, SCROLLTEXT_RAM_ADDRESS
 
     rts
-scrolltext_filename:      .byte    "scrolltext.dat" 
-end_scrolltext_filename:
 .endproc
 
 
 .proc load_scroll_copy_code_into_banked_ram
 
-    lda #(end_scroll_copy_code_filename-scroll_copy_code_filename) ; Length of filename
-    ldx #<scroll_copy_code_filename      ; Low byte of Fname address
-    ldy #>scroll_copy_code_filename      ; High byte of Fname address
-    jsr SETNAM
- 
-    lda #1            ; Logical file number
-    ldx #8            ; Device 8 = sd card
-    ldy #2            ; 0=ignore address in bin file (2 first bytes)
-                      ; 1=use address in bin file
-                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
-    
-    jsr SETLFS
-    
-    lda #SCROLL_COPY_CODE_RAM_BANK
-    sta RAM_BANK
-    
-    lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
-    ldx #<SCROLL_COPY_CODE_RAM_ADDRESS
-    ldy #>SCROLL_COPY_CODE_RAM_ADDRESS
-    jsr LOAD
-    bcc scroll_copy_code_loaded
-    ; FIXME: do proper error handling!
-    stp
-scroll_copy_code_loaded:
+	LOADFILE "SCROLLCOPY.DAT", SCROLL_COPY_CODE_RAM_BANK, SCROLL_COPY_CODE_RAM_ADDRESS
 
     rts
-scroll_copy_code_filename:      .byte    "scrollcopy.dat" 
-end_scroll_copy_code_filename:
 .endproc
 
 .proc generate_shift_by_one_pixel_code
