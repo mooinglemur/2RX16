@@ -345,16 +345,21 @@ next_scroll_copy_code_bank:
 
 	stz VERA_CTRL
 
-	jsr apply_palette_fade_step
-	jsr apply_palette_fade_step2
-	jsr apply_palette_fade_step3
-	jsr apply_palette_fade_step4
-
 	; pace ourselves to do 23.333... frames per second
 	; this is done by a period 7 table of 2-3-2-3-2-3-3
 	; frames per render
 wait:
-	wai
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+	jsr apply_palette_fade_step3
+	jsr apply_palette_fade_step4
+	
+	WAITVSYNC
+	jsr flush_palette
+	jsr flush_palette2
+	jsr flush_palette3
+	jsr flush_palette4
+
 	jsr X16::Kernal::RDTIM
 	sec
 	sbc jiffy_cnt
@@ -368,11 +373,6 @@ wait:
 	lda #6
 	sta jcarry
 :
-
-	jsr flush_palette
-	jsr flush_palette2
-	jsr flush_palette3
-	jsr flush_palette4
 
 	; set fx back up
 	lda #%00000100           ; DCSEL=2, ADDRSEL=0
