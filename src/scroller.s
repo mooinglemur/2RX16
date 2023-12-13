@@ -75,7 +75,7 @@ BITMAP_VRAM_ADDRESS   = $00000
 BITMAP_WIDTH = 320
 BITMAP_HEIGHT = 200
 
-SCROLLTEXT_RAM_BANK        = $21  ; This is 640x32 bytes
+SCROLLTEXT_RAM_BANK        = $20  ; This is 640x32 bytes
 SCROLL_COPY_CODE_RAM_BANK  = $24  ; This is 13 RAM Banks of scroll copy code (actually 12.06 RAM banks)
 NR_OF_SCROLL_COPY_CODE_BANKS = 13
 ; FIXME: we should change this!
@@ -93,9 +93,11 @@ SCROLL_ITERATION: .res 2
 CURRENT_SCROLLTEXT_BANK: .res 1
 
 .segment "SCROLLER_BSS"
-SCROLLER_BUFFER_ADDRESS: .res 7378
 SHIFT_PIXEL_CODE_ADDRESS: .res 1423
 
+.assert * < $8000, error, "SCROLLER CODE+BSS must end before $8000"
+
+SCROLLER_BUFFER_ADDRESS   = $8000 ; needs $1D00, and needs to match python
 SCROLLTEXT_RAM_ADDRESS    = $A000
 SCROLL_COPY_CODE_RAM_ADDRESS = $A000
 

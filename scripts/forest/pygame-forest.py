@@ -31,7 +31,7 @@ bitmap_image_height = 200
 scrolltext_image_width = 640
 scrolltext_image_height = 32
 
-SCROLLER_BUFFER_ADDRESS = 0x6000
+SCROLLER_BUFFER_ADDRESS = 0x8000
 
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
