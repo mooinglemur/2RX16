@@ -119,12 +119,12 @@ entry:
 
 	; begin "forest" subroutines
 
-    jsr generate_shift_by_one_pixel_code
-    
-    jsr setup_vera_for_layer0_bitmap
+	jsr generate_shift_by_one_pixel_code
+	
+	jsr setup_vera_for_layer0_bitmap
 
-    jsr copy_palette_from_index_0
-    jsr load_bitmap_into_vram
+	jsr copy_palette_from_index_0
+	jsr load_bitmap_into_vram
 
 	; set up our fade
 
@@ -175,11 +175,11 @@ PG2 = * - 1
 
 	; continue with setup
 
-    jsr load_scrolltext_into_banked_ram
-    jsr load_scroll_copy_code_into_banked_ram
+	jsr load_scrolltext_into_banked_ram
+	jsr load_scroll_copy_code_into_banked_ram
 
-    jsr clear_initial_scroll_text_slow
-    jsr load_initial_scroll_text_slow
+	jsr clear_initial_scroll_text_slow
+	jsr load_initial_scroll_text_slow
 
 	; do the scrolling, including the requested fade-in
 	; as well as the fade-out when the music trigger hits
@@ -201,147 +201,147 @@ PG2 = * - 1
 
 
 .proc clear_initial_scroll_text_slow
-    lda #<SCROLLER_BUFFER_ADDRESS
-    sta STORE_ADDRESS
-    lda #>SCROLLER_BUFFER_ADDRESS
-    sta STORE_ADDRESS+1
+	lda #<SCROLLER_BUFFER_ADDRESS
+	sta STORE_ADDRESS
+	lda #>SCROLLER_BUFFER_ADDRESS
+	sta STORE_ADDRESS+1
 
-    ldx #0
+	ldx #0
 clear_scroll_text_next_column:
 
-    lda #$80  ; We set bit7 to 1
-    ldy #0
+	lda #$80  ; We set bit7 to 1
+	ldy #0
 clear_scroll_text_next_pixel:    
 
-    sta (STORE_ADDRESS), y
-    iny
-    cpy #31
-    bne clear_scroll_text_next_pixel
-    
-    clc
-    lda STORE_ADDRESS
-    adc #31
-    sta STORE_ADDRESS
-    lda STORE_ADDRESS+1
-    adc #0
-    sta STORE_ADDRESS+1
-    
-    inx
-    cpx #237
-    bne clear_scroll_text_next_column
+	sta (STORE_ADDRESS), y
+	iny
+	cpy #31
+	bne clear_scroll_text_next_pixel
+	
+	clc
+	lda STORE_ADDRESS
+	adc #31
+	sta STORE_ADDRESS
+	lda STORE_ADDRESS+1
+	adc #0
+	sta STORE_ADDRESS+1
+	
+	inx
+	cpx #237
+	bne clear_scroll_text_next_column
 
-    rts
+	rts
 .endproc
 
 
 .proc load_initial_scroll_text_slow
 
-    lda #SCROLLTEXT_RAM_BANK
-    sta RAM_BANK
+	lda #SCROLLTEXT_RAM_BANK
+	sta RAM_BANK
 
-    lda #<SCROLLTEXT_RAM_ADDRESS
-    sta LOAD_ADDRESS
-    lda #>SCROLLTEXT_RAM_ADDRESS
-    sta LOAD_ADDRESS+1
-    
-    lda #<(SCROLLER_BUFFER_ADDRESS+(237-INITIAL_SCROLL)*31)
-    sta STORE_ADDRESS
-    lda #>(SCROLLER_BUFFER_ADDRESS+(237-INITIAL_SCROLL)*31)
-    sta STORE_ADDRESS+1
-    
-    ldx #0
+	lda #<SCROLLTEXT_RAM_ADDRESS
+	sta LOAD_ADDRESS
+	lda #>SCROLLTEXT_RAM_ADDRESS
+	sta LOAD_ADDRESS+1
+	
+	lda #<(SCROLLER_BUFFER_ADDRESS+(237-INITIAL_SCROLL)*31)
+	sta STORE_ADDRESS
+	lda #>(SCROLLER_BUFFER_ADDRESS+(237-INITIAL_SCROLL)*31)
+	sta STORE_ADDRESS+1
+	
+	ldx #0
 initial_copy_scroll_text_next_column:
 
-    ldy #0
+	ldy #0
 initial_copy_scroll_text_next_pixel:    
 
-    lda (LOAD_ADDRESS), y
-    sta (STORE_ADDRESS), y
-    iny
-    cpy #31
-    bne initial_copy_scroll_text_next_pixel
-    
-    ; Increment LOAD and STORE ADDRESS (with 32 and 31 respectively)
-    
-    clc
-    lda LOAD_ADDRESS
-    adc #32
-    sta LOAD_ADDRESS
-    lda LOAD_ADDRESS+1
-    adc #0
-    sta LOAD_ADDRESS+1
+	lda (LOAD_ADDRESS), y
+	sta (STORE_ADDRESS), y
+	iny
+	cpy #31
+	bne initial_copy_scroll_text_next_pixel
+	
+	; Increment LOAD and STORE ADDRESS (with 32 and 31 respectively)
+	
+	clc
+	lda LOAD_ADDRESS
+	adc #32
+	sta LOAD_ADDRESS
+	lda LOAD_ADDRESS+1
+	adc #0
+	sta LOAD_ADDRESS+1
 
-    clc
-    lda STORE_ADDRESS
-    adc #31
-    sta STORE_ADDRESS
-    lda STORE_ADDRESS+1
-    adc #0
-    sta STORE_ADDRESS+1
-    
-    inx
-    cpx #INITIAL_SCROLL
-    bne initial_copy_scroll_text_next_column
-    
+	clc
+	lda STORE_ADDRESS
+	adc #31
+	sta STORE_ADDRESS
+	lda STORE_ADDRESS+1
+	adc #0
+	sta STORE_ADDRESS+1
+	
+	inx
+	cpx #INITIAL_SCROLL
+	bne initial_copy_scroll_text_next_column
+	
 
-    stz RAM_BANK
-    
-    rts
+	stz RAM_BANK
+	
+	rts
 .endproc
 
 
 .proc do_scrolling
-    ; Setup ADDR0 HIGH and nibble-bit and increment (+1 byte) and set to 4-bit mode
-    
-    lda #%00000100           ; DCSEL=2, ADDRSEL=0
-    sta VERA_CTRL
-    
-    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte
-    sta VERA_ADDR_BANK
+	; Setup ADDR0 HIGH and nibble-bit and increment (+1 byte) and set to 4-bit mode
+	
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+	
+	lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte
+	sta VERA_ADDR_BANK
 
-    lda #%00000100
-    sta VERA_FX_CTRL         ; 4-bit mode
+	lda #%00000100
+	sta VERA_FX_CTRL         ; 4-bit mode
 
 
-    lda #<NR_OF_SCROLL_ITERATIONS
-    sta SCROLL_ITERATION
-    lda #>NR_OF_SCROLL_ITERATIONS
-    sta SCROLL_ITERATION+1
-    
-    lda #<(SCROLLTEXT_RAM_ADDRESS+INITIAL_SCROLL*32)
-    sta LOAD_ADDRESS
-    lda #>(SCROLLTEXT_RAM_ADDRESS+INITIAL_SCROLL*32)
-    sta LOAD_ADDRESS+1
-    
-    lda #SCROLLTEXT_RAM_BANK
-    sta CURRENT_SCROLLTEXT_BANK
+	lda #<NR_OF_SCROLL_ITERATIONS
+	sta SCROLL_ITERATION
+	lda #>NR_OF_SCROLL_ITERATIONS
+	sta SCROLL_ITERATION+1
+	
+	lda #<(SCROLLTEXT_RAM_ADDRESS+INITIAL_SCROLL*32)
+	sta LOAD_ADDRESS
+	lda #>(SCROLLTEXT_RAM_ADDRESS+INITIAL_SCROLL*32)
+	sta LOAD_ADDRESS+1
+	
+	lda #SCROLLTEXT_RAM_BANK
+	sta CURRENT_SCROLLTEXT_BANK
 
 	; save the current jiffy counter
 	jsr X16::Kernal::RDTIM
 	sta jiffy_cnt
 next_scroll_iteration:
 
-    ; Copying all scroll text to VRAM
-    
-    ldy #SCROLL_COPY_CODE_RAM_BANK
+	; Copying all scroll text to VRAM
+	
+	ldy #SCROLL_COPY_CODE_RAM_BANK
 next_scroll_copy_code_bank:
-    sty RAM_BANK
-    
-    jsr SCROLL_COPY_CODE_RAM_ADDRESS
-    
-    iny
-    cpy #SCROLL_COPY_CODE_RAM_BANK+NR_OF_SCROLL_COPY_CODE_BANKS
-    bne next_scroll_copy_code_bank
+	sty RAM_BANK
+	
+	jsr SCROLL_COPY_CODE_RAM_ADDRESS
+	
+	iny
+	cpy #SCROLL_COPY_CODE_RAM_BANK+NR_OF_SCROLL_COPY_CODE_BANKS
+	bne next_scroll_copy_code_bank
 
-    ; if no more scroll text is left, we need to fill with zeros!
+	; if no more scroll text is left, we need to fill with zeros!
 	; ^^^ We initialized it ahead of time up in the main proc
 
 	; turn off FX to do palette stuff
 
-    lda #%00000100           ; DCSEL=2, ADDRSEL=0
-    sta VERA_CTRL
-    
-    stz VERA_FX_CTRL
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+	
+	stz VERA_FX_CTRL
 
 	stz VERA_CTRL
 
@@ -375,68 +375,68 @@ wait:
 	jsr flush_palette4
 
 	; set fx back up
-    lda #%00000100           ; DCSEL=2, ADDRSEL=0
-    sta VERA_CTRL
-    
-    lda #%00000100
-    sta VERA_FX_CTRL         ; 4-bit mode
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+	
+	lda #%00000100
+	sta VERA_FX_CTRL         ; 4-bit mode
 
-    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte
-    sta VERA_ADDR_BANK
+	lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte
+	sta VERA_ADDR_BANK
 
-    ; We load the 238th column into the buffer
-    
-    lda CURRENT_SCROLLTEXT_BANK
-    sta RAM_BANK
-    
-    ldy #0
+	; We load the 238th column into the buffer
+	
+	lda CURRENT_SCROLLTEXT_BANK
+	sta RAM_BANK
+	
+	ldy #0
 scroll_text_single_column_copy_next_y:
-    lda (LOAD_ADDRESS), y
-    sta SCROLLER_BUFFER_ADDRESS+237*31, y  ; 237 is the 238th pixel from the left
-    iny
-    cpy #31
-    bne scroll_text_single_column_copy_next_y
+	lda (LOAD_ADDRESS), y
+	sta SCROLLER_BUFFER_ADDRESS+237*31, y  ; 237 is the 238th pixel from the left
+	iny
+	cpy #31
+	bne scroll_text_single_column_copy_next_y
 
-    ; We increment our load address into the scroll text data
-    clc
-    lda LOAD_ADDRESS
-    adc #32
-    sta LOAD_ADDRESS
-    lda LOAD_ADDRESS+1
-    adc #0
-    sta LOAD_ADDRESS+1
+	; We increment our load address into the scroll text data
+	clc
+	lda LOAD_ADDRESS
+	adc #32
+	sta LOAD_ADDRESS
+	lda LOAD_ADDRESS+1
+	adc #0
+	sta LOAD_ADDRESS+1
 
-    ; Check if you reached the end of our RAM bank (>= $C000)
-    cmp #$C0
-    bne scroll_bank_is_ok
-    
-    ; We have reached the end of a RAM bank so we switch to the next one and reset our address
-    
-    inc CURRENT_SCROLLTEXT_BANK
-    
-    lda #<SCROLLTEXT_RAM_ADDRESS
-    sta LOAD_ADDRESS
-    lda #>SCROLLTEXT_RAM_ADDRESS
-    sta LOAD_ADDRESS+1
-    
+	; Check if you reached the end of our RAM bank (>= $C000)
+	cmp #$C0
+	bne scroll_bank_is_ok
+	
+	; We have reached the end of a RAM bank so we switch to the next one and reset our address
+	
+	inc CURRENT_SCROLLTEXT_BANK
+	
+	lda #<SCROLLTEXT_RAM_ADDRESS
+	sta LOAD_ADDRESS
+	lda #>SCROLLTEXT_RAM_ADDRESS
+	sta LOAD_ADDRESS+1
+	
 scroll_bank_is_ok:
-    
+	
 
-    ; We 'shift' all pixels to the left in the buffer (31 rows)
-    ldy #0
+	; We 'shift' all pixels to the left in the buffer (31 rows)
+	ldy #0
 shift_nex_row:
-    jsr SHIFT_PIXEL_CODE_ADDRESS
-    iny
-    cpy #31
-    bne shift_nex_row
+	jsr SHIFT_PIXEL_CODE_ADDRESS
+	iny
+	cpy #31
+	bne shift_nex_row
 
-    sec
-    lda SCROLL_ITERATION
-    sbc #1
-    sta SCROLL_ITERATION
-    lda SCROLL_ITERATION+1
-    sbc #0
-    sta SCROLL_ITERATION+1
+	sec
+	lda SCROLL_ITERATION
+	sbc #1
+	sta SCROLL_ITERATION
+	lda SCROLL_ITERATION+1
+	sbc #0
+	sta SCROLL_ITERATION+1
 
 	; check for music trigger to exit scroller
 	; if we hit it, we start our fadeout
@@ -454,21 +454,21 @@ fade_cont:
 	
 no_fade_yet:
 
-    lda SCROLL_ITERATION
-    jne next_scroll_iteration
-    lda SCROLL_ITERATION+1
-    jne next_scroll_iteration
+	lda SCROLL_ITERATION
+	jne next_scroll_iteration
+	lda SCROLL_ITERATION+1
+	jne next_scroll_iteration
 
 done:    
-    ; We are done, exiting
+	; We are done, exiting
 
-    lda #%00000000
-    sta VERA_FX_CTRL         ; back to 8-bit mode
+	lda #%00000000
+	sta VERA_FX_CTRL         ; back to 8-bit mode
 
-    lda #%00000000           ; DCSEL=0, ADDRSEL=0
-    sta VERA_CTRL
+	lda #%00000000           ; DCSEL=0, ADDRSEL=0
+	sta VERA_CTRL
 
-    rts
+	rts
 	; set it up to fade the entire palette to black
 setup_fade:
 	ldx #128
@@ -479,6 +479,15 @@ setup_fade:
 	inx
 	bne :-
 
+	; turn off FX to do palette stuff
+
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+	
+	stz VERA_FX_CTRL
+
+	stz VERA_CTRL
+
 	lda #0
 	jsr setup_palette_fade
 	lda #64
@@ -487,6 +496,16 @@ setup_fade:
 	jsr setup_palette_fade3
 	lda #192
 	jsr setup_palette_fade4
+
+	; set fx back up
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+	
+	lda #%00000100
+	sta VERA_FX_CTRL         ; 4-bit mode
+
+	lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte
+	sta VERA_ADDR_BANK
 
 	bra fade_cont
 	; some local variables
@@ -505,67 +524,67 @@ jtable:
 
 .proc setup_vera_for_layer0_bitmap
 
-    lda VERA_DC_VIDEO
-    ora #%01010000           ; Enable Layer 0 and sprites
-    and #%11011111           ; Disable Layer 1
-    sta VERA_DC_VIDEO
+	lda VERA_DC_VIDEO
+	ora #%01010000           ; Enable Layer 0 and sprites
+	and #%11011111           ; Disable Layer 1
+	sta VERA_DC_VIDEO
 
-    lda #$40                 ; 2:1 scale (320 x 240 pixels on screen)
-    sta VERA_DC_HSCALE
-    sta VERA_DC_VSCALE
-    
-    ; -- Setup Layer 0 --
-    
-    lda #%00000000           ; DCSEL=0, ADDRSEL=0
-    sta VERA_CTRL
-    
-    ; Enable bitmap mode and color depth = 8bpp on layer 0
-    lda #(4+3)
-    sta VERA_L0_CONFIG
+	lda #$40                 ; 2:1 scale (320 x 240 pixels on screen)
+	sta VERA_DC_HSCALE
+	sta VERA_DC_VSCALE
+	
+	; -- Setup Layer 0 --
+	
+	lda #%00000000           ; DCSEL=0, ADDRSEL=0
+	sta VERA_CTRL
+	
+	; Enable bitmap mode and color depth = 8bpp on layer 0
+	lda #(4+3)
+	sta VERA_L0_CONFIG
 
-    ; Set layer0 tilebase to 0x00000 and tile width to 320 px
-    lda #0
-    sta VERA_L0_TILEBASE
+	; Set layer0 tilebase to 0x00000 and tile width to 320 px
+	lda #0
+	sta VERA_L0_TILEBASE
 
-    ; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
+	; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
 
-    lda #%00000010  ; DCSEL=1
-    sta VERA_CTRL
+	lda #%00000010  ; DCSEL=1
+	sta VERA_CTRL
    
-    lda #20
-    sta VERA_DC_VSTART
-    lda #400/2+20-1
-    sta VERA_DC_VSTOP
-    
-    rts
+	lda #20
+	sta VERA_DC_VSTART
+	lda #400/2+20-1
+	sta VERA_DC_VSTOP
+	
+	rts
 .endproc
 
 .proc copy_palette_from_index_0
 
-    ; copy palette to fade target
-    
-    ldy #0
+	; copy palette to fade target
+	
+	ldy #0
 next_packed_color_0:
-    lda palette_data, y
+	lda palette_data, y
 	sta target_palette, y
-    iny
-    bne next_packed_color_0
+	iny
+	bne next_packed_color_0
 
-    ldy #0
+	ldy #0
 next_packed_color_256:
-    lda palette_data+256, y
+	lda palette_data+256, y
 	sta target_palette3, y
-    iny
-    bne next_packed_color_256
-    
-    rts
+	iny
+	bne next_packed_color_256
+	
+	rts
 .endproc
 
 .proc load_bitmap_into_vram
 
 	LOADFILE "FOREST.DAT", 0, .loword(BITMAP_VRAM_ADDRESS), <(.hiword(BITMAP_VRAM_ADDRESS))
 
-    rts
+	rts
 .endproc
 
 
@@ -573,7 +592,7 @@ next_packed_color_256:
 
 	LOADFILE "SCROLLTEXT.DAT", SCROLLTEXT_RAM_BANK, SCROLLTEXT_RAM_ADDRESS
 
-    rts
+	rts
 .endproc
 
 
@@ -581,80 +600,80 @@ next_packed_color_256:
 
 	LOADFILE "SCROLLCOPY.DAT", SCROLL_COPY_CODE_RAM_BANK, SCROLL_COPY_CODE_RAM_ADDRESS
 
-    rts
+	rts
 .endproc
 
 .proc generate_shift_by_one_pixel_code
 
-    lda #<SHIFT_PIXEL_CODE_ADDRESS
-    sta CODE_ADDRESS
-    lda #>SHIFT_PIXEL_CODE_ADDRESS
-    sta CODE_ADDRESS+1
-    
-    lda #<SCROLLER_BUFFER_ADDRESS
-    sta LOAD_ADDRESS
-    lda #>SCROLLER_BUFFER_ADDRESS
-    sta LOAD_ADDRESS+1
-    
-    ldy #0                 ; generated code byte counter
-    
-    ldx #0                 ; counts nr of copy instructions (we need to do 237 copies)
+	lda #<SHIFT_PIXEL_CODE_ADDRESS
+	sta CODE_ADDRESS
+	lda #>SHIFT_PIXEL_CODE_ADDRESS
+	sta CODE_ADDRESS+1
+	
+	lda #<SCROLLER_BUFFER_ADDRESS
+	sta LOAD_ADDRESS
+	lda #>SCROLLER_BUFFER_ADDRESS
+	sta LOAD_ADDRESS+1
+	
+	ldy #0                 ; generated code byte counter
+	
+	ldx #0                 ; counts nr of copy instructions (we need to do 237 copies)
 next_copy_instruction:
 
-    ; Use the previous LOAD_ADDRESS as the new STORE_ADDRESS
-    lda LOAD_ADDRESS
-    sta STORE_ADDRESS
-    lda LOAD_ADDRESS+1
-    sta STORE_ADDRESS+1
+	; Use the previous LOAD_ADDRESS as the new STORE_ADDRESS
+	lda LOAD_ADDRESS
+	sta STORE_ADDRESS
+	lda LOAD_ADDRESS+1
+	sta STORE_ADDRESS+1
 
-    ; Increment the LOAD_ADDRESS with 31
-    clc
-    lda LOAD_ADDRESS
-    adc #31
-    sta LOAD_ADDRESS
-    lda LOAD_ADDRESS+1
-    adc #0
-    sta LOAD_ADDRESS+1
+	; Increment the LOAD_ADDRESS with 31
+	clc
+	lda LOAD_ADDRESS
+	adc #31
+	sta LOAD_ADDRESS
+	lda LOAD_ADDRESS+1
+	adc #0
+	sta LOAD_ADDRESS+1
 
-    ; -- lda $LOAD_ADDRESS, y
-    lda #$B9               ; lda ...., y
-    jsr add_code_byte
-    
-    lda LOAD_ADDRESS       ; LOAD_ADDRESS
-    jsr add_code_byte
-    
-    lda LOAD_ADDRESS+1     ; LOAD_ADDRESS+1
-    jsr add_code_byte
+	; -- lda $LOAD_ADDRESS, y
+	lda #$B9               ; lda ...., y
+	jsr add_code_byte
+	
+	lda LOAD_ADDRESS       ; LOAD_ADDRESS
+	jsr add_code_byte
+	
+	lda LOAD_ADDRESS+1     ; LOAD_ADDRESS+1
+	jsr add_code_byte
 
-    ; -- sta $STORE_ADDRESS, y
-    lda #$99               ; sta ...., y
-    jsr add_code_byte
+	; -- sta $STORE_ADDRESS, y
+	lda #$99               ; sta ...., y
+	jsr add_code_byte
 
-    lda STORE_ADDRESS      ; STORE_ADDRESS
-    jsr add_code_byte
-    
-    lda STORE_ADDRESS+1    ; STORE_ADDRESS+1
-    jsr add_code_byte
+	lda STORE_ADDRESS      ; STORE_ADDRESS
+	jsr add_code_byte
+	
+	lda STORE_ADDRESS+1    ; STORE_ADDRESS+1
+	jsr add_code_byte
 
-    inx
-    cpx #237
-    bne next_copy_instruction
+	inx
+	cpx #237
+	bne next_copy_instruction
 
-    ; -- rts --
-    lda #$60
-    jsr add_code_byte
+	; -- rts --
+	lda #$60
+	jsr add_code_byte
 
-    rts
+	rts
 
-    
+	
 add_code_byte:
-    sta (CODE_ADDRESS),y   ; store code byte at address (located at CODE_ADDRESS) + y
-    iny                    ; increase y
-    cpy #0                 ; if y == 0
-    bne done_adding_code_byte
-    inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
+	sta (CODE_ADDRESS),y   ; store code byte at address (located at CODE_ADDRESS) + y
+	iny                    ; increase y
+	cpy #0                 ; if y == 0
+	bne done_adding_code_byte
+	inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
 done_adding_code_byte:
-    rts
+	rts
 .endproc
 
 
