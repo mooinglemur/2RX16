@@ -80,7 +80,7 @@ SCROLL_COPY_CODE_RAM_BANK  = $24  ; This is 13 RAM Banks of scroll copy code (ac
 NR_OF_SCROLL_COPY_CODE_BANKS = 13
 ; FIXME: we should change this!
 INITIAL_SCROLL = 100
-NR_OF_SCROLL_ITERATIONS = 640-INITIAL_SCROLL
+NR_OF_SCROLL_ITERATIONS = 1000-INITIAL_SCROLL
 
 
 .segment "SCROLLER_ZP": zeropage
@@ -125,23 +125,8 @@ entry:
 
     jsr copy_palette_from_index_0
     jsr load_bitmap_into_vram
-    
-    jsr load_scrolltext_into_banked_ram
-    jsr load_scroll_copy_code_into_banked_ram
 
-    jsr clear_initial_scroll_text_slow
-    jsr load_initial_scroll_text_slow
-    jsr do_scrolling
-
-	MUSIC_SYNC $60 ; needs to move to do_scrolling
-
-	ldx #128
-:   stz target_palette-128,x
-	stz target_palette2-128,x
-	stz target_palette3-128,x
-	stz target_palette4-128,x
-	inx
-	bne :-
+	; set up our fade
 
 	lda #0
 	jsr setup_palette_fade
@@ -152,7 +137,65 @@ entry:
 	lda #192
 	jsr setup_palette_fade4
 
-	PALETTE_FADE_FULL 1
+	; fade the first half of the palette in
+	; synchronously (16 steps, one per frame)
+
+	PALETTE_FADE_1_2 1
+
+	; initialize scrolltext banks to $80 pixel
+	; since we'll scroll past the end
+	ldy #SCROLLTEXT_RAM_BANK
+	sty X16::Reg::RAMBank
+loop_b:
+	lda #$a0
+	sta PG
+	sta PG2
+	ldx #0
+loop_p:
+	lda #$80
+loop_a:
+	sta $a000,x
+PG = * - 1
+	inx
+	sta $a000,x
+PG2 = * - 1
+	inx
+	bne loop_a
+
+	lda PG
+	inc
+	sta PG
+	inc PG2
+	cmp #$c0
+	bcc loop_p
+	iny
+	sty X16::Reg::RAMBank
+	cpy #SCROLL_COPY_CODE_RAM_BANK
+	bcc loop_b
+
+	; continue with setup
+
+    jsr load_scrolltext_into_banked_ram
+    jsr load_scroll_copy_code_into_banked_ram
+
+    jsr clear_initial_scroll_text_slow
+    jsr load_initial_scroll_text_slow
+
+	; do the scrolling, including the requested fade-in
+	; as well as the fade-out when the music trigger hits
+
+	jsr do_scrolling
+
+	; force palette to black immediately
+
+	VERA_SET_ADDR (Vera::VRAM_palette), 1
+	ldx #128
+:	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	inx
+	bne :-
 
 	rts
 
@@ -253,7 +296,7 @@ initial_copy_scroll_text_next_pixel:
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
     
-    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte, nibble-address bit to 1
+    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte
     sta VERA_ADDR_BANK
 
     lda #%00000100
@@ -273,13 +316,15 @@ initial_copy_scroll_text_next_pixel:
     lda #SCROLLTEXT_RAM_BANK
     sta CURRENT_SCROLLTEXT_BANK
 
+	; save the current jiffy counter
+	jsr X16::Kernal::RDTIM
+	sta jiffy_cnt
 next_scroll_iteration:
 
     ; Copying all scroll text to VRAM
     
     ldy #SCROLL_COPY_CODE_RAM_BANK
 next_scroll_copy_code_bank:
-
     sty RAM_BANK
     
     jsr SCROLL_COPY_CODE_RAM_ADDRESS
@@ -287,11 +332,58 @@ next_scroll_copy_code_bank:
     iny
     cpy #SCROLL_COPY_CODE_RAM_BANK+NR_OF_SCROLL_COPY_CODE_BANKS
     bne next_scroll_copy_code_bank
-    
 
+    ; if no more scroll text is left, we need to fill with zeros!
+	; ^^^ We initialized it ahead of time up in the main proc
+
+	; turn off FX to do palette stuff
+
+    lda #%00000100           ; DCSEL=2, ADDRSEL=0
+    sta VERA_CTRL
     
-    ; FIXME: WARNING: if no more scroll text is left, we need to fill with zeros!
-        
+    stz VERA_FX_CTRL
+
+	stz VERA_CTRL
+
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+	jsr apply_palette_fade_step3
+	jsr apply_palette_fade_step4
+
+	; pace ourselves to do 23.333... frames per second
+	; this is done by a period 7 table of 2-3-2-3-2-3-3
+	; frames per render
+wait:
+	wai
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc jiffy_cnt
+	ldx jcarry
+	cmp jtable,x
+	bcc wait
+	jsr X16::Kernal::RDTIM
+	sta jiffy_cnt
+	dec jcarry
+	bpl :+
+	lda #6
+	sta jcarry
+:
+
+	jsr flush_palette
+	jsr flush_palette2
+	jsr flush_palette3
+	jsr flush_palette4
+
+	; set fx back up
+    lda #%00000100           ; DCSEL=2, ADDRSEL=0
+    sta VERA_CTRL
+    
+    lda #%00000100
+    sta VERA_FX_CTRL         ; 4-bit mode
+
+    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte
+    sta VERA_ADDR_BANK
+
     ; We load the 238th column into the buffer
     
     lda CURRENT_SCROLLTEXT_BANK
@@ -345,12 +437,29 @@ shift_nex_row:
     lda SCROLL_ITERATION+1
     sbc #0
     sta SCROLL_ITERATION+1
-    
+
+	; check for music trigger to exit scroller
+	; if we hit it, we start our fadeout
+	; and exit the scroller after 16 fade steps
+	lda syncval
+	cmp #$60
+	bne no_fade_yet
+	lda fadeout
+	cmp #16
+	beq setup_fade
+
+fade_cont:
+	dec fadeout
+	beq done
+	
+no_fade_yet:
+
     lda SCROLL_ITERATION
-    bne next_scroll_iteration
+    jne next_scroll_iteration
     lda SCROLL_ITERATION+1
-    bne next_scroll_iteration
-    
+    jne next_scroll_iteration
+
+done:    
     ; We are done, exiting
 
     lda #%00000000
@@ -359,10 +468,39 @@ shift_nex_row:
     lda #%00000000           ; DCSEL=0, ADDRSEL=0
     sta VERA_CTRL
 
-    ; Resetting to RAM_BANK zero (not sure if this is needed)
-    stz RAM_BANK
-
     rts
+	; set it up to fade the entire palette to black
+setup_fade:
+	ldx #128
+:   stz target_palette-128,x
+	stz target_palette2-128,x
+	stz target_palette3-128,x
+	stz target_palette4-128,x
+	inx
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
+	lda #128
+	jsr setup_palette_fade3
+	lda #192
+	jsr setup_palette_fade4
+
+	bra fade_cont
+	; some local variables
+	; and a small table :)
+fadeout:
+	.byte 16
+jiffy_cnt:
+	.byte 0
+jdelta:
+	.byte 0
+jcarry:
+	.byte 0
+jtable:
+	.byte 3,3,2,3,2,3,2
 .endproc
 
 .proc setup_vera_for_layer0_bitmap
@@ -404,31 +542,19 @@ shift_nex_row:
 
 .proc copy_palette_from_index_0
 
-    ; Starting at palette VRAM address
+    ; copy palette to fade target
     
-    lda #%00010001      ; setting bit 16 of vram address to 1, setting auto-increment value to 1
-    sta VERA_ADDR_BANK
-
-    ; We start at color index 16 of the palette (we preserve the first 16 default VERA colors)
-    lda #<(VERA_PALETTE)
-    sta VERA_ADDR_LOW
-    lda #>(VERA_PALETTE)
-    sta VERA_ADDR_HIGH
-
-
-    ; Copy 2 times 128 colors
-
     ldy #0
 next_packed_color_0:
     lda palette_data, y
-    sta VERA_DATA0
+	sta target_palette, y
     iny
     bne next_packed_color_0
 
     ldy #0
 next_packed_color_256:
     lda palette_data+256, y
-    sta VERA_DATA0
+	sta target_palette3, y
     iny
     bne next_packed_color_256
     

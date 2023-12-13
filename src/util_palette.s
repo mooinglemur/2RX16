@@ -582,6 +582,7 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+	rts
 .endproc
 
 .proc flush_palette2
@@ -595,6 +596,7 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+	rts
 .endproc
 
 .proc flush_palette3
@@ -608,6 +610,7 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+	rts
 .endproc
 
 .proc flush_palette4
@@ -621,6 +624,7 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+	rts
 .endproc
 
 

@@ -158,6 +158,35 @@ PALITER = * - 1
 	bne palloop
 .endmacro
 
+.macro PALETTE_FADE_1_2 vsyncs_per_step
+.local PALITER
+.local palloop
+.local vsloop
+.local VS
+	lda #16
+	sta PALITER
+palloop:
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+
+	lda #vsyncs_per_step
+	sta VS
+vsloop:
+	WAITVSYNC
+	dec VS
+	lda #$ff
+VS = * - 1
+	bne vsloop
+
+	jsr flush_palette
+	jsr flush_palette2
+	dec PALITER
+	lda #$ff
+PALITER = * - 1
+	bne palloop
+.endmacro
+
+
 .macro MUSIC_SYNC val
 .local syncloop
 syncloop:
