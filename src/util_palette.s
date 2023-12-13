@@ -25,7 +25,7 @@
 
 .include "x16.inc"
 
-.segment "UTIL"
+.segment "BSS"
 
 ; palette transition routines
 ; to save memory, the only transition supported
@@ -75,6 +75,8 @@ palette_offset3:
 	.res 1
 palette_offset4:
 	.res 1
+
+.segment "UTIL"
 
 ; pass palette offset in A
 ; after populating target_palette
