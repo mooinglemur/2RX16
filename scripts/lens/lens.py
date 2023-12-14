@@ -6,6 +6,7 @@ import time
 import random
 
 DO_MOVE_LENS = True
+DRAW_NEW_PALETTE = True
 
 # TODO: we should *ALSO* use the LENS.png image! (with the 'glaring' of the lens)
 
@@ -25,6 +26,7 @@ BITMAP_QUADRANT_BUFFER = 0x6000
 lens_size = 100
 lens_radius = lens_size/2
 lens_zoom = 16
+scale = 2
 
 
 # creating a image object
@@ -84,7 +86,7 @@ for new_color in new_colors:
     extra_colors.append((red, green, new_blue))
     
 # FIXME: we add ONE more dummy color to reach exactly 32 new_colors (which makes palette offsets for sprites possible)
-new_colors.append((0,0,0))
+# new_colors.append((0,0,0))
 
 offset_blue_colors = len(new_colors)  # = 32
 new_colors += extra_colors
@@ -106,6 +108,7 @@ for new_color in new_colors:
     palette_string += "\n"
 
 print(palette_string)
+
 
 
 background_color = (0,0,0)
@@ -450,7 +453,7 @@ def run():
                 
                 pixel_color = new_pixel_color = new_colors[old_color_index_to_new_color_index[px[source_x, source_y]] - new_color_index_offset]
                 
-                pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*2, y_screen*2, 2, 2))
+                pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
 
                 
         for lens_y in range(int(lens_size)):
@@ -470,16 +473,39 @@ def run():
                     y_screen = lens_pos_y - lens_radius + lens_y
                     x_screen = lens_pos_x - lens_radius + lens_x
                     
-                    pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*2, y_screen*2, 2, 2))
+                    pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
                 else:
                     # This is off screen, we do not draw
                     pass
                 
                 
+        if (DRAW_NEW_PALETTE):
+            # screen.fill(background_color)
+            
+            x = 0
+            y = 0
+            
+            for old_clr_idx in range(256):
+            
+                if old_clr_idx >= len(new_colors):
+                    continue
+            
+                pixel_color = new_colors[old_clr_idx]
+                
+                pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 8*scale, 8*scale))
+                
+                # if (byte_index % 16 == 0 and byte_index != 0):
+                if (old_clr_idx % 16 == 15):
+                    y += 8
+                    x = 0
+                else:
+                    x += 8
+
+
         
         pygame.display.update()
         
-        time.sleep(0.01)
+        #time.sleep(0.01)
    
         
     pygame.quit()
