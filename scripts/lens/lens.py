@@ -7,6 +7,8 @@ import random
 
 DO_MOVE_LENS = True
 
+# TODO: we should *ALSO* use the LENS.png image! (with the 'glaring' of the lens)
+
 source_image_filename = "assets/lens/LENSPIC.png"
 source_image_width = 320
 source_image_height = 200
