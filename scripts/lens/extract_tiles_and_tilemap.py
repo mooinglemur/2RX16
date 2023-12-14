@@ -4,6 +4,13 @@ import hashlib
 PRINT_MAP_AS_ASM = 1  # otherwise write to BIN file
 PRINT_TILEDATA_AS_ASM = 1  # otherwise write to BIN file
 
+
+# FIXME: use a BETTER SOURCE IMAGE!
+# FIXME: use a BETTER SOURCE IMAGE!
+# FIXME: use a BETTER SOURCE IMAGE!
+# FIXME: use a BETTER SOURCE IMAGE!
+# FIXME: use a BETTER SOURCE IMAGE!
+
 source_image_filename = "assets/rotazoom/RotazoomImage_128x128px.png"
 # FIXME: these .bin files are currently not used!! (the data is copied as asm-text in the .s file)
 tile_map_filename = "scripts/rotazoom/rotazoom_tile_map.bin"

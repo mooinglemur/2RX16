@@ -7,9 +7,10 @@ import random
 
 DO_MOVE_LENS = True
 
-source_image_filename = "assets/lens/RotazoomImage_256x256px.png"
-source_image_width = 256
-source_image_height = 256
+# FIXME: REMOVE! source_image_filename = "assets/lens/RotazoomImage_256x256px.png"
+source_image_filename = "assets/lens/LENSPIC.png"
+source_image_width = 320
+source_image_height = 200
 bitmap_filename = "scripts/lens/LENS.BIN"
 download1_code_filename = "scripts/lens/DOWNLOAD1.BIN"
 download2_code_filename = "scripts/lens/DOWNLOAD2.BIN"
@@ -361,22 +362,22 @@ print("upload code 2 written to file: " + upload2_code_filename)
 
 bitmap_data = []
 # FIXME: we now use 0 as BLACK, but in the bitmap a DIFFERENT color index is used as BLACK!
-hor_margin_pixels = [0] * 32
+#hor_margin_pixels = [0] * 32
 for source_y in range(source_image_height):
 
-    if (source_y < 32):
-        continue
-    if (source_y >= 32 + 200):
-        continue
+    #if (source_y < 32):
+    #    continue
+    #if (source_y >= 32 + 200):
+    #    continue
         
-    bitmap_data += hor_margin_pixels
+    #bitmap_data += hor_margin_pixels
     for source_x in range(source_image_width):
 
         pixel_color_index = old_color_index_to_new_color_index[px[source_x, source_y]]
         
         bitmap_data.append(pixel_color_index)
         
-    bitmap_data += hor_margin_pixels
+    #bitmap_data += hor_margin_pixels
     
 tableFile = open(bitmap_filename, "wb")
 tableFile.write(bytearray(bitmap_data))
@@ -389,8 +390,13 @@ def run():
 
     running = True
     
-    lens_pos_x = 50
-    lens_pos_y = 50
+    # FIXME: right now the position of the lens if at the TOP-LEFT, which in not convenient!
+    
+    lens_pos_x = 0
+    lens_pos_y = 0
+    
+    lens_speed_x = 1
+    lens_speed_y = 1
     
     while running:
         # TODO: We might want to set this to max?
@@ -398,12 +404,15 @@ def run():
         
         
         if (DO_MOVE_LENS):
-            lens_pos_x += 1
-            lens_pos_y += 1
+            lens_pos_x += lens_speed_x
+            lens_pos_y += lens_speed_y
             
             if (lens_pos_x > 150):
                 lens_pos_x = 40
                 lens_pos_y = 40
+                
+            if (lens_pos_y+100 >= 200):
+                lens_speed_y = -lens_speed_y
         
         
         for event in pygame.event.get():
@@ -430,13 +439,15 @@ def run():
         for source_y in range(source_image_height):
             for source_x in range(source_image_width):
 
-                if (source_y < 32):
-                    continue
-                if (source_y >= 32 + 200):
-                    continue
+                #if (source_y < 32):
+                #    continue
+                #if (source_y >= 32 + 200):
+                #    continue
                     
-                y_screen = source_y - 32
-                x_screen = source_x + 32
+                #y_screen = source_y - 32
+                #x_screen = source_x + 32
+                y_screen = source_y
+                x_screen = source_x
                 
                 pixel_color = new_pixel_color = new_colors[old_color_index_to_new_color_index[px[source_x, source_y]] - new_color_index_offset]
                 
@@ -456,8 +467,10 @@ def run():
                 
                 pixel_color = new_pixel_color = new_colors[old_color_index_to_new_color_index[px[source_x, source_y]] - new_color_index_offset + offset_blue_colors]
                 
-                y_screen = lens_pos_y - 32 + lens_y
-                x_screen = lens_pos_x + 32 + lens_x
+                #y_screen = lens_pos_y - 32 + lens_y
+                #x_screen = lens_pos_x + 32 + lens_x
+                y_screen = lens_pos_y + lens_y
+                x_screen = lens_pos_x + lens_x
                 
                 pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*2, y_screen*2, 2, 2))
                 
