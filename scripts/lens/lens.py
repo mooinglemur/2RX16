@@ -7,7 +7,6 @@ import random
 
 DO_MOVE_LENS = True
 
-# FIXME: REMOVE! source_image_filename = "assets/lens/RotazoomImage_256x256px.png"
 source_image_filename = "assets/lens/LENSPIC.png"
 source_image_width = 320
 source_image_height = 200
@@ -156,13 +155,15 @@ def init_lens():
                 # x_shift = shift * x - x
                 # y_shift = shift * y - y
                 
+                '''
                 if (False):
                     distance_from_center = math.sqrt(x2 + y2) / lens_radius # distance from center: 0.0 -> 1.0
                     
                     # We now use the quadratic function to create the lens effect
                     #distance_from_center *= 0.9
                     #distance_from_center += 0.1
-# FIXME: this is ALMOST correct!
+                    
+                    # FIXME: this is ALMOST correct!
                     desired_distance_from_center = distance_from_center * distance_from_center
                     
                     if distance_from_center > 0:
@@ -173,12 +174,13 @@ def init_lens():
                     if ratio < 0:
                         ratio = 0
                     
-# FIXME: should we round UP or DOWN here?
+                    # FIXME: should we round UP or DOWN here?
                     #x_shift = int(ratio * x - x) 
                     #y_shift = int(ratio * y - y) 
                     x_shift = int(ratio * x - x + random.random()*1.5 - 0.75) 
                     y_shift = int(ratio * y - y + random.random()*1.5 - 0.75)
-
+                '''
+                
                 if (True):
                     now = full - (x2 + y2)
                     if now < 1:
@@ -365,19 +367,11 @@ bitmap_data = []
 #hor_margin_pixels = [0] * 32
 for source_y in range(source_image_height):
 
-    #if (source_y < 32):
-    #    continue
-    #if (source_y >= 32 + 200):
-    #    continue
-        
-    #bitmap_data += hor_margin_pixels
     for source_x in range(source_image_width):
 
         pixel_color_index = old_color_index_to_new_color_index[px[source_x, source_y]]
         
         bitmap_data.append(pixel_color_index)
-        
-    #bitmap_data += hor_margin_pixels
     
 tableFile = open(bitmap_filename, "wb")
 tableFile.write(bytearray(bitmap_data))
@@ -392,28 +386,38 @@ def run():
     
     # FIXME: right now the position of the lens if at the TOP-LEFT, which in not convenient!
     
-    lens_pos_x = 0
-    lens_pos_y = 0
+    lens_pos_x = 65
+    lens_pos_y = -50
     
     lens_speed_x = 1
     lens_speed_y = 1
+    
+    frame_nr = 0
+    first_bounce = True
     
     while running:
         # TODO: We might want to set this to max?
         clock.tick(60)
         
-        
         if (DO_MOVE_LENS):
             lens_pos_x += lens_speed_x
             lens_pos_y += lens_speed_y
             
-            if (lens_pos_x > 150):
-                lens_pos_x = 40
-                lens_pos_y = 40
+            if (lens_pos_x > 256 or lens_pos_x < 60):
+                lens_speed_x = -lens_speed_x
                 
-            if (lens_pos_y+100 >= 200):
-                lens_speed_y = -lens_speed_y
-        
+            if (lens_pos_y > 150 and frame_nr < 600):
+                lens_pos_y -= lens_speed_y
+                
+                if first_bounce: 
+                    lens_speed_y = -lens_speed_y * 2/3
+                    first_bounce = False
+                else:
+                    lens_speed_y = -lens_speed_y * 9/10
+                    
+            lens_speed_y += 2/64
+                
+        frame_nr += 1    
         
         for event in pygame.event.get():
 
@@ -439,13 +443,6 @@ def run():
         for source_y in range(source_image_height):
             for source_x in range(source_image_width):
 
-                #if (source_y < 32):
-                #    continue
-                #if (source_y >= 32 + 200):
-                #    continue
-                    
-                #y_screen = source_y - 32
-                #x_screen = source_x + 32
                 y_screen = source_y
                 x_screen = source_x
                 
@@ -462,23 +459,25 @@ def run():
                 if (x_shift is None):
                     continue
                 
-                source_y = lens_pos_y + lens_y + y_shift
-                source_x = lens_pos_x + lens_x + x_shift
+                source_y = lens_pos_y - lens_radius + lens_y + y_shift
+                source_x = lens_pos_x - lens_radius + lens_x + x_shift
                 
-                pixel_color = new_pixel_color = new_colors[old_color_index_to_new_color_index[px[source_x, source_y]] - new_color_index_offset + offset_blue_colors]
-                
-                #y_screen = lens_pos_y - 32 + lens_y
-                #x_screen = lens_pos_x + 32 + lens_x
-                y_screen = lens_pos_y + lens_y
-                x_screen = lens_pos_x + lens_x
-                
-                pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*2, y_screen*2, 2, 2))
+                if (source_y < source_image_height):
+                    pixel_color = new_pixel_color = new_colors[old_color_index_to_new_color_index[px[source_x, source_y]] - new_color_index_offset + offset_blue_colors]
+                    
+                    y_screen = lens_pos_y - lens_radius + lens_y
+                    x_screen = lens_pos_x - lens_radius + lens_x
+                    
+                    pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*2, y_screen*2, 2, 2))
+                else:
+                    # This is off screen, we do not draw
+                    pass
                 
                 
         
         pygame.display.update()
         
-        time.sleep(0.05)
+        time.sleep(0.01)
    
         
     pygame.quit()
