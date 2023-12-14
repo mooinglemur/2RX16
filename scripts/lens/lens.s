@@ -592,7 +592,7 @@ setup_next_sprite:
 
     ; Sprite height,	Sprite width,	Palette offset
     ; Note: we want to use a different palette (blue-ish color) for the pixels inside the lens, so we add 32 to the color index!
-    lda #%11110010 ; 64x64, 2*16 = 32 palette offset
+    lda #%11110100 ; 64x64, 4*16 = 64 palette offset
 ;    lda #%11110000 ; 64x64, 0*16 = 0 palette offset
     sta VERA_DATA0
     
@@ -879,71 +879,139 @@ cosine_values_high:
 
 palette_data:
   ; Normal colors:
-  .byte $f0, $0f
-  .byte $e0, $0e
-  .byte $c8, $0e
-  .byte $c0, $0e
-  .byte $ac, $0e
-  .byte $a8, $0e
-  .byte $a8, $0c
-  .byte $a0, $0c
-  .byte $ac, $08
-  .byte $88, $0c
-  .byte $84, $0c
-  .byte $80, $0c
-  .byte $84, $0a
-  .byte $8c, $08
-  .byte $88, $08
-  .byte $88, $06
-  .byte $64, $0a
-  .byte $60, $0a
-  .byte $68, $06
-  .byte $68, $04
-  .byte $40, $0a
-  .byte $44, $08
-  .byte $40, $08
-  .byte $20, $08
-  .byte $20, $06
-  .byte $48, $04
-  .byte $44, $04
-  .byte $44, $02
-  .byte $20, $04
-  .byte $24, $02
-  .byte $00, $00
-  .byte $00, $00
   
-  ; Blue-ish colors:
-  .byte $f8, $0f
-  .byte $e8, $0e
-  .byte $cc, $0e
-  .byte $c8, $0e
-  .byte $ae, $0e
-  .byte $ac, $0e
-  .byte $ac, $0c
-  .byte $a8, $0c
-  .byte $ae, $08
-  .byte $8c, $0c
-  .byte $8a, $0c
-  .byte $88, $0c
-  .byte $8a, $0a
-  .byte $8e, $08
-  .byte $8c, $08
-  .byte $8c, $06
-  .byte $6a, $0a
-  .byte $68, $0a
-  .byte $6c, $06
-  .byte $6c, $04
-  .byte $48, $0a
-  .byte $4a, $08
-  .byte $48, $08
-  .byte $28, $08
-  .byte $28, $06
-  .byte $4c, $04
-  .byte $4a, $04
-  .byte $4a, $02
-  .byte $28, $04
-  .byte $2a, $02
+  .byte $00, $00
+  .byte $34, $02
+  .byte $56, $04
+  .byte $68, $05
+  .byte $79, $06
+  .byte $79, $07
+  .byte $68, $06
+  .byte $57, $04
+  .byte $46, $03
+  .byte $8a, $08
+  .byte $57, $05
+  .byte $35, $03
+  .byte $00, $03
+  .byte $45, $03
+  .byte $9b, $08
+  .byte $00, $02
+  .byte $10, $04
+  .byte $20, $05
+  .byte $21, $06
+  .byte $31, $07
+  .byte $32, $07
+  .byte $10, $05
+  .byte $42, $07
+  .byte $42, $08
+  .byte $43, $08
+  .byte $53, $09
+  .byte $64, $09
+  .byte $23, $01
+  .byte $75, $0a
+  .byte $75, $0b
+  .byte $86, $0b
+  .byte $97, $0c
+  .byte $64, $0a
+  .byte $98, $0c
+  .byte $a8, $0d
+  .byte $a9, $0d
+  .byte $b9, $0e
+  .byte $ca, $0e
+  .byte $cb, $0f
+  .byte $00, $04
+  .byte $10, $06
+  .byte $20, $07
+  .byte $30, $08
+  .byte $50, $0a
+  .byte $70, $0b
+  .byte $80, $0b
+  .byte $40, $09
+  .byte $90, $0c
+  .byte $c0, $0e
+  .byte $b0, $0d
+  .byte $e0, $0f
+  .byte $f0, $0f
+  .byte $ff, $0f
+  .byte $44, $04
+  .byte $55, $05
+  .byte $66, $06
+  .byte $77, $07
+  .byte $88, $08
+  .byte $99, $09
+  .byte $aa, $0a
+  .byte $bb, $0b
+  .byte $cc, $0c
+  .byte $dd, $0d
+  .byte $ee, $0e
   .byte $08, $00
+
+  ; Blue-ish colors:
+  .byte $3a, $02
+  .byte $5b, $04
+  .byte $6c, $05
+  .byte $7c, $06
+  .byte $7c, $07
+  .byte $6c, $06
+  .byte $5b, $04
+  .byte $4b, $03
+  .byte $8d, $08
+  .byte $5b, $05
+  .byte $3a, $03
+  .byte $08, $03
+  .byte $4a, $03
+  .byte $9d, $08
+  .byte $08, $02
+  .byte $18, $04
+  .byte $28, $05
+  .byte $28, $06
+  .byte $38, $07
+  .byte $39, $07
+  .byte $18, $05
+  .byte $49, $07
+  .byte $49, $08
+  .byte $49, $08
+  .byte $59, $09
+  .byte $6a, $09
+  .byte $29, $01
+  .byte $7a, $0a
+  .byte $7a, $0b
+  .byte $8b, $0b
+  .byte $9b, $0c
+  .byte $6a, $0a
+  .byte $9c, $0c
+  .byte $ac, $0d
+  .byte $ac, $0d
+  .byte $bc, $0e
+  .byte $cd, $0e
+  .byte $cd, $0f
+  .byte $08, $04
+  .byte $18, $06
+  .byte $28, $07
+  .byte $38, $08
+  .byte $58, $0a
+  .byte $78, $0b
+  .byte $88, $0b
+  .byte $48, $09
+  .byte $98, $0c
+  .byte $c8, $0e
+  .byte $b8, $0d
+  .byte $e8, $0f
+  .byte $f8, $0f
+  .byte $ff, $0f
+  .byte $4a, $04
+  .byte $5a, $05
+  .byte $6b, $06
+  .byte $7b, $07
+  .byte $8c, $08
+  .byte $9c, $09
+  .byte $ad, $0a
+  .byte $bd, $0b
+  .byte $ce, $0c
+  .byte $de, $0d
+  .byte $ef, $0e
+
+
 end_of_palette_data:
 
 

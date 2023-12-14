@@ -88,12 +88,13 @@ for new_color in new_colors:
 # FIXME: we add ONE more dummy color to reach exactly 32 new_colors (which makes palette offsets for sprites possible)
 # new_colors.append((0,0,0))
 
-offset_blue_colors = len(new_colors)  # = 32
+offset_blue_colors = len(new_colors)  # = 64
 new_colors += extra_colors
     
 # Printing out asm for palette:
 
 palette_string = ""
+color_index = 0
 for new_color in new_colors:
     red = new_color[0]
     green = new_color[1]
@@ -106,6 +107,11 @@ for new_color in new_colors:
     palette_string += "$" + format(green | blue,"02x") + ", "
     palette_string += "$" + format(red,"02x")
     palette_string += "\n"
+    
+    if (color_index % 64 == 0 and color_index != 0):
+        palette_string += "\n"
+    
+    color_index += 1
 
 print(palette_string)
 
