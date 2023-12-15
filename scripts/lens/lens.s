@@ -696,7 +696,7 @@ bitmap_loaded:
     rts
 
 
-download1_filename:      .byte    "download1.dat" 
+download1_filename:      .byte    "download0.dat" 
 end_download1_filename:
 
 load_download1_code_into_banked_ram:
@@ -728,7 +728,7 @@ download1_loaded:
 
     rts
     
-download2_filename:      .byte    "download2.dat" 
+download2_filename:      .byte    "download1.dat" 
 end_download2_filename:
 
 load_download2_code_into_banked_ram:
@@ -761,7 +761,7 @@ download2_loaded:
 
     
     
-upload1_filename:      .byte    "upload1.dat" 
+upload1_filename:      .byte    "upload0-0.dat" 
 end_upload1_filename:
 
 load_upload1_code_into_banked_ram:
@@ -793,7 +793,7 @@ upload1_loaded:
 
     rts
     
-upload2_filename:      .byte    "upload2.dat" 
+upload2_filename:      .byte    "upload0-1.dat" 
 end_upload2_filename:
 
 load_upload2_code_into_banked_ram:
@@ -824,7 +824,7 @@ upload2_loaded:
 
     rts
     
-upload3_filename:      .byte    "upload3.dat" 
+upload3_filename:      .byte    "upload0-2.dat" 
 end_upload3_filename:
 
 load_upload3_code_into_banked_ram:

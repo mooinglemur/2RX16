@@ -18,11 +18,8 @@ source_image_filename = "assets/lens/LENSPIC.png"
 source_image_width = 320
 source_image_height = 200
 bitmap_filename = "scripts/lens/LENS.DAT"
-download1_code_filename = "scripts/lens/DOWNLOAD1.DAT"
-download2_code_filename = "scripts/lens/DOWNLOAD2.DAT"
-upload1_code_filename = "scripts/lens/UPLOAD1.DAT"
-upload2_code_filename = "scripts/lens/UPLOAD2.DAT"
-upload3_code_filename = "scripts/lens/UPLOAD3.DAT"
+download_code_filename = "scripts/lens/DOWNLOAD?.DAT"  # The question mark will be filled in later
+upload_code_filename = "scripts/lens/UPLOAD?-?.DAT"    # The question marks will be filled in later
 
 screen_width = 320
 screen_height = 200
@@ -235,10 +232,6 @@ def add_upl_code(upload_codes, upl_idx, code):
 
 def generate_download_and_upload_code():
 
-# FIXME! we need 4 * 3 upload code parts!!
-# FIXME! we need 4 * 3 upload code parts!!
-# FIXME! we need 4 * 3 upload code parts!!
-
     download_code = ([],[])
     upload_codes = [
         ([],[],[]),
@@ -353,7 +346,6 @@ def generate_download_and_upload_code():
                 # adc #64/128/192
                 
                 add_upl_code(upload_codes, upl_idx, 0x69)  # adc #...
-# FIXME: this should be different for each quadrant-lens-pixel!
                 upload_codes[0][upl_idx].append(lens_pixel_0*0x40)
                 upload_codes[1][upl_idx].append(lens_pixel_1*0x40)
                 upload_codes[2][upl_idx].append(lens_pixel_2*0x40)
@@ -402,7 +394,7 @@ def generate_download_and_upload_code():
             add_upl_code(upload_codes, upl_idx, 0x60)  # rts
             
 
-    return (download_code[0], download_code[1], upload_codes[0][0], upload_codes[0][1], upload_codes[0][2])
+    return (download_code, upload_codes)
 
 
 pygame.init()
@@ -413,32 +405,24 @@ clock = pygame.time.Clock()
 
 init_lens(lens_px)
 
-(download1_code, download2_code, upload1_code, upload2_code, upload3_code) = generate_download_and_upload_code()
+(download_code, upload_codes) = generate_download_and_upload_code()
 
-tableFile = open(download1_code_filename, "wb")
-tableFile.write(bytearray(download1_code))
-tableFile.close()
-print("download code 1 written to file: " + download1_code_filename)
+for dwn_idx in range(2):
+    current_download_code_filename = download_code_filename.replace('?', str(dwn_idx), 1)
+    codeFile = open(current_download_code_filename, "wb")
+    codeFile.write(bytearray(download_code[dwn_idx]))
+    codeFile.close()
+    print("download code " + str(dwn_idx) +" written to file: " + current_download_code_filename)
 
-tableFile = open(download2_code_filename, "wb")
-tableFile.write(bytearray(download2_code))
-tableFile.close()
-print("download code 2 written to file: " + download2_code_filename)
+for quadrant_idx in range(4):
+    for upl_idx in range(3):
+        current_upload_code_filename = upload_code_filename.replace('?', str(quadrant_idx), 1)
+        current_upload_code_filename = current_upload_code_filename.replace('?', str(upl_idx), 1)
 
-tableFile = open(upload1_code_filename, "wb")
-tableFile.write(bytearray(upload1_code))
-tableFile.close()
-print("upload code 1 written to file: " + upload1_code_filename)
-
-tableFile = open(upload2_code_filename, "wb")
-tableFile.write(bytearray(upload2_code))
-tableFile.close()
-print("upload code 2 written to file: " + upload2_code_filename)
-
-tableFile = open(upload3_code_filename, "wb")
-tableFile.write(bytearray(upload3_code))
-tableFile.close()
-print("upload code 3 written to file: " + upload3_code_filename)
+        codeFile = open(current_upload_code_filename, "wb")
+        codeFile.write(bytearray(upload_codes[quadrant_idx][upl_idx]))
+        codeFile.close()
+        print("upload code " + str(quadrant_idx) +'-'+ str(upl_idx) +" written to file: " + current_upload_code_filename)
 
 
 bitmap_data = []
