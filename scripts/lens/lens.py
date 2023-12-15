@@ -86,24 +86,34 @@ for clr_idx in range(0, offset_blue_colors):
     red_dark = red // 2
     green_dark = green // 2
 
-    red_light = 256 - (256 - red) // 2
-    green_light = 256 - (256 - green) // 2
+    #red_light = 256 - (256 - red) // 2
+    #green_light = 256 - (256 - green) // 2
     
     new_blue_dark = 256 - int((256 - blue) / 1.2)
     new_blue_normal = 256 - int((256 - blue) / 1.5)
     new_blue_light = 256 - int((256 - blue) / 2.0)
     
+    red_dark = red_dark & 0xF0
+    green_dark = green_dark & 0xF0
+    
+    new_blue_dark = new_blue_dark & 0xF0
+    new_blue_normal = new_blue_normal & 0xF0
+    new_blue_light = new_blue_light & 0xF0
+    
     # colors 64 through 127 are going to be dark blue-ish
     blue_ish_color_dark = (red_dark, green_dark, new_blue_dark)
     colors_12bit[clr_idx+offset_blue_colors*1] = blue_ish_color_dark
+#    colors_12bit[clr_idx+offset_blue_colors*1] = (0xFF, 0x00, 0x00)
     
     # colors 128 through 191 are going to be normal blue-ish
     blue_ish_color_normal = (red_dark, green_dark, new_blue_normal)
     colors_12bit[clr_idx+offset_blue_colors*2] = blue_ish_color_normal
+#    colors_12bit[clr_idx+offset_blue_colors*2] = (0x00, 0xFF, 0x00)
     
     # colors 192 through 255 are going to be light blue-ish
     blue_ish_color_light = (red_dark, green_dark, new_blue_light)
     colors_12bit[clr_idx+offset_blue_colors*3] = blue_ish_color_light
+#    colors_12bit[clr_idx+offset_blue_colors*3] = (0x00, 0x00, 0xFF)
     
 
 # Printing out asm for palette:
@@ -187,19 +197,18 @@ def init_lens(lens_px):
     # }
             
     for y in range(half_lens_height):
-# FIXME: we need to adjust y by 9/8?
+        # TODO: we need to adjust y by 9/8 or by something else?
         y2 = (y*9/8)*(y*9/8)
         for x in range(half_lens_width):
             x2 = x*x
-# FIXME: check if lens color is black or not!
-            #if ((x2 + y2) <= r2):
             if (lens_pixels[hlfh-1+y][hlfw-1+x] != 0):
             
                 now = full - (x2 + y2)
                 if now < 1:
                     now = 1
-# FIXME: do we need to adjust this too?
-                new = 250 / (now**0.69)
+                    
+                # higher than 240 creates bad pixels at the borders right now...
+                new = 240 / (now**0.69)
                 fx = (random.random() - 0.5) * 1.2
                 fy = (random.random() - 0.5) * 1.2
                 px = int((x+fx)*new)
@@ -291,8 +300,8 @@ def generate_download_and_upload_code():
                 upload_code.append(0x69)  # adc #...
 # FIXME: this should be different for each quadrant-lens-pixel!
 # FIXME! WHY DOES THIS SORT OF WORK??
-                upload_code.append(0xC0)  # #128
-#                upload_code.append(0x40)  # #64
+#                upload_code.append(0xC0)  # #192
+                upload_code.append(0x40)  # #64
                 
                 # sta VERA_DATA1 ($9F24)  -> this writes a byte to VRAM
                 upload_code.append(0x8D)  # sta ....

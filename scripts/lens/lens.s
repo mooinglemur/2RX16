@@ -989,41 +989,41 @@ palette_data:
   .byte $e0, $0f
   .byte $f0, $0f
   .byte $02, $00
-  .byte $1e, $01
-  .byte $2f, $02
+  .byte $16, $01
+  .byte $27, $02
   .byte $39, $02
   .byte $3a, $03
   .byte $3a, $03
   .byte $39, $03
   .byte $28, $02
   .byte $27, $01
-  .byte $1e, $01
+  .byte $16, $01
   .byte $4b, $04
   .byte $28, $02
-  .byte $1e, $01
+  .byte $16, $01
   .byte $02, $01
   .byte $02, $01
   .byte $26, $01
   .byte $4b, $04
   .byte $02, $01
-  .byte $0a, $02
+  .byte $02, $02
   .byte $12, $02
   .byte $13, $03
   .byte $13, $03
-  .byte $1b, $03
-  .byte $1c, $03
-  .byte $0a, $02
-  .byte $0a, $02
-  .byte $0a, $02
+  .byte $13, $03
+  .byte $14, $03
+  .byte $02, $02
+  .byte $02, $02
+  .byte $02, $02
   .byte $24, $03
   .byte $24, $04
   .byte $25, $04
-  .byte $2d, $04
-  .byte $2d, $04
+  .byte $25, $04
+  .byte $25, $04
   .byte $36, $04
   .byte $15, $00
-  .byte $3e, $05
-  .byte $3e, $05
+  .byte $36, $05
+  .byte $36, $05
   .byte $47, $05
   .byte $48, $06
   .byte $36, $05
@@ -1037,21 +1037,21 @@ palette_data:
   .byte $6b, $07
   .byte $02, $01
   .byte $02, $02
-  .byte $0a, $02
   .byte $02, $02
-  .byte $0a, $03
+  .byte $02, $02
+  .byte $02, $03
   .byte $12, $03
-  .byte $1a, $04
-  .byte $2a, $05
-  .byte $3a, $05
+  .byte $12, $04
+  .byte $22, $05
+  .byte $32, $05
   .byte $42, $05
   .byte $22, $04
-  .byte $1a, $04
-  .byte $4a, $06
+  .byte $12, $04
+  .byte $42, $06
   .byte $62, $07
-  .byte $5a, $06
+  .byte $52, $06
   .byte $72, $07
-  .byte $7a, $07
+  .byte $72, $07
   .byte $05, $00
   .byte $18, $01
   .byte $29, $02
@@ -1070,20 +1070,20 @@ palette_data:
   .byte $28, $01
   .byte $4c, $04
   .byte $05, $01
-  .byte $0d, $02
+  .byte $05, $02
   .byte $15, $02
   .byte $16, $03
   .byte $16, $03
-  .byte $1e, $03
-  .byte $1e, $03
-  .byte $0d, $02
-  .byte $0d, $02
-  .byte $0d, $02
+  .byte $16, $03
+  .byte $16, $03
+  .byte $05, $02
+  .byte $05, $02
+  .byte $05, $02
   .byte $26, $03
   .byte $26, $04
   .byte $27, $04
-  .byte $2f, $04
-  .byte $2f, $04
+  .byte $27, $04
+  .byte $27, $04
   .byte $38, $04
   .byte $17, $00
   .byte $38, $05
@@ -1101,21 +1101,21 @@ palette_data:
   .byte $6c, $07
   .byte $05, $01
   .byte $05, $02
-  .byte $0d, $02
   .byte $05, $02
-  .byte $0d, $03
+  .byte $05, $02
+  .byte $05, $03
   .byte $15, $03
-  .byte $1d, $04
-  .byte $2d, $05
-  .byte $3d, $05
+  .byte $15, $04
+  .byte $25, $05
+  .byte $35, $05
   .byte $45, $05
   .byte $25, $04
-  .byte $1d, $04
-  .byte $4d, $06
+  .byte $15, $04
+  .byte $45, $06
   .byte $65, $07
-  .byte $5d, $06
+  .byte $55, $06
   .byte $75, $07
-  .byte $7d, $07
+  .byte $75, $07
   .byte $08, $00
   .byte $1a, $01
   .byte $2b, $02
