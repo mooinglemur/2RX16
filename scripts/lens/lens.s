@@ -81,6 +81,12 @@ QUADRANT                  = $45
 LENS_DELTA_X              = $46 ; 47
 LENS_DELTA_Y              = $48 ; 49
 
+DWN_RAM_BANK              = $4A
+DWN_IDX                   = $4B
+
+UPL_RAM_BANK              = $4C
+UPL_IDX                   = $4D
+UPL_QUADRANT              = $4E
 
 COSINE_OF_ANGLE           = $51 ; 52
 SINE_OF_ANGLE             = $53 ; 53
@@ -105,11 +111,8 @@ BITMAP_WIDTH = 256
 BITMAP_HEIGHT = 192
 LENS_RADIUS = 50  ; --> also CHANGE clear_download_buffer if you change this number!
 
-DOWNLOAD1_RAM_BANK        = $01
-DOWNLOAD2_RAM_BANK        = $02
-UPLOAD1_RAM_BANK          = $03
-UPLOAD2_RAM_BANK          = $04
-UPLOAD3_RAM_BANK          = $05
+DOWNLOAD_RAM_BANK         = $01 ; 02
+UPLOAD_RAM_BANK           = $03 ; 04; 05;   06 ; 07; 08;   09 ; 0A; 0B;   0C ; 0D; 0E
 
 start:
 
@@ -121,11 +124,34 @@ start:
     jsr load_bitmap_into_vram
     jsr generate_y_to_address_table
     
-    jsr load_download1_code_into_banked_ram
-    jsr load_download2_code_into_banked_ram
-    jsr load_upload1_code_into_banked_ram
-    jsr load_upload2_code_into_banked_ram
-    jsr load_upload3_code_into_banked_ram
+    lda #DOWNLOAD_RAM_BANK
+    sta DWN_RAM_BANK
+    stz DWN_IDX
+    jsr load_download_code_into_banked_ram
+    inc DWN_RAM_BANK
+    inc DWN_IDX
+    jsr load_download_code_into_banked_ram
+
+
+    lda #UPLOAD_RAM_BANK
+    sta UPL_RAM_BANK
+    stz UPL_QUADRANT
+    
+load_next_upload_quadrant:    
+    stz UPL_IDX
+    jsr load_upload_code_into_banked_ram
+    inc UPL_RAM_BANK
+    inc UPL_IDX
+    jsr load_upload_code_into_banked_ram
+    inc UPL_RAM_BANK
+    inc UPL_IDX
+    jsr load_upload_code_into_banked_ram
+    inc UPL_RAM_BANK
+    lda UPL_RAM_BANK
+    
+    inc UPL_QUADRANT
+    cmp #UPLOAD_RAM_BANK+12
+    bne load_next_upload_quadrant
     
     ; If set the first 4 sprites will be enabled, the others not
     lda #%00001000  ; Z-depth = 2
@@ -321,6 +347,9 @@ download_and_upload_quadrants:
     ; We iterate through 4 quadrants (either 0-3 OR 4-7)
 
     ldx QUADRANT
+    
+    lda #UPLOAD_RAM_BANK
+    sta UPL_RAM_BANK
 
 next_quadrant_to_download_and_upload:
     
@@ -359,11 +388,11 @@ next_quadrant_to_download_and_upload:
     lda #%00000000
     sta VERA_FX_CTRL         ; normal addr1-mode
     
-    lda #DOWNLOAD1_RAM_BANK
+    lda #DOWNLOAD_RAM_BANK
     sta RAM_BANK
     jsr DOWNLOAD_RAM_ADDRESS
     
-    lda #DOWNLOAD2_RAM_BANK
+    lda #DOWNLOAD_RAM_BANK+1
     sta RAM_BANK
     jsr DOWNLOAD_RAM_ADDRESS
 
@@ -400,20 +429,27 @@ next_quadrant_to_download_and_upload:
 
     clc                       ; we are adding during upload, so we need the carry to be 0
 
-    lda #UPLOAD1_RAM_BANK
+    lda UPL_RAM_BANK
     sta RAM_BANK
     jsr UPLOAD_RAM_ADDRESS
     
-    lda #UPLOAD2_RAM_BANK
+    lda UPL_RAM_BANK
+    adc #1
     sta RAM_BANK
     jsr UPLOAD_RAM_ADDRESS
 
-    lda #UPLOAD3_RAM_BANK
+    lda UPL_RAM_BANK
+    adc #2
     sta RAM_BANK
     jsr UPLOAD_RAM_ADDRESS
     
     inx 
     inc QUADRANT  ; TODO: this is not efficient
+    
+    clc
+    lda UPL_RAM_BANK
+    adc #3
+    sta UPL_RAM_BANK
     
     ; We loop through quadrant indexes be 0-3 OR 4-7.
     cpx #4
@@ -696,14 +732,19 @@ bitmap_loaded:
     rts
 
 
-download1_filename:      .byte    "download0.dat" 
-end_download1_filename:
+download_filename:      .byte    "download0.dat" 
+end_download_filename:
 
-load_download1_code_into_banked_ram:
+load_download_code_into_banked_ram:
 
-    lda #(end_download1_filename-download1_filename) ; Length of filename
-    ldx #<download1_filename      ; Low byte of Fname address
-    ldy #>download1_filename      ; High byte of Fname address
+    clc
+    lda #'0'                  ; '0' = $30
+    adc DWN_IDX
+    sta end_download_filename-5 ; 5 characters from the end is the '0'
+
+    lda #(end_download_filename-download_filename) ; Length of filename
+    ldx #<download_filename      ; Low byte of Fname address
+    ldy #>download_filename      ; High byte of Fname address
     jsr SETNAM
  
     lda #1            ; Logical file number
@@ -714,61 +755,39 @@ load_download1_code_into_banked_ram:
     
     jsr SETLFS
     
-    lda #DOWNLOAD1_RAM_BANK
+    lda DWN_RAM_BANK
     sta RAM_BANK
     
     lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
     ldx #<DOWNLOAD_RAM_ADDRESS
     ldy #>DOWNLOAD_RAM_ADDRESS
     jsr LOAD
-    bcc download1_loaded
+    bcc download_loaded
     ; FIXME: do proper error handling!
     stp
-download1_loaded:
+download_loaded:
 
     rts
     
-download2_filename:      .byte    "download1.dat" 
-end_download2_filename:
-
-load_download2_code_into_banked_ram:
-
-    lda #(end_download2_filename-download2_filename) ; Length of filename
-    ldx #<download2_filename      ; Low byte of Fname address
-    ldy #>download2_filename      ; High byte of Fname address
-    jsr SETNAM
- 
-    lda #1            ; Logical file number
-    ldx #8            ; Device 8 = sd card
-    ldy #2            ; 0=ignore address in bin file (2 first bytes)
-                      ; 1=use address in bin file
-                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
-    jsr SETLFS
     
-    lda #DOWNLOAD2_RAM_BANK
-    sta RAM_BANK
- 
-    lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
-    ldx #<DOWNLOAD_RAM_ADDRESS
-    ldy #>DOWNLOAD_RAM_ADDRESS
-    jsr LOAD
-    bcc download2_loaded
-    ; FIXME: do proper error handling!
-    stp
-download2_loaded:
+upload_filename:      .byte    "upload0-0.dat" 
+end_upload_filename:
 
-    rts
+load_upload_code_into_banked_ram:
 
+    clc
+    lda #'0'                  ; '0' = $30
+    adc UPL_QUADRANT
+    sta end_upload_filename-7 ; 7 characters from the end is the first '0'
     
-    
-upload1_filename:      .byte    "upload0-0.dat" 
-end_upload1_filename:
+    clc
+    lda #'0'                  ; '0' = $30
+    adc UPL_IDX
+    sta end_upload_filename-5 ; 5 characters from the end is the second '0'
 
-load_upload1_code_into_banked_ram:
-
-    lda #(end_upload1_filename-upload1_filename) ; Length of filename
-    ldx #<upload1_filename      ; Low byte of Fname address
-    ldy #>upload1_filename      ; High byte of Fname address
+    lda #(end_upload_filename-upload_filename) ; Length of filename
+    ldx #<upload_filename      ; Low byte of Fname address
+    ldy #>upload_filename      ; High byte of Fname address
     jsr SETNAM
  
     lda #1            ; Logical file number
@@ -779,81 +798,20 @@ load_upload1_code_into_banked_ram:
     
     jsr SETLFS
     
-    lda #UPLOAD1_RAM_BANK
+    lda UPL_RAM_BANK
     sta RAM_BANK
     
     lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
     ldx #<UPLOAD_RAM_ADDRESS
     ldy #>UPLOAD_RAM_ADDRESS
     jsr LOAD
-    bcc upload1_loaded
+    bcc upload_loaded
     ; FIXME: do proper error handling!
     stp
-upload1_loaded:
+upload_loaded:
 
     rts
     
-upload2_filename:      .byte    "upload0-1.dat" 
-end_upload2_filename:
-
-load_upload2_code_into_banked_ram:
-
-    lda #(end_upload2_filename-upload2_filename) ; Length of filename
-    ldx #<upload2_filename      ; Low byte of Fname address
-    ldy #>upload2_filename      ; High byte of Fname address
-    jsr SETNAM
- 
-    lda #1            ; Logical file number
-    ldx #8            ; Device 8 = sd card
-    ldy #2            ; 0=ignore address in bin file (2 first bytes)
-                      ; 1=use address in bin file
-                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
-    jsr SETLFS
-    
-    lda #UPLOAD2_RAM_BANK
-    sta RAM_BANK
- 
-    lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
-    ldx #<UPLOAD_RAM_ADDRESS
-    ldy #>UPLOAD_RAM_ADDRESS
-    jsr LOAD
-    bcc upload2_loaded
-    ; FIXME: do proper error handling!
-    stp
-upload2_loaded:
-
-    rts
-    
-upload3_filename:      .byte    "upload0-2.dat" 
-end_upload3_filename:
-
-load_upload3_code_into_banked_ram:
-
-    lda #(end_upload3_filename-upload3_filename) ; Length of filename
-    ldx #<upload3_filename      ; Low byte of Fname address
-    ldy #>upload3_filename      ; High byte of Fname address
-    jsr SETNAM
- 
-    lda #1            ; Logical file number
-    ldx #8            ; Device 8 = sd card
-    ldy #2            ; 0=ignore address in bin file (2 first bytes)
-                      ; 1=use address in bin file
-                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
-    jsr SETLFS
-    
-    lda #UPLOAD3_RAM_BANK
-    sta RAM_BANK
- 
-    lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
-    ldx #<UPLOAD_RAM_ADDRESS
-    ldy #>UPLOAD_RAM_ADDRESS
-    jsr LOAD
-    bcc upload3_loaded
-    ; FIXME: do proper error handling!
-    stp
-upload3_loaded:
-
-    rts
     
     
 generate_y_to_address_table:

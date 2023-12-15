@@ -324,14 +324,11 @@ def generate_download_and_upload_code():
             # If the lens_pixel color not is black/transparent, we keep downloading this row
             lens_pixel = lens_pixels[hlfh-1 + y][hlfw-1 + x]
             
-# FIXME: we should get FOUR DIFFERENT lens_pixels here!
-# FIXME: we should get FOUR DIFFERENT lens_pixels here!
-# FIXME: we should get FOUR DIFFERENT lens_pixels here!
             lens_pixel_0 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
-            lens_pixel_1 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
-            lens_pixel_2 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
-            lens_pixel_3 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
-            
+            lens_pixel_1 = lens_pixels[hlfh-1 + y][hlfw-1 - x]
+            lens_pixel_2 = lens_pixels[hlfh-1 - y][hlfw-1 - x]
+            lens_pixel_3 = lens_pixels[hlfh-1 - y][hlfw-1 + x]
+
             if (lens_pixel != 0):
             
                 # -- upload --
