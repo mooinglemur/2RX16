@@ -667,7 +667,7 @@ next_packed_color_1:
     rts
 
 
-bitmap_filename:      .byte    "lens.bin" 
+bitmap_filename:      .byte    "lens.dat" 
 end_bitmap_filename:
 
 load_bitmap_into_vram:
@@ -696,7 +696,7 @@ bitmap_loaded:
     rts
 
 
-download1_filename:      .byte    "download1.bin" 
+download1_filename:      .byte    "download1.dat" 
 end_download1_filename:
 
 load_download1_code_into_banked_ram:
@@ -728,7 +728,7 @@ download1_loaded:
 
     rts
     
-download2_filename:      .byte    "download2.bin" 
+download2_filename:      .byte    "download2.dat" 
 end_download2_filename:
 
 load_download2_code_into_banked_ram:
@@ -761,7 +761,7 @@ download2_loaded:
 
     
     
-upload1_filename:      .byte    "upload1.bin" 
+upload1_filename:      .byte    "upload1.dat" 
 end_upload1_filename:
 
 load_upload1_code_into_banked_ram:
@@ -793,7 +793,7 @@ upload1_loaded:
 
     rts
     
-upload2_filename:      .byte    "upload2.bin" 
+upload2_filename:      .byte    "upload2.dat" 
 end_upload2_filename:
 
 load_upload2_code_into_banked_ram:
@@ -824,7 +824,7 @@ upload2_loaded:
 
     rts
     
-upload3_filename:      .byte    "upload3.bin" 
+upload3_filename:      .byte    "upload3.dat" 
 end_upload3_filename:
 
 load_upload3_code_into_banked_ram:

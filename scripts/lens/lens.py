@@ -17,23 +17,19 @@ lens_source_image_height = 200
 source_image_filename = "assets/lens/LENSPIC.png"
 source_image_width = 320
 source_image_height = 200
-bitmap_filename = "scripts/lens/LENS.BIN"
-download1_code_filename = "scripts/lens/DOWNLOAD1.BIN"
-download2_code_filename = "scripts/lens/DOWNLOAD2.BIN"
-upload1_code_filename = "scripts/lens/UPLOAD1.BIN"
-upload2_code_filename = "scripts/lens/UPLOAD2.BIN"
-upload3_code_filename = "scripts/lens/UPLOAD3.BIN"
+bitmap_filename = "scripts/lens/LENS.DAT"
+download1_code_filename = "scripts/lens/DOWNLOAD1.DAT"
+download2_code_filename = "scripts/lens/DOWNLOAD2.DAT"
+upload1_code_filename = "scripts/lens/UPLOAD1.DAT"
+upload2_code_filename = "scripts/lens/UPLOAD2.DAT"
+upload3_code_filename = "scripts/lens/UPLOAD3.DAT"
 
 screen_width = 320
 screen_height = 200
 
 BITMAP_QUADRANT_BUFFER = 0x6000
-# FIXME: we need lens_width and lens_height INSTEAD!
-lens_size = 100
 half_lens_width = 59 # 117 total width, 1 pixel overlapping so 117 // 2 + 1 = 59 (or 118 // 2 if you will)
 half_lens_height = 52 # 103 total height, 1 pixel overlapping so 103 // 2 + 1 = 52 (or 104 // 2 if you will)
-# FIXME: what do we do with lens_radius? Remove it?
-lens_radius = lens_size/2
 lens_zoom = 16
 scale = 2
 
@@ -47,16 +43,8 @@ im_lens = Image.open(lens_image_filename)
 lens_px = im_lens.load()
 lens_palette_bytes = im_lens.getpalette()
 
-#print(lens_palette_bytes)
-#print(lens_px)
-
 # We first convert to 12-bit COLORS
 colors_12bit = []
-
-
-# FIXME: we should *NOT* use COLOR INDEX 0 for BLACK!!
-# FIXME: we should *NOT* use COLOR INDEX 0 for BLACK!!
-# FIXME: we should *NOT* use COLOR INDEX 0 for BLACK!!
 
 byte_index = 0
 nr_of_palette_bytes = 3*256
@@ -86,9 +74,6 @@ for clr_idx in range(0, offset_blue_colors):
     red_dark = red // 2
     green_dark = green // 2
 
-    #red_light = 256 - (256 - red) // 2
-    #green_light = 256 - (256 - green) // 2
-    
     new_blue_dark = 256 - int((256 - blue) / 1.2)
     new_blue_normal = 256 - int((256 - blue) / 1.5)
     new_blue_light = 256 - int((256 - blue) / 2.0)
@@ -103,17 +88,14 @@ for clr_idx in range(0, offset_blue_colors):
     # colors 64 through 127 are going to be dark blue-ish
     blue_ish_color_dark = (red_dark, green_dark, new_blue_dark)
     colors_12bit[clr_idx+offset_blue_colors*1] = blue_ish_color_dark
-#    colors_12bit[clr_idx+offset_blue_colors*1] = (0xFF, 0x00, 0x00)
     
     # colors 128 through 191 are going to be normal blue-ish
     blue_ish_color_normal = (red_dark, green_dark, new_blue_normal)
     colors_12bit[clr_idx+offset_blue_colors*2] = blue_ish_color_normal
-#    colors_12bit[clr_idx+offset_blue_colors*2] = (0x00, 0xFF, 0x00)
     
     # colors 192 through 255 are going to be light blue-ish
     blue_ish_color_light = (red_dark, green_dark, new_blue_light)
     colors_12bit[clr_idx+offset_blue_colors*3] = blue_ish_color_light
-#    colors_12bit[clr_idx+offset_blue_colors*3] = (0x00, 0x00, 0xFF)
     
 
 # Printing out asm for palette:
@@ -145,7 +127,6 @@ def init_lens(lens_px):
 
     d = lens_zoom
     d2 = lens_zoom*lens_zoom
-    r2 = lens_radius*lens_radius
     
     hlfh = half_lens_height
     hlfw = half_lens_width
@@ -244,20 +225,30 @@ def init_lens(lens_px):
 #  - X1-position is 0
 #  - Free memory at address BITMAP_QUADRANT_BUFFER (half_lens_width*half_lens_height in size)
 #
+
+def add_upl_code(upload_codes, upl_idx, code):
+    upload_codes[0][upl_idx].append(code)
+    upload_codes[1][upl_idx].append(code)
+    upload_codes[2][upl_idx].append(code)
+    upload_codes[3][upl_idx].append(code)
+    
+
 def generate_download_and_upload_code():
 
 # FIXME! we need 4 * 3 upload code parts!!
 # FIXME! we need 4 * 3 upload code parts!!
 # FIXME! we need 4 * 3 upload code parts!!
 
-    download1_code = []
-    download2_code = []
-    upload1_code = []
-    upload2_code = []
-    upload3_code = []
+    download_code = ([],[])
+    upload_codes = [
+        ([],[],[]),
+        ([],[],[]),
+        ([],[],[]),
+        ([],[],[])
+    ]
 
-    download_code = download1_code
-    upload_code = upload1_code
+    dwn_idx = 0
+    upl_idx = 0
     
     hlfh = half_lens_height
     hlfw = half_lens_width
@@ -266,7 +257,6 @@ def generate_download_and_upload_code():
 
     for y in range(hlfh):
         for x in range(hlfw):
-            (x_shift, y_shift) = lens_offsets[ hlfh-1 + y][ hlfw-1 + x]
             
             # If the lens_pixel color not is black/transparent, we keep downloading this row
             if (lens_pixels[hlfh-1 + y][hlfw-1 + x] != 0):
@@ -276,37 +266,16 @@ def generate_download_and_upload_code():
                 # We need to download a byte from VRAM into Fixed RAM
 
                 # lda VERA_DATA1 ($9F24)  -> this loads a byte from VRAM
-                download_code.append(0xAD)  # lda ....
-                download_code.append(0x24)  # $24
-                download_code.append(0x9F)  # $9F
+                download_code[dwn_idx].append(0xAD)  # lda ....
+                download_code[dwn_idx].append(0x24)  # $24
+                download_code[dwn_idx].append(0x9F)  # $9F
                 
                 address_to_write_to = BITMAP_QUADRANT_BUFFER + y * hlfw + x
                 
                 # sta $6... 
-                download_code.append(0x8D)  # sta ....
-                download_code.append(address_to_write_to % 256)  # low part of address
-                download_code.append(address_to_write_to // 256)  # high part of address
-
-                # -- upload --
-
-                address_to_read_from = BITMAP_QUADRANT_BUFFER + (y+y_shift) * hlfw + (x+x_shift)
-                
-                # lda $6....
-                upload_code.append(0xAD)  # lda ....
-                upload_code.append(address_to_read_from % 256)  # low part of address
-                upload_code.append(address_to_read_from // 256)  # high part of address
-                
-                # adc #64/128/192
-                upload_code.append(0x69)  # adc #...
-# FIXME: this should be different for each quadrant-lens-pixel!
-# FIXME! WHY DOES THIS SORT OF WORK??
-#                upload_code.append(0xC0)  # #192
-                upload_code.append(0x40)  # #64
-                
-                # sta VERA_DATA1 ($9F24)  -> this writes a byte to VRAM
-                upload_code.append(0x8D)  # sta ....
-                upload_code.append(0x24)  # $24
-                upload_code.append(0x9F)  # $9F
+                download_code[dwn_idx].append(0x8D)  # sta ....
+                download_code[dwn_idx].append(address_to_write_to % 256)  # low part of address
+                download_code[dwn_idx].append(address_to_write_to // 256)  # high part of address
                 
             
             if (((lens_pixels[hlfh-1 + y][hlfw-1 + x] == 0) or x == hlfw-1) and (y != hlfh-1)):
@@ -316,58 +285,113 @@ def generate_download_and_upload_code():
                 # -- download --
                 
                 # lda #%00000010  (polygon mode = 1)
-                download_code.append(0xA9)  # lda #..
-                download_code.append(0x02)  # #%00000010  (polygon mode = 1)
+                download_code[dwn_idx].append(0xA9)  # lda #..
+                download_code[dwn_idx].append(0x02)  # #%00000010  (polygon mode = 1)
                 
                 # sta VERA_CTRL ($9F29)
-                download_code.append(0x8D)  # sta ....
-                download_code.append(0x29)  # $29
-                download_code.append(0x9F)  # $9F
+                download_code[dwn_idx].append(0x8D)  # sta ....
+                download_code[dwn_idx].append(0x29)  # $29
+                download_code[dwn_idx].append(0x9F)  # $9F
                 
                 # lda VERA_DATA0 ($9F23)  -> this increments ADDR0 one pixel vertically
-                download_code.append(0xAD)  # lda ....
-                download_code.append(0x23)  # $23
-                download_code.append(0x9F)  # $9F
+                download_code[dwn_idx].append(0xAD)  # lda ....
+                download_code[dwn_idx].append(0x23)  # $23
+                download_code[dwn_idx].append(0x9F)  # $9F
                 
                 # lda VERA_DATA1 ($9F24)  -> this sets ADDR1 to DATA0 + x1 (note: x1 is 0)
-                download_code.append(0xAD)  # lda ....
-                download_code.append(0x24)  # $24
-                download_code.append(0x9F)  # $9F
+                download_code[dwn_idx].append(0xAD)  # lda ....
+                download_code[dwn_idx].append(0x24)  # $24
+                download_code[dwn_idx].append(0x9F)  # $9F
                 
                 # stz VERA_CTRL ($9F29)  (polygon mode = 0)
-                download_code.append(0x9C)  # stz ....
-                download_code.append(0x29)  # $29
-                download_code.append(0x9F)  # $9F
+                download_code[dwn_idx].append(0x9C)  # stz ....
+                download_code[dwn_idx].append(0x29)  # $29
+                download_code[dwn_idx].append(0x9F)  # $9F
                 
-                # -- upload --
-
-                # lda VERA_DATA0 ($9F23)  -> this increments ADDR0 one pixel vertically
-                upload_code.append(0xAD)  # lda ....
-                upload_code.append(0x23)  # $23
-                upload_code.append(0x9F)  # $9F
-                
-                # lda VERA_DATA1 ($9F24)  -> this sets ADDR1 to DATA0 + x1 (note: x1 is 0)
-                upload_code.append(0xAD)  # lda ....
-                upload_code.append(0x24)  # $24
-                upload_code.append(0x9F)  # $9F
-
-                # -- updload and download --
+                # -- download row end --
                 
                 # Note: dividing by 2.5 divides the two files in roughly equal size
                 if (y == int(hlfh/2.5)):
                     # We are halfway, we need to add an rts and continue in the other array
-                    download_code.append(0x60)  # rts
-                    download_code = download2_code
+                    download_code[dwn_idx].append(0x60)  # rts
+                    dwn_idx += 1
 
+                # We break from the x-loop
+                break
+                
+        if (y == hlfh-1):
+            # We are done, we need to add an rts
+            download_code[dwn_idx].append(0x60)  # rts
+
+
+    for y in range(hlfh):
+        for x in range(hlfw):
+            (x_shift, y_shift) = lens_offsets[ hlfh-1 + y][ hlfw-1 + x]
+            
+            # If the lens_pixel color not is black/transparent, we keep downloading this row
+            lens_pixel = lens_pixels[hlfh-1 + y][hlfw-1 + x]
+            
+# FIXME: we should get FOUR DIFFERENT lens_pixels here!
+# FIXME: we should get FOUR DIFFERENT lens_pixels here!
+# FIXME: we should get FOUR DIFFERENT lens_pixels here!
+            lens_pixel_0 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
+            lens_pixel_1 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
+            lens_pixel_2 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
+            lens_pixel_3 = lens_pixels[hlfh-1 + y][hlfw-1 + x]
+            
+            if (lens_pixel != 0):
+            
+                # -- upload --
+
+                address_to_read_from = BITMAP_QUADRANT_BUFFER + (y+y_shift) * hlfw + (x+x_shift)
+                
+                # lda $6....
+                add_upl_code(upload_codes, upl_idx, 0xAD)  # lda ....
+                add_upl_code(upload_codes, upl_idx, address_to_read_from % 256)  # low part of address
+                add_upl_code(upload_codes, upl_idx, address_to_read_from // 256)  # high part of address
+                
+                # adc #64/128/192
+                
+                add_upl_code(upload_codes, upl_idx, 0x69)  # adc #...
+# FIXME: this should be different for each quadrant-lens-pixel!
+                upload_codes[0][upl_idx].append(lens_pixel_0*0x40)
+                upload_codes[1][upl_idx].append(lens_pixel_1*0x40)
+                upload_codes[2][upl_idx].append(lens_pixel_2*0x40)
+                upload_codes[3][upl_idx].append(lens_pixel_3*0x40)
+                
+                # sta VERA_DATA1 ($9F24)  -> this writes a byte to VRAM
+                add_upl_code(upload_codes, upl_idx, 0x8D)  # sta ....
+                add_upl_code(upload_codes, upl_idx, 0x24)  # $24
+                add_upl_code(upload_codes, upl_idx, 0x9F)  # $9F
+                
+            
+            if (((lens_pixel == 0) or x == hlfw-1) and (y != hlfh-1)):
+            
+                # We reached the end of this row, so we have to move to the next one (unless its the last row)
+            
+                # -- upload --
+
+                # lda VERA_DATA0 ($9F23)  -> this increments ADDR0 one pixel vertically
+                add_upl_code(upload_codes, upl_idx, 0xAD)  # lda ....
+                add_upl_code(upload_codes, upl_idx, 0x23)  # $23
+                add_upl_code(upload_codes, upl_idx, 0x9F)  # $9F
+                
+                # lda VERA_DATA1 ($9F24)  -> this sets ADDR1 to DATA0 + x1 (note: x1 is 0)
+                add_upl_code(upload_codes, upl_idx, 0xAD)  # lda ....
+                add_upl_code(upload_codes, upl_idx, 0x24)  # $24
+                add_upl_code(upload_codes, upl_idx, 0x9F)  # $9F
+
+                # -- updload row end --
+                
                 if (y == int(hlfh*0.3)):
                     # We are at the end of the first file, we need to add an rts and continue in the other array
-                    upload_code.append(0x60)  # rts
-                    upload_code = upload2_code
+                    add_upl_code(upload_codes, upl_idx, 0x60)  # rts
+                    upl_idx += 1
                     
                 if (y == int(hlfh*0.6)):
                     # We are at the end of the second file, we need to add an rts and continue in the other array
-                    upload_code.append(0x60)  # rts
-                    upload_code = upload3_code
+                    add_upl_code(upload_codes, upl_idx, 0x60)  # rts
+                    upl_idx += 1
 
                 
                 # We break from the x-loop
@@ -375,10 +399,10 @@ def generate_download_and_upload_code():
                 
         if (y == hlfh-1):
             # We are done, we need to add an rts
-            download_code.append(0x60)  # rts
-            upload_code.append(0x60)  # rts
+            add_upl_code(upload_codes, upl_idx, 0x60)  # rts
+            
 
-    return (download1_code, download2_code, upload1_code, upload2_code, upload3_code)
+    return (download_code[0], download_code[1], upload_codes[0][0], upload_codes[0][1], upload_codes[0][2])
 
 
 pygame.init()
