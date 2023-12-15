@@ -109,6 +109,7 @@ DOWNLOAD1_RAM_BANK        = $01
 DOWNLOAD2_RAM_BANK        = $02
 UPLOAD1_RAM_BANK          = $03
 UPLOAD2_RAM_BANK          = $04
+UPLOAD3_RAM_BANK          = $05
 
 start:
 
@@ -124,6 +125,7 @@ start:
     jsr load_download2_code_into_banked_ram
     jsr load_upload1_code_into_banked_ram
     jsr load_upload2_code_into_banked_ram
+    jsr load_upload3_code_into_banked_ram
     
     ; If set the first 4 sprites will be enabled, the others not
     lda #%00001000  ; Z-depth = 2
@@ -271,7 +273,11 @@ quadrant_addr0_bank:  ; %11100000 ($E0) = +320 and %11101000 ($E8) = -320  (bit1
     
 quadrant_vram_offset_low: ;  +0, -1, -321, -320 -> 0, 1, 65, 64 (negated and low)
     ; Note: these are SUBTRACTED!
-    .byte   0,   1,  65,  64,      0,   1,  65,  64 
+; FIXME: CLEAN UP!
+; FIXME: CLEAN UP!
+; FIXME: CLEAN UP!
+;    .byte   0,   1,  65,  64,      0,   1,  65,  64 
+    .byte   0,   0,  64,  64,      0,   0,  64,  64 
     
 quadrant_vram_offset_high: ;  +0, -1, -321, -320 -> 0, 0, 1, 1 (negated and high)
     ; Note: these are SUBTRACTED!
@@ -293,7 +299,7 @@ download_and_upload_quadrants:
     ;  - ADDR0 set to address of first pixel in quadrant
     ;  - X1-increment is 0
     ;  - X1-position is 0
-    ;  - Free memory at address BITMAP_QUADRANT_BUFFER (lens_radius*lens_radius in size)
+    ;  - Free memory at address BITMAP_QUADRANT_BUFFER (half_lens_width*half_lens_height in size)
 
     
     ; - We calculate the BASE vram address for the LENS -
@@ -352,7 +358,7 @@ next_quadrant_to_download_and_upload:
     
     lda #%00000000
     sta VERA_FX_CTRL         ; normal addr1-mode
-
+    
     lda #DOWNLOAD1_RAM_BANK
     sta RAM_BANK
     jsr DOWNLOAD_RAM_ADDRESS
@@ -386,11 +392,13 @@ next_quadrant_to_download_and_upload:
     stz VERA_ADDR_LOW
     
     lda #%00000010
-    sta VERA_FX_CTRL            ; polygon addr1-mode
+    sta VERA_FX_CTRL          ; polygon addr1-mode
 
-    lda VERA_DATA1              ; sets ADDR1 to ADDR0
+    lda VERA_DATA1            ; sets ADDR1 to ADDR0
     
     ; Note: when doing the upload, we stay in polygon mode
+
+    clc                       ; we are adding during upload, so we need the carry to be 0
 
     lda #UPLOAD1_RAM_BANK
     sta RAM_BANK
@@ -400,6 +408,10 @@ next_quadrant_to_download_and_upload:
     sta RAM_BANK
     jsr UPLOAD_RAM_ADDRESS
 
+    lda #UPLOAD3_RAM_BANK
+    sta RAM_BANK
+    jsr UPLOAD_RAM_ADDRESS
+    
     inx 
     inc QUADRANT  ; TODO: this is not efficient
     
@@ -592,8 +604,9 @@ setup_next_sprite:
 
     ; Sprite height,	Sprite width,	Palette offset
     ; Note: we want to use a different palette (blue-ish color) for the pixels inside the lens, so we add 32 to the color index!
-    lda #%11110100 ; 64x64, 4*16 = 64 palette offset
-;    lda #%11110000 ; 64x64, 0*16 = 0 palette offset
+;    lda #%11110100 ; 64x64, 4*16 = 64 palette offset
+;    lda #%11110010 ; 64x64, 2*16 = 32 palette offset
+    lda #%11110000 ; 64x64, 0*16 = 0 palette offset
     sta VERA_DATA0
     
     inx
@@ -645,7 +658,10 @@ next_packed_color_1:
     lda palette_data+256, y
     sta VERA_DATA0
     iny
-    cpy #<(end_of_palette_data-palette_data)
+; FIXME! WE ARE NOW ASSUMING all 256 colors need to be copied!
+; FIXME! WE ARE NOW ASSUMING all 256 colors need to be copied!
+; FIXME! WE ARE NOW ASSUMING all 256 colors need to be copied!
+;    cpy #<(end_of_palette_data-palette_data)
     bne next_packed_color_1
     
     rts
@@ -808,6 +824,36 @@ upload2_loaded:
 
     rts
     
+upload3_filename:      .byte    "upload3.bin" 
+end_upload3_filename:
+
+load_upload3_code_into_banked_ram:
+
+    lda #(end_upload3_filename-upload3_filename) ; Length of filename
+    ldx #<upload3_filename      ; Low byte of Fname address
+    ldy #>upload3_filename      ; High byte of Fname address
+    jsr SETNAM
+ 
+    lda #1            ; Logical file number
+    ldx #8            ; Device 8 = sd card
+    ldy #2            ; 0=ignore address in bin file (2 first bytes)
+                      ; 1=use address in bin file
+                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
+    jsr SETLFS
+    
+    lda #UPLOAD3_RAM_BANK
+    sta RAM_BANK
+ 
+    lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
+    ldx #<UPLOAD_RAM_ADDRESS
+    ldy #>UPLOAD_RAM_ADDRESS
+    jsr LOAD
+    bcc upload3_loaded
+    ; FIXME: do proper error handling!
+    stp
+upload3_loaded:
+
+    rts
     
     
 generate_y_to_address_table:
@@ -878,8 +924,6 @@ cosine_values_high:
 ; ==== DATA ====
 
 palette_data:
-  ; Normal colors:
-  
   .byte $00, $00
   .byte $34, $02
   .byte $56, $04
@@ -889,9 +933,11 @@ palette_data:
   .byte $68, $06
   .byte $57, $04
   .byte $46, $03
+  .byte $34, $02
   .byte $8a, $08
   .byte $57, $05
   .byte $35, $03
+  .byte $00, $03
   .byte $00, $03
   .byte $45, $03
   .byte $9b, $08
@@ -899,12 +945,16 @@ palette_data:
   .byte $10, $04
   .byte $20, $05
   .byte $21, $06
+  .byte $21, $06
   .byte $31, $07
   .byte $32, $07
   .byte $10, $05
+  .byte $10, $04
+  .byte $10, $04
   .byte $42, $07
   .byte $42, $08
   .byte $43, $08
+  .byte $53, $09
   .byte $53, $09
   .byte $64, $09
   .byte $23, $01
@@ -913,12 +963,17 @@ palette_data:
   .byte $86, $0b
   .byte $97, $0c
   .byte $64, $0a
+  .byte $86, $0b
   .byte $98, $0c
   .byte $a8, $0d
   .byte $a9, $0d
   .byte $b9, $0e
   .byte $ca, $0e
+  .byte $23, $01
   .byte $cb, $0f
+  .byte $00, $02
+  .byte $00, $04
+  .byte $10, $05
   .byte $00, $04
   .byte $10, $06
   .byte $20, $07
@@ -927,91 +982,204 @@ palette_data:
   .byte $70, $0b
   .byte $80, $0b
   .byte $40, $09
+  .byte $30, $08
   .byte $90, $0c
   .byte $c0, $0e
   .byte $b0, $0d
   .byte $e0, $0f
   .byte $f0, $0f
-  .byte $ff, $0f
-  .byte $44, $04
-  .byte $55, $05
-  .byte $66, $06
-  .byte $77, $07
-  .byte $88, $08
-  .byte $99, $09
-  .byte $aa, $0a
-  .byte $bb, $0b
-  .byte $cc, $0c
-  .byte $dd, $0d
-  .byte $ee, $0e
-  .byte $08, $00
-
-  ; Blue-ish colors:
-  .byte $3a, $02
-  .byte $5b, $04
-  .byte $6c, $05
-  .byte $7c, $06
-  .byte $7c, $07
-  .byte $6c, $06
-  .byte $5b, $04
-  .byte $4b, $03
-  .byte $8d, $08
-  .byte $5b, $05
+  .byte $02, $00
+  .byte $1e, $01
+  .byte $2f, $02
+  .byte $39, $02
   .byte $3a, $03
-  .byte $08, $03
-  .byte $4a, $03
-  .byte $9d, $08
+  .byte $3a, $03
+  .byte $39, $03
+  .byte $28, $02
+  .byte $27, $01
+  .byte $1e, $01
+  .byte $4b, $04
+  .byte $28, $02
+  .byte $1e, $01
+  .byte $02, $01
+  .byte $02, $01
+  .byte $26, $01
+  .byte $4b, $04
+  .byte $02, $01
+  .byte $0a, $02
+  .byte $12, $02
+  .byte $13, $03
+  .byte $13, $03
+  .byte $1b, $03
+  .byte $1c, $03
+  .byte $0a, $02
+  .byte $0a, $02
+  .byte $0a, $02
+  .byte $24, $03
+  .byte $24, $04
+  .byte $25, $04
+  .byte $2d, $04
+  .byte $2d, $04
+  .byte $36, $04
+  .byte $15, $00
+  .byte $3e, $05
+  .byte $3e, $05
+  .byte $47, $05
+  .byte $48, $06
+  .byte $36, $05
+  .byte $47, $05
+  .byte $49, $06
+  .byte $59, $06
+  .byte $5a, $06
+  .byte $5a, $07
+  .byte $6b, $07
+  .byte $15, $00
+  .byte $6b, $07
+  .byte $02, $01
+  .byte $02, $02
+  .byte $0a, $02
+  .byte $02, $02
+  .byte $0a, $03
+  .byte $12, $03
+  .byte $1a, $04
+  .byte $2a, $05
+  .byte $3a, $05
+  .byte $42, $05
+  .byte $22, $04
+  .byte $1a, $04
+  .byte $4a, $06
+  .byte $62, $07
+  .byte $5a, $06
+  .byte $72, $07
+  .byte $7a, $07
+  .byte $05, $00
+  .byte $18, $01
+  .byte $29, $02
+  .byte $3a, $02
+  .byte $3b, $03
+  .byte $3b, $03
+  .byte $3a, $03
+  .byte $2a, $02
+  .byte $29, $01
+  .byte $18, $01
+  .byte $4c, $04
+  .byte $2a, $02
+  .byte $18, $01
+  .byte $05, $01
+  .byte $05, $01
+  .byte $28, $01
+  .byte $4c, $04
+  .byte $05, $01
+  .byte $0d, $02
+  .byte $15, $02
+  .byte $16, $03
+  .byte $16, $03
+  .byte $1e, $03
+  .byte $1e, $03
+  .byte $0d, $02
+  .byte $0d, $02
+  .byte $0d, $02
+  .byte $26, $03
+  .byte $26, $04
+  .byte $27, $04
+  .byte $2f, $04
+  .byte $2f, $04
+  .byte $38, $04
+  .byte $17, $00
+  .byte $38, $05
+  .byte $38, $05
+  .byte $49, $05
+  .byte $4a, $06
+  .byte $38, $05
+  .byte $49, $05
+  .byte $4a, $06
+  .byte $5a, $06
+  .byte $5b, $06
+  .byte $5b, $07
+  .byte $6c, $07
+  .byte $17, $00
+  .byte $6c, $07
+  .byte $05, $01
+  .byte $05, $02
+  .byte $0d, $02
+  .byte $05, $02
+  .byte $0d, $03
+  .byte $15, $03
+  .byte $1d, $04
+  .byte $2d, $05
+  .byte $3d, $05
+  .byte $45, $05
+  .byte $25, $04
+  .byte $1d, $04
+  .byte $4d, $06
+  .byte $65, $07
+  .byte $5d, $06
+  .byte $75, $07
+  .byte $7d, $07
+  .byte $08, $00
+  .byte $1a, $01
+  .byte $2b, $02
+  .byte $3c, $02
+  .byte $3c, $03
+  .byte $3c, $03
+  .byte $3c, $03
+  .byte $2b, $02
+  .byte $2b, $01
+  .byte $1a, $01
+  .byte $4d, $04
+  .byte $2b, $02
+  .byte $1a, $01
+  .byte $08, $01
+  .byte $08, $01
+  .byte $2a, $01
+  .byte $4d, $04
+  .byte $08, $01
   .byte $08, $02
+  .byte $18, $02
+  .byte $18, $03
+  .byte $18, $03
+  .byte $18, $03
+  .byte $19, $03
+  .byte $08, $02
+  .byte $08, $02
+  .byte $08, $02
+  .byte $29, $03
+  .byte $29, $04
+  .byte $29, $04
+  .byte $29, $04
+  .byte $29, $04
+  .byte $3a, $04
+  .byte $19, $00
+  .byte $3a, $05
+  .byte $3a, $05
+  .byte $4b, $05
+  .byte $4b, $06
+  .byte $3a, $05
+  .byte $4b, $05
+  .byte $4c, $06
+  .byte $5c, $06
+  .byte $5c, $06
+  .byte $5c, $07
+  .byte $6d, $07
+  .byte $19, $00
+  .byte $6d, $07
+  .byte $08, $01
+  .byte $08, $02
+  .byte $08, $02
+  .byte $08, $02
+  .byte $08, $03
+  .byte $18, $03
   .byte $18, $04
   .byte $28, $05
-  .byte $28, $06
-  .byte $38, $07
-  .byte $39, $07
-  .byte $18, $05
-  .byte $49, $07
-  .byte $49, $08
-  .byte $49, $08
-  .byte $59, $09
-  .byte $6a, $09
-  .byte $29, $01
-  .byte $7a, $0a
-  .byte $7a, $0b
-  .byte $8b, $0b
-  .byte $9b, $0c
-  .byte $6a, $0a
-  .byte $9c, $0c
-  .byte $ac, $0d
-  .byte $ac, $0d
-  .byte $bc, $0e
-  .byte $cd, $0e
-  .byte $cd, $0f
-  .byte $08, $04
-  .byte $18, $06
-  .byte $28, $07
-  .byte $38, $08
-  .byte $58, $0a
-  .byte $78, $0b
-  .byte $88, $0b
-  .byte $48, $09
-  .byte $98, $0c
-  .byte $c8, $0e
-  .byte $b8, $0d
-  .byte $e8, $0f
-  .byte $f8, $0f
-  .byte $ff, $0f
-  .byte $4a, $04
-  .byte $5a, $05
-  .byte $6b, $06
-  .byte $7b, $07
-  .byte $8c, $08
-  .byte $9c, $09
-  .byte $ad, $0a
-  .byte $bd, $0b
-  .byte $ce, $0c
-  .byte $de, $0d
-  .byte $ef, $0e
-
-
+  .byte $38, $05
+  .byte $48, $05
+  .byte $28, $04
+  .byte $18, $04
+  .byte $48, $06
+  .byte $68, $07
+  .byte $58, $06
+  .byte $78, $07
+  .byte $78, $07
 end_of_palette_data:
 
 

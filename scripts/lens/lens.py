@@ -6,7 +6,7 @@ import time
 import random
 
 DO_MOVE_LENS = True
-DRAW_NEW_PALETTE = False
+DRAW_NEW_PALETTE = True
 
 # TODO: we should *ALSO* use the LENS.png image! (with the 'glaring' of the lens)
 
@@ -22,6 +22,7 @@ download1_code_filename = "scripts/lens/DOWNLOAD1.BIN"
 download2_code_filename = "scripts/lens/DOWNLOAD2.BIN"
 upload1_code_filename = "scripts/lens/UPLOAD1.BIN"
 upload2_code_filename = "scripts/lens/UPLOAD2.BIN"
+upload3_code_filename = "scripts/lens/UPLOAD3.BIN"
 
 screen_width = 320
 screen_height = 200
@@ -51,6 +52,11 @@ lens_palette_bytes = im_lens.getpalette()
 
 # We first convert to 12-bit COLORS
 colors_12bit = []
+
+
+# FIXME: we should *NOT* use COLOR INDEX 0 for BLACK!!
+# FIXME: we should *NOT* use COLOR INDEX 0 for BLACK!!
+# FIXME: we should *NOT* use COLOR INDEX 0 for BLACK!!
 
 byte_index = 0
 nr_of_palette_bytes = 3*256
@@ -227,32 +233,34 @@ def init_lens(lens_px):
 #  - ADDR0 set to address of first pixel in quadrant
 #  - X1-increment is 0
 #  - X1-position is 0
-#  - Free memory at address BITMAP_QUADRANT_BUFFER (lens_radius*lens_radius in size)
+#  - Free memory at address BITMAP_QUADRANT_BUFFER (half_lens_width*half_lens_height in size)
 #
 def generate_download_and_upload_code():
 
-# FIXME! we need 4 * 2 upload code parts!!
-# FIXME! we need 4 * 2 upload code parts!!
-# FIXME! we need 4 * 2 upload code parts!!
+# FIXME! we need 4 * 3 upload code parts!!
+# FIXME! we need 4 * 3 upload code parts!!
+# FIXME! we need 4 * 3 upload code parts!!
 
     download1_code = []
     download2_code = []
     upload1_code = []
     upload2_code = []
+    upload3_code = []
 
     download_code = download1_code
     upload_code = upload1_code
     
-    hlf = int(lens_radius)
+    hlfh = half_lens_height
+    hlfw = half_lens_width
 
-# FIXME: we download and upload the PIXELS on the AXIS **TWICE**!
-# FIXME: we download and upload the PIXELS on the AXIS **TWICE**!
-# FIXME: we download and upload the PIXELS on the AXIS **TWICE**!
-    for y in range(hlf):
-        for x in range(hlf):
-            (x_shift, y_shift) = lens_offsets[ hlf   + y][ hlf   + x]
+    # FIXME: we download and upload the PIXELS on the AXIS **TWICE**! This is somewhat inefficient!
+
+    for y in range(hlfh):
+        for x in range(hlfw):
+            (x_shift, y_shift) = lens_offsets[ hlfh-1 + y][ hlfw-1 + x]
             
-            if x_shift is not None:
+            # If the lens_pixel color not is black/transparent, we keep downloading this row
+            if (lens_pixels[hlfh-1 + y][hlfw-1 + x] != 0):
             
                 # -- download --
                 
@@ -263,7 +271,7 @@ def generate_download_and_upload_code():
                 download_code.append(0x24)  # $24
                 download_code.append(0x9F)  # $9F
                 
-                address_to_write_to = BITMAP_QUADRANT_BUFFER + y * hlf + x
+                address_to_write_to = BITMAP_QUADRANT_BUFFER + y * hlfw + x
                 
                 # sta $6... 
                 download_code.append(0x8D)  # sta ....
@@ -272,12 +280,19 @@ def generate_download_and_upload_code():
 
                 # -- upload --
 
-                address_to_read_from = BITMAP_QUADRANT_BUFFER + (y+y_shift) * hlf + (x+x_shift)
+                address_to_read_from = BITMAP_QUADRANT_BUFFER + (y+y_shift) * hlfw + (x+x_shift)
                 
                 # lda $6....
                 upload_code.append(0xAD)  # lda ....
                 upload_code.append(address_to_read_from % 256)  # low part of address
                 upload_code.append(address_to_read_from // 256)  # high part of address
+                
+                # adc #64/128/192
+                upload_code.append(0x69)  # adc #...
+# FIXME: this should be different for each quadrant-lens-pixel!
+# FIXME! WHY DOES THIS SORT OF WORK??
+                upload_code.append(0xC0)  # #128
+#                upload_code.append(0x40)  # #64
                 
                 # sta VERA_DATA1 ($9F24)  -> this writes a byte to VRAM
                 upload_code.append(0x8D)  # sta ....
@@ -285,7 +300,7 @@ def generate_download_and_upload_code():
                 upload_code.append(0x9F)  # $9F
                 
             
-            if (((x_shift is None) or x == hlf-1) and (y != hlf-1)):
+            if (((lens_pixels[hlfh-1 + y][hlfw-1 + x] == 0) or x == hlfw-1) and (y != hlfh-1)):
             
                 # We reached the end of this row, so we have to move to the next one (unless its the last row)
             
@@ -330,23 +345,31 @@ def generate_download_and_upload_code():
                 # -- updload and download --
                 
                 # Note: dividing by 2.5 divides the two files in roughly equal size
-                if (y == int(hlf/2.5)):
+                if (y == int(hlfh/2.5)):
                     # We are halfway, we need to add an rts and continue in the other array
                     download_code.append(0x60)  # rts
                     download_code = download2_code
-                    
+
+                if (y == int(hlfh*0.3)):
+                    # We are at the end of the first file, we need to add an rts and continue in the other array
                     upload_code.append(0x60)  # rts
                     upload_code = upload2_code
+                    
+                if (y == int(hlfh*0.6)):
+                    # We are at the end of the second file, we need to add an rts and continue in the other array
+                    upload_code.append(0x60)  # rts
+                    upload_code = upload3_code
+
                 
                 # We break from the x-loop
                 break
                 
-        if (y == hlf-1):
+        if (y == hlfh-1):
             # We are done, we need to add an rts
             download_code.append(0x60)  # rts
             upload_code.append(0x60)  # rts
 
-    return (download1_code, download2_code, upload1_code, upload2_code)
+    return (download1_code, download2_code, upload1_code, upload2_code, upload3_code)
 
 
 pygame.init()
@@ -357,11 +380,7 @@ clock = pygame.time.Clock()
 
 init_lens(lens_px)
 
-# FIXME! Enable this again!
-# FIXME! Enable this again!
-# FIXME! Enable this again!
-'''
-(download1_code, download2_code, upload1_code, upload2_code) = generate_download_and_upload_code()
+(download1_code, download2_code, upload1_code, upload2_code, upload3_code) = generate_download_and_upload_code()
 
 tableFile = open(download1_code_filename, "wb")
 tableFile.write(bytearray(download1_code))
@@ -382,7 +401,12 @@ tableFile = open(upload2_code_filename, "wb")
 tableFile.write(bytearray(upload2_code))
 tableFile.close()
 print("upload code 2 written to file: " + upload2_code_filename)
-'''
+
+tableFile = open(upload3_code_filename, "wb")
+tableFile.write(bytearray(upload3_code))
+tableFile.close()
+print("upload code 3 written to file: " + upload3_code_filename)
+
 
 bitmap_data = []
 # FIXME: we now use 0 as BLACK, but in the bitmap a DIFFERENT color index is used as BLACK!
