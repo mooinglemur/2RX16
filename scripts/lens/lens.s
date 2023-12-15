@@ -116,7 +116,7 @@ start:
     
     jsr setup_vera_for_layer0_bitmap
 
-    jsr copy_palette_from_index_16
+    jsr copy_palette_from_index_0
     jsr load_bitmap_into_vram
     jsr generate_y_to_address_table
     
@@ -618,17 +618,17 @@ z_depth_bit_is_correct:
     
 
 
-copy_palette_from_index_16:
+copy_palette_from_index_0:
 
     ; Starting at palette VRAM address
     
     lda #%00010001      ; setting bit 16 of vram address to 1, setting auto-increment value to 1
     sta VERA_ADDR_BANK
 
-    ; We start at color index 16 of the palette (we preserve the first 16 default VERA colors)
-    lda #<(VERA_PALETTE+2*16)
+    ; We start at color index 0 of the palette (we preserve the first 16 default VERA colors)
+    lda #<(VERA_PALETTE)
     sta VERA_ADDR_LOW
-    lda #>(VERA_PALETTE+2*16)
+    lda #>(VERA_PALETTE)
     sta VERA_ADDR_HIGH
 
     ; HACK: we know we have more than 128 colors to copy (meaning: > 256 bytes), so we are just going to copy 128 colors first

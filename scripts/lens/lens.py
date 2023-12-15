@@ -10,6 +10,10 @@ DRAW_NEW_PALETTE = True
 
 # TODO: we should *ALSO* use the LENS.png image! (with the 'glaring' of the lens)
 
+lens_image_filename = "assets/lens/LENS.png"
+lens_source_image_width = 320
+lens_source_image_height = 200
+
 source_image_filename = "assets/lens/LENSPIC.png"
 source_image_width = 320
 source_image_height = 200
@@ -28,74 +32,95 @@ lens_radius = lens_size/2
 lens_zoom = 16
 scale = 2
 
-
-# creating a image object
+# creating a image object for the background
 im = Image.open(source_image_filename)
-# Workaround: the lens png does not contain a palette (its RGB) so we convert it to having a palette
-im2 = im.convert("P", palette=Image.ADAPTIVE, colors=256)
-im = im2
 px = im.load()
+palette_bytes = im.getpalette()
+
+# creating a image object for the lens
+im_lens = Image.open(lens_image_filename)
+lens_px = im_lens.load()
+lens_palette_bytes = im_lens.getpalette()
+
+print(lens_palette_bytes)
+#print(lens_px)
+
+lens_colors = {}
+for lens_source_y in range(lens_source_image_height):
+
+    for lens_source_x in range(lens_source_image_width):
+
+        lens_pixel_color_index = px[lens_source_x, lens_source_y]
+        
+        if (lens_pixel_color_index not in lens_colors):
+            lens_colors[lens_pixel_color_index] = 0
+            
+        lens_colors[lens_pixel_color_index] += 1
 
 
-# We first determine all unique 12-bit COLORS, so we can re-index the image (pixels) with the new color indexes
+#print(lens_colors)
+#exit()
+'''
+# We first convert to 12-bit COLORS
+colors_12bit = []
 
-new_colors = []
-unique_12bit_colors = {}
-old_color_index_to_new_color_index = []
-
-old_color_index = 0
-new_color_index_offset = 16    # We  start at index 16! (preserving the first 16 colors)
-new_color_index = new_color_index_offset
 byte_index = 0
 nr_of_palette_bytes = 3*256
-palette_bytes = im.getpalette()
 while (byte_index < nr_of_palette_bytes):
+    
     red = palette_bytes[byte_index]
-    red = red & 0xF0
     byte_index += 1
-
     green = palette_bytes[byte_index]
-    green = green & 0xF0
     byte_index += 1
-
     blue = palette_bytes[byte_index]
-    blue = blue & 0xF0
     byte_index += 1
     
-    color_str = format(red, "02x") + format(green, "02x") + format(blue, "02x") 
+    red = red & 0xF0
+    green = green & 0xF0
+    blue = blue & 0xF0
     
-    if color_str in unique_12bit_colors:
-        old_color_index_to_new_color_index.append(unique_12bit_colors.get(color_str))
-    else:
-        old_color_index_to_new_color_index.append(new_color_index)
-        unique_12bit_colors[color_str] = new_color_index
-        new_colors.append((red, green, blue))
-        new_color_index += 1
-    
-    old_color_index += 1
+    colors_12bit.append((red, green, blue))
+'''
 
-# Create duplicate colors that a blue-ish    
-extra_colors = []
-for new_color in new_colors:
+
+# We first convert to 12-bit COLORS
+colors_12bit = []
+
+byte_index = 0
+nr_of_palette_bytes = 3*256
+while (byte_index < nr_of_palette_bytes):
+    
+    red = palette_bytes[byte_index]
+    byte_index += 1
+    green = palette_bytes[byte_index]
+    byte_index += 1
+    blue = palette_bytes[byte_index]
+    byte_index += 1
+    
+    red = red & 0xF0
+    green = green & 0xF0
+    blue = blue & 0xF0
+    
+    colors_12bit.append((red, green, blue))
+
+
+offset_blue_colors = 64
+for clr_idx in range(0, offset_blue_colors):
+    new_color = colors_12bit[clr_idx]
+
     red = new_color[0]
     green = new_color[1]
     blue = new_color[2]
     
     new_blue = 256 - (256 - blue) // 2
     
-    extra_colors.append((red, green, new_blue))
-    
-# FIXME: we add ONE more dummy color to reach exactly 32 new_colors (which makes palette offsets for sprites possible)
-# new_colors.append((0,0,0))
-
-offset_blue_colors = len(new_colors)  # = 64
-new_colors += extra_colors
+    # colors 64 through 127 are going to be blue-ish
+    blue_ish_color = (red, green, new_blue)
+    colors_12bit[clr_idx+offset_blue_colors] = blue_ish_color
     
 # Printing out asm for palette:
-
 palette_string = ""
-color_index = 0
-for new_color in new_colors:
+for new_color in colors_12bit:
     red = new_color[0]
     green = new_color[1]
     blue = new_color[2]
@@ -107,15 +132,8 @@ for new_color in new_colors:
     palette_string += "$" + format(green | blue,"02x") + ", "
     palette_string += "$" + format(red,"02x")
     palette_string += "\n"
-    
-    if (color_index % 64 == 0 and color_index != 0):
-        palette_string += "\n"
-    
-    color_index += 1
 
 print(palette_string)
-
-
 
 background_color = (0,0,0)
 
@@ -380,7 +398,7 @@ for source_y in range(source_image_height):
 
     for source_x in range(source_image_width):
 
-        pixel_color_index = old_color_index_to_new_color_index[px[source_x, source_y]]
+        pixel_color_index = px[source_x, source_y]
         
         bitmap_data.append(pixel_color_index)
     
@@ -457,7 +475,7 @@ def run():
                 y_screen = source_y
                 x_screen = source_x
                 
-                pixel_color = new_pixel_color = new_colors[old_color_index_to_new_color_index[px[source_x, source_y]] - new_color_index_offset]
+                pixel_color = colors_12bit[px[source_x, source_y]]
                 
                 pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
 
@@ -474,7 +492,7 @@ def run():
                 source_x = lens_pos_x - lens_radius + lens_x + x_shift
                 
                 if (source_y < source_image_height):
-                    pixel_color = new_pixel_color = new_colors[old_color_index_to_new_color_index[px[source_x, source_y]] - new_color_index_offset + offset_blue_colors]
+                    pixel_color = colors_12bit[px[source_x, source_y] + offset_blue_colors]
                     
                     y_screen = lens_pos_y - lens_radius + lens_y
                     x_screen = lens_pos_x - lens_radius + lens_x
@@ -491,17 +509,17 @@ def run():
             x = 0
             y = 0
             
-            for old_clr_idx in range(256):
+            for clr_idx in range(256):
             
-                if old_clr_idx >= len(new_colors):
-                    continue
+                #if clr_idx >= len(colors_12bit):
+                #    continue
             
-                pixel_color = new_colors[old_clr_idx]
+                pixel_color = colors_12bit[clr_idx]
                 
                 pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 8*scale, 8*scale))
                 
                 # if (byte_index % 16 == 0 and byte_index != 0):
-                if (old_clr_idx % 16 == 15):
+                if (clr_idx % 16 == 15):
                     y += 8
                     x = 0
                 else:
