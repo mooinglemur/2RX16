@@ -411,11 +411,27 @@ def run():
     lens_pos_x = 65
     lens_pos_y = -50
     
+    prev_lens_pos_x = lens_pos_x
+    prev_lens_pos_y = lens_pos_y
+    
     lens_speed_x = 1
     lens_speed_y = 1
     
     frame_nr = 0
     first_bounce = True
+
+    
+    screen.fill(background_color)
+
+    for source_y in range(source_image_height):
+        for source_x in range(source_image_width):
+
+            y_screen = source_y
+            x_screen = source_x
+            
+            pixel_color = colors_12bit[px[source_x, source_y]]
+            
+            pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
     
     while running:
         # TODO: We might want to set this to max?
@@ -460,6 +476,7 @@ def run():
                 # newrect.center = event.pos
             '''
                 
+        '''
         screen.fill(background_color)
 
         for source_y in range(source_image_height):
@@ -471,6 +488,25 @@ def run():
                 pixel_color = colors_12bit[px[source_x, source_y]]
                 
                 pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
+        '''
+
+        # Restoring from the previous draw of the lens
+        for lens_y in range(int(half_lens_height*2-1)):
+            for lens_x in range(int(half_lens_width*2-1)):
+                # If the lens_pixel color is black/transparent, we dont do anything
+                if (lens_pixels[lens_y][lens_x] == 0):
+                    continue
+
+                source_y = prev_lens_pos_y - half_lens_height + lens_y
+                source_x = prev_lens_pos_x - half_lens_width + lens_x
+                
+                if (source_y >= 0 and source_y < source_image_height and source_x >= 0 and source_x < source_image_width):
+                    y_screen = source_y
+                    x_screen = source_x
+                    
+                    pixel_color = colors_12bit[px[source_x, source_y]]
+                    
+                    pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
 
                 
         for lens_y in range(int(half_lens_height*2-1)):
@@ -498,6 +534,8 @@ def run():
                     # This is off screen, we do not draw
                     pass
                 
+        prev_lens_pos_x = lens_pos_x
+        prev_lens_pos_y = lens_pos_y
                 
         if (DRAW_NEW_PALETTE):
             # screen.fill(background_color)
