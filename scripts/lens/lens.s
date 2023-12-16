@@ -311,6 +311,12 @@ download_and_upload_quadrants:
 
 next_quadrant_to_download_and_upload:
     
+    
+; FIXME!
+; FIXME!
+; FIXME!
+    jmp skip_download
+    
     ; -- download --
     
     ; -- Setup for downloading in quadrant 0 --
@@ -354,6 +360,10 @@ next_quadrant_to_download_and_upload:
     sta RAM_BANK
     jsr DOWNLOAD_RAM_ADDRESS
 
+; FIXME!
+; FIXME!
+; FIXME!
+skip_download:
 
     ; -- upload --
     
@@ -476,13 +486,13 @@ clear_download_buffer:
     lda #>BITMAP_QUADRANT_BUFFER
     sta STORE_ADDRESS+1
     
-    ; Number of bytes to clear is: LENS_RADIUS*LENS_RADIUS
+    ; Number of bytes to clear is: HALF_LENS_WIDTH*HALF_LENS_HEIGHT
     
-    ; FIXME: We *ASSUME* this is 50*50=2500 bytes. So clearing 10*256 would be enough
+    ; FIXME: We *ASSUME* this is 59*52=3068 bytes. So clearing 12*256 would be enough
     
     lda #0
     
-    ldx #10
+    ldx #12
 clear_next_download_buffer_256:
 
     ldy #0

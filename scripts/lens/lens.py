@@ -469,10 +469,6 @@ for frame_nr in range(1000):
         else:
             lens_speed_y = -lens_speed_y * 9/10
             
-    if (lens_pos_y > 200+half_lens_height and frame_nr >= 600):
-        # We have reached the end
-        break
-            
     lens_speed_y += 2/64
 
     # FIXME: we now add every other frame, but we should interpolate from 70fps frames to 30fps frames instead!
@@ -490,6 +486,11 @@ for frame_nr in range(1000):
             lens_positions.append(int(lens_pos_y) % 256)
             lens_positions.append(int(lens_pos_y) // 256)
 
+        # We draw the past position off-screen, but after that we stop
+        if (lens_pos_y > 200+half_lens_height and frame_nr >= 600):
+            # We have reached the end
+            break
+            
 
 # Marker that its the end
 lens_positions.append(255)
