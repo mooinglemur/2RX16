@@ -73,6 +73,8 @@ STORE_ADDRESS             = $34 ; 35
 VRAM_ADDRESS              = $36 ; 37 ; 38
 LENS_VRAM_ADDRESS         = $39 ; 3A ; 3B
 
+LENS_POS_ADDRESS          = $3E ; 3F
+
 LENS_X_POS                = $40 ; 41
 LENS_Y_POS                = $42 ; 43  ; second byte is never used
 Z_DEPTH_BIT               = $44
@@ -93,7 +95,9 @@ SINE_OF_ANGLE             = $53 ; 53
 
 ; === RAM addresses ===
 
-BITMAP_QUADRANT_BUFFER    = $6000  ; LENS_RADIUS * LENS_RADIUS bytes = 2500 bytes (assuming a lens of 100x100) -> if you CHANGE this, ALSO change the python code!!
+
+BITMAP_QUADRANT_BUFFER    = $6000  ; HALF_LENS_WIDTH * HALF_LENS_HEIGHT bytes = 3068 bytes (= $BFC, so $C00 is ok)
+LENS_POSITIONS_ADDRESS    = $6C00  ; around 350? (30 fps) frames of 4 bytes of positions (X and Y each 2 bytes) =~ 1400 bytes (so $600 is enough?)
 Y_TO_ADDRESS_LOW          = $7600
 Y_TO_ADDRESS_HIGH         = $7700
 DOWNLOAD_RAM_ADDRESS      = $A000
@@ -109,7 +113,9 @@ SPRITES_VRAM_ADDRESS  = $12000   ; if you CHANGE this you also have to change qu
 
 BITMAP_WIDTH = 256
 BITMAP_HEIGHT = 192
-LENS_RADIUS = 50  ; --> also CHANGE clear_download_buffer if you change this number!
+
+HALF_LENS_WIDTH = 59            ; 117 total width, 1 pixel overlapping so 117 // 2 + 1 = 59 (or 118 // 2 if you will)
+HALF_LENS_HEIGHT = 52           ; 103 total height, 1 pixel overlapping so 103 // 2 + 1 = 52 (or 104 // 2 if you will)
 
 DOWNLOAD_RAM_BANK         = $01 ; 02
 UPLOAD_RAM_BANK           = $03 ; 04; 05;   06 ; 07; 08;   09 ; 0A; 0B;   0C ; 0D; 0E
@@ -123,6 +129,8 @@ start:
     jsr copy_palette_from_index_0
     jsr load_bitmap_into_vram
     jsr generate_y_to_address_table
+    
+    jsr load_lens_positions_into_ram
     
     lda #DOWNLOAD_RAM_BANK
     sta DWN_RAM_BANK
@@ -157,17 +165,32 @@ load_next_upload_quadrant:
     lda #%00001000  ; Z-depth = 2
     sta Z_DEPTH_BIT
     
-    ; Good test case: 80+50, 100+50
+    lda #<LENS_POSITIONS_ADDRESS
+    sta LENS_POS_ADDRESS
+    lda #>LENS_POSITIONS_ADDRESS
+    sta LENS_POS_ADDRESS+1
     
-    lda #<(80)
+    ; We set the start position of the lens
+    ldy #0
+    lda (LENS_POS_ADDRESS), y
     sta LENS_X_POS
-    lda #>(80)
+    iny
+    lda (LENS_POS_ADDRESS), y
     sta LENS_X_POS+1
-    
-    lda #<(100)
+    iny
+    lda (LENS_POS_ADDRESS), y
     sta LENS_Y_POS
-    lda #>(100)
+    iny
+    lda (LENS_POS_ADDRESS), y
     sta LENS_Y_POS+1
+    
+    clc
+    lda LENS_POS_ADDRESS
+    adc #4
+    sta LENS_POS_ADDRESS
+    lda LENS_POS_ADDRESS+1
+    adc #0
+    sta LENS_POS_ADDRESS+1
     
     jsr clear_sprite_memory
     jsr clear_download_buffer ; TODO: this is not really needed, but makes debugging easier
@@ -177,16 +200,6 @@ load_next_upload_quadrant:
     
     ; FIXME: we have to set X1-increment and X1-position to 0! (NOW we rely on the DEFAULT settings of VERA!)
 
-    
-    lda #1
-    sta LENS_DELTA_X
-    lda #0
-    sta LENS_DELTA_X+1
-    
-    lda #1
-    sta LENS_DELTA_Y
-    lda #0
-    sta LENS_DELTA_Y+1
     
 move_lens:
     ; FIXME: we should *DOUBLE BUFFER* the SPRITES! (we already have most for this in place!)
@@ -201,87 +214,32 @@ move_lens:
 
     jsr setup_sprites
 
-    ; FIXME: make it move more interestingly!
-    clc
-    lda LENS_X_POS
-    adc LENS_DELTA_X
+
+    ; We set the start position of the lens
+    ldy #0
+    lda (LENS_POS_ADDRESS), y
     sta LENS_X_POS
-    lda LENS_X_POS+1
-    adc LENS_DELTA_X+1
+    iny
+    lda (LENS_POS_ADDRESS), y
     sta LENS_X_POS+1
-    
-    clc
-    lda LENS_Y_POS
-    adc LENS_DELTA_Y
+    iny
+    lda (LENS_POS_ADDRESS), y
     sta LENS_Y_POS
-    lda LENS_Y_POS+1
-    adc LENS_DELTA_Y+1
+    iny
+    lda (LENS_POS_ADDRESS), y
     sta LENS_Y_POS+1
     
-    ; Check for screen boundaries
-    
-    lda LENS_X_POS
-; FIXME! Should be 320!
-    cmp #300-LENS_RADIUS
-    bcc lens_x_not_too_high
-    
-    sec
-    lda #0
-    sbc LENS_DELTA_X
-    sta LENS_DELTA_X
-    lda #0
-    sbc LENS_DELTA_X+1
-    sta LENS_DELTA_X+1
-    
-    bra lens_x_not_too_low
-lens_x_not_too_high:
+    clc
+    lda LENS_POS_ADDRESS
+    adc #4
+    sta LENS_POS_ADDRESS
+    lda LENS_POS_ADDRESS+1
+    adc #0
+    sta LENS_POS_ADDRESS+1
 
-
-    lda LENS_X_POS
-    cmp #LENS_RADIUS
-    bcs lens_x_not_too_low
-    
-    sec
-    lda #0
-    sbc LENS_DELTA_X
-    sta LENS_DELTA_X
-    lda #0
-    sbc LENS_DELTA_X+1
-    sta LENS_DELTA_X+1
-lens_x_not_too_low:
-
-
-    lda LENS_Y_POS
-    cmp #200-LENS_RADIUS
-    bcc lens_y_not_too_high
-    
-    sec
-    lda #0
-    sbc LENS_DELTA_Y
-    sta LENS_DELTA_Y
-    lda #0
-    sbc LENS_DELTA_Y+1
-    sta LENS_DELTA_Y+1
-    
-    bra lens_y_not_too_low
-    
-lens_y_not_too_high:
-
-    lda LENS_Y_POS
-    cmp #LENS_RADIUS
-    bcs lens_y_not_too_low
-    
-    sec
-    lda #0
-    sbc LENS_DELTA_Y
-    sta LENS_DELTA_Y
-    lda #0
-    sbc LENS_DELTA_Y+1
-    sta LENS_DELTA_Y+1
-lens_y_not_too_low:
-
-
-    jmp move_lens
+    ; X never gets negative, so it is negative, we know we are done (this is a marker)
+    lda LENS_X_POS+1
+    bpl move_lens
     
 
     ; We are not returning to BASIC here...
@@ -703,7 +661,7 @@ next_packed_color_1:
     rts
 
 
-bitmap_filename:      .byte    "lens.dat" 
+bitmap_filename:      .byte    "background.dat" 
 end_bitmap_filename:
 
 load_bitmap_into_vram:
@@ -729,6 +687,41 @@ load_bitmap_into_vram:
     stp
 
 bitmap_loaded:
+    rts
+
+
+
+
+
+
+
+lens_pos_filename:      .byte    "lens-pos.dat" 
+end_lens_pos_filename:
+
+load_lens_positions_into_ram:
+
+    lda #(end_lens_pos_filename-lens_pos_filename) ; Length of filename
+    ldx #<lens_pos_filename      ; Low byte of Fname address
+    ldy #>lens_pos_filename      ; High byte of Fname address
+    jsr SETNAM
+ 
+    lda #1            ; Logical file number
+    ldx #8            ; Device 8 = sd card
+    ldy #2            ; 0=ignore address in bin file (2 first bytes)
+                      ; 1=use address in bin file
+                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
+    
+    jsr SETLFS
+    
+    lda #0            ; load into Fixed RAM (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
+    ldx #<LENS_POSITIONS_ADDRESS
+    ldy #>LENS_POSITIONS_ADDRESS
+    jsr LOAD
+    bcc lens_pos_loaded
+    ; FIXME: do proper error handling!
+    stp
+lens_pos_loaded:
+
     rts
 
 

@@ -6,18 +6,19 @@ import time
 import random
 
 DO_MOVE_LENS = True
-DRAW_NEW_PALETTE = True
+DRAW_NEW_PALETTE = False
 
 # TODO: we should *ALSO* use the LENS.png image! (with the 'glaring' of the lens)
 
-lens_image_filename = "assets/lens/LENS.png"
+lens_image_filename = "assets/lens/LENS.png"       # This is a picture of the lens itself
 lens_source_image_width = 320
 lens_source_image_height = 200
 
-source_image_filename = "assets/lens/LENSPIC.png"
+source_image_filename = "assets/lens/LENSPIC.png"  # This is the background picture (the monster)
 source_image_width = 320
 source_image_height = 200
-bitmap_filename = "scripts/lens/LENS.DAT"
+bitmap_filename = "scripts/lens/BACKGROUND.DAT"
+lens_positions_filename = "scripts/lens/LENS-POS.DAT"
 download_code_filename = "scripts/lens/DOWNLOAD?.DAT"  # The question mark will be filled in later
 upload_code_filename = "scripts/lens/UPLOAD?-?.DAT"    # The question marks will be filled in later
 
@@ -439,25 +440,81 @@ tableFile.close()
 print("bitmap written to file: " + bitmap_filename)
 
 
+# ---- LENS POSITIONS ----
+lens_pos_x = 65
+lens_pos_y = -50
+
+lens_speed_x = 1
+lens_speed_y = 1
+
+first_bounce = True
+
+lens_positions = []
+# FIXME: how many frames?? or when off screen?
+for frame_nr in range(1000):
+
+    # FIXME: should we really *start* with incrementing x and y position? Or should the FIRST entry be the actual starting position?
+    lens_pos_x += lens_speed_x
+    lens_pos_y += lens_speed_y
+    
+    if (lens_pos_x > 256 or lens_pos_x < 60):
+        lens_speed_x = -lens_speed_x
+        
+    if (lens_pos_y > 150 and frame_nr < 600):
+        lens_pos_y -= lens_speed_y
+        
+        if first_bounce: 
+            lens_speed_y = -lens_speed_y * 2/3
+            first_bounce = False
+        else:
+            lens_speed_y = -lens_speed_y * 9/10
+            
+    if (lens_pos_y > 200+half_lens_height and frame_nr >= 600):
+        # We have reached the end
+        break
+            
+    lens_speed_y += 2/64
+
+    # FIXME: we now add every other frame, but we should interpolate from 70fps frames to 30fps frames instead!
+#    if (frame_nr % 2 == 0):
+# FIXME!
+# FOR NOW!
+    if (frame_nr % 2 == 0 and lens_pos_y > half_lens_height):
+        lens_positions.append(lens_pos_x % 256)
+        lens_positions.append(lens_pos_x // 256)
+        if int(lens_pos_y) < 0:
+            lens_pos_y_alt = 256*256+int(lens_pos_y)
+            lens_positions.append(lens_pos_y_alt % 256)
+            lens_positions.append(lens_pos_y_alt // 256)
+        else:
+            lens_positions.append(int(lens_pos_y) % 256)
+            lens_positions.append(int(lens_pos_y) // 256)
+
+
+# Marker that its the end
+lens_positions.append(255)
+lens_positions.append(255)
+lens_positions.append(255)
+lens_positions.append(255)
+
+tableFile = open(lens_positions_filename, "wb")
+tableFile.write(bytearray(lens_positions))
+tableFile.close()
+print("lens positions written to file: " + lens_positions_filename)
+
+# print(len(lens_positions)//4)
 
 def run():
 
     running = True
     
-    # FIXME: right now the position of the lens if at the TOP-LEFT, which in not convenient!
+    frame_nr = 0
     
-    lens_pos_x = 65
-    lens_pos_y = -50
+    lens_pos_x = lens_positions[frame_nr*4] + lens_positions[frame_nr*4+1]*256
+    lens_pos_y = lens_positions[frame_nr*4+2] + lens_positions[frame_nr*4+3]*256
     
     prev_lens_pos_x = lens_pos_x
     prev_lens_pos_y = lens_pos_y
-    
-    lens_speed_x = 1
-    lens_speed_y = 1
-    
-    frame_nr = 0
-    first_bounce = True
-
     
     screen.fill(background_color)
 
@@ -476,22 +533,16 @@ def run():
         clock.tick(60)
         
         if (DO_MOVE_LENS):
-            lens_pos_x += lens_speed_x
-            lens_pos_y += lens_speed_y
+            lens_pos_x = lens_positions[frame_nr*4] + lens_positions[frame_nr*4+1]*256
+            lens_pos_y = lens_positions[frame_nr*4+2] + lens_positions[frame_nr*4+3]*256
+            if (lens_pos_x > 128*256):
+                lens_pos_x = lens_pos_x-256*256
+            if (lens_pos_y > 128*256):
+                lens_pos_y = lens_pos_y-256*256
             
-            if (lens_pos_x > 256 or lens_pos_x < 60):
-                lens_speed_x = -lens_speed_x
-                
-            if (lens_pos_y > 150 and frame_nr < 600):
-                lens_pos_y -= lens_speed_y
-                
-                if first_bounce: 
-                    lens_speed_y = -lens_speed_y * 2/3
-                    first_bounce = False
-                else:
-                    lens_speed_y = -lens_speed_y * 9/10
-                    
-            lens_speed_y += 2/64
+            if (lens_pos_x < 0):
+                # This is the marker that we reached the end
+                break
                 
         frame_nr += 1    
         
