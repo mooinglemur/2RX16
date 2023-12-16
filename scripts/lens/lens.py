@@ -475,7 +475,7 @@ for frame_nr in range(1000):
 #    if (frame_nr % 2 == 0):
 # FIXME!
 # FOR NOW!
-    if (frame_nr % 2 == 0 and lens_pos_y > half_lens_height):
+    if (frame_nr % 2 == 0 and lens_pos_y > half_lens_height and lens_pos_y < 200):
         lens_positions.append(lens_pos_x % 256)
         lens_positions.append(lens_pos_x // 256)
         if int(lens_pos_y) < 0:

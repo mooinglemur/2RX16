@@ -288,8 +288,20 @@ download_and_upload_quadrants:
     
     ; - We calculate the BASE vram address for the LENS -
     
+; FIXME: we should:
+; - make Y_TO_ADDRESS_LOW/HIGH work up to 256 (which should be *JUST* enough!?) -> does Y get >= 256?
+;    - use Y_TO_ADDRESS_BANK and VRAM_ADDRESS+2
+; - make NEG_Y_TO_ADDRESS_LOW/HIGH for when Y is negative
+; - move the bitmap 6-10 pixel rows down? (does this not interfere with SPRITE memory?
+; - clear the bitmap top/bottom border
+    
 ; FIXME   lda LENS_Y_POS+1  ; -> also NEGATIVE NUMBERS!
     ldy LENS_Y_POS
+    
+; FIXME!
+; FIXME!
+; FIXME!
+;    ldy #0
     
     clc
     lda Y_TO_ADDRESS_LOW, y
@@ -310,12 +322,6 @@ download_and_upload_quadrants:
     sta UPL_RAM_BANK
 
 next_quadrant_to_download_and_upload:
-    
-    
-; FIXME!
-; FIXME!
-; FIXME!
-    jmp skip_download
     
     ; -- download --
     
@@ -359,11 +365,6 @@ next_quadrant_to_download_and_upload:
     lda #DOWNLOAD_RAM_BANK+1
     sta RAM_BANK
     jsr DOWNLOAD_RAM_ADDRESS
-
-; FIXME!
-; FIXME!
-; FIXME!
-skip_download:
 
     ; -- upload --
     
