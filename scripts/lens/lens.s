@@ -191,7 +191,7 @@ load_next_upload_quadrant:
     lda LENS_POS_ADDRESS+1
     adc #0
     sta LENS_POS_ADDRESS+1
-    
+ 
     jsr clear_sprite_memory
     jsr clear_download_buffer ; TODO: this is not really needed, but makes debugging easier
     
@@ -397,16 +397,17 @@ next_quadrant_to_download_and_upload:
     ; Note: when doing the upload, we stay in polygon mode
 
     clc                       ; we are adding during upload, so we need the carry to be 0
-
     lda UPL_RAM_BANK
     sta RAM_BANK
     jsr UPLOAD_RAM_ADDRESS
     
+    clc                       ; the carry might have been set again, since the UPLOAD (run before) might have gotton garbage data and overflown)
     lda UPL_RAM_BANK
     adc #1
     sta RAM_BANK
     jsr UPLOAD_RAM_ADDRESS
 
+    clc                       ; the carry might have been set again, since the UPLOAD (run before) might have gotton garbage data and overflown)
     lda UPL_RAM_BANK
     adc #2
     sta RAM_BANK

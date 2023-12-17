@@ -390,6 +390,7 @@ def generate_download_and_upload_code():
         if (y == hlfh-1):
             # We are done, we need to add an rts
             add_upl_code(upload_codes, upl_idx, 0x60)  # rts
+            upl_idx += 1
             
 
     return (download_code, upload_codes)
