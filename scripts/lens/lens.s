@@ -664,10 +664,8 @@ next_packed_color_1:
     lda palette_data+256, y
     sta VERA_DATA0
     iny
-; FIXME! WE ARE NOW ASSUMING all 256 colors need to be copied!
-; FIXME! WE ARE NOW ASSUMING all 256 colors need to be copied!
-; FIXME! WE ARE NOW ASSUMING all 256 colors need to be copied!
-;    cpy #<(end_of_palette_data-palette_data)
+    ; TODO: remove this? we are now assuming all 256 colors need to be copied!
+    ;    cpy #<(end_of_palette_data-palette_data)
     bne next_packed_color_1
     
     rts

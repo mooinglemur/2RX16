@@ -129,7 +129,6 @@ def init_lens(lens_px):
     hlfh = half_lens_height
     hlfw = half_lens_width
     
-# FIXME! use half width and half height
     full = hlfw*hlfw + hlfh*hlfh
 
     for y in range(int((half_lens_height * 2) - 1)):
@@ -174,7 +173,10 @@ def init_lens(lens_px):
     #     *px=(int)(((double)x+fx)*new);
     #     *py=(int)(((double)y+fy)*new);
     # }
-            
+       
+    min_y_shift = 0
+    max_y_shift = 0
+       
     for y in range(half_lens_height):
         # TODO: we need to adjust y by 9/8 or by something else?
         y2 = (y*9/8)*(y*9/8)
@@ -196,6 +198,11 @@ def init_lens(lens_px):
                 x_shift = px - x
                 y_shift = py - y
                 
+                if y_shift < min_y_shift:
+                    min_y_shift = y_shift
+                if y_shift > max_y_shift:
+                    max_y_shift = y_shift
+                
 # FIXME: this now OVERLAPS! CHECK IT!
                 # Inside the lens the pixel gets shifted according to the quadrant it is in
                 lens_offsets[ hlfh-1 + y][ hlfw-1 + x] = (  x_shift,  y_shift)
@@ -209,6 +216,9 @@ def init_lens(lens_px):
                 lens_offsets[ hlfh-1 - y][ hlfw-1 + x] = (None,None)
                 lens_offsets[ hlfh-1 + y][ hlfw-1 - x] = (None,None)
                 lens_offsets[ hlfh-1 - y][ hlfw-1 - x] = (None,None)
+
+    #print("min_y_shift: " + str(min_y_shift))
+    #print("max_y_shift: " + str(max_y_shift))
 
 # Generate 'download' code (to copy quarter of a cirle from VRAM to Fixed RAM)
 #
@@ -473,10 +483,7 @@ for frame_nr in range(1000):
     lens_speed_y += 2/64
 
     # FIXME: we now add every other frame, but we should interpolate from 70fps frames to 30fps frames instead!
-#    if (frame_nr % 2 == 0):
-# FIXME!
-# FOR NOW!
-    if (frame_nr % 2 == 0 and lens_pos_y > half_lens_height and lens_pos_y < 200):
+    if (frame_nr % 2 == 0):
         lens_positions.append(lens_pos_x % 256)
         lens_positions.append(lens_pos_x // 256)
         if int(lens_pos_y) < 0:
