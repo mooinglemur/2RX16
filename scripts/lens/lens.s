@@ -76,12 +76,9 @@ LENS_VRAM_ADDRESS         = $39 ; 3A ; 3B
 LENS_POS_ADDRESS          = $3E ; 3F
 
 LENS_X_POS                = $40 ; 41
-LENS_Y_POS                = $42 ; 43  ; second byte is never used
+LENS_Y_POS                = $42 ; 43
 Z_DEPTH_BIT               = $44
 QUADRANT                  = $45
-
-LENS_DELTA_X              = $46 ; 47
-LENS_DELTA_Y              = $48 ; 49
 
 DWN_RAM_BANK              = $4A
 DWN_IDX                   = $4B
@@ -89,6 +86,8 @@ DWN_IDX                   = $4B
 UPL_RAM_BANK              = $4C
 UPL_IDX                   = $4D
 UPL_QUADRANT              = $4E
+
+LENS_VRAM_BANK            = $4F
 
 COSINE_OF_ANGLE           = $51 ; 52
 SINE_OF_ANGLE             = $53 ; 53
@@ -189,6 +188,7 @@ load_next_upload_quadrant:
     lda (LENS_POS_ADDRESS), y
     sta LENS_Y_POS+1
     
+    
     clc
     lda LENS_POS_ADDRESS
     adc #4
@@ -215,7 +215,6 @@ move_lens:
 
 ;tmp_loop:
 ;    jmp tmp_loop
-
 
     jsr setup_sprites
 
@@ -318,8 +317,9 @@ download_and_upload_quadrants:
     adc LENS_X_POS+1
     sta LENS_VRAM_ADDRESS+1
     
-; FIXME: NEG_Y_TO_ADDRESS_BANK!
-; FIXME: LENS_VRAM_ADDRESS+2!
+    lda NEG_Y_TO_ADDRESS_BANK, y
+    adc #0
+    sta LENS_VRAM_ADDRESS+2
     
     bra lens_vram_address_determined
     
@@ -337,8 +337,9 @@ positive_y_position:
     adc LENS_X_POS+1
     sta LENS_VRAM_ADDRESS+1
     
-; FIXME: Y_TO_ADDRESS_BANK!
-; FIXME: LENS_VRAM_ADDRESS+2!
+    lda Y_TO_ADDRESS_BANK, y
+    adc #0
+    sta LENS_VRAM_ADDRESS+2
 
 lens_vram_address_determined:
     
@@ -364,13 +365,6 @@ next_quadrant_to_download_and_upload:
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
     
-    lda quadrant_addr0_bank, x   ; Setting bit 16 of ADDR1 to 0, auto-increment to +320 or -320 (depending on quadrant)
-    sta VERA_ADDR_BANK
-    
-    lda #%00000010
-    sta VERA_FX_CTRL         ; polygon addr1-mode
-    
-    
     ; Each quadrant has a slight VRAM-offset as its starting point (+0, -1, -321, -320). We subtract those here.
     sec
     lda LENS_VRAM_ADDRESS
@@ -381,11 +375,22 @@ next_quadrant_to_download_and_upload:
     sbc quadrant_vram_offset_high, x
     sta VERA_ADDR_HIGH
     
-; FIXME: set VERA_ADDR_BANK!
-; FIXME: set VERA_ADDR_BANK!
-; FIXME: set VERA_ADDR_BANK!
+    lda LENS_VRAM_ADDRESS+2
+    sbc #0
+; FIXME: WHAT IF WE JUST GO FROM ONE VRAM-BANK to ANOTHER VRAM-BANK HERE?
+; FIXME: does and-ing with 01 work here?
+    and #$01
+    sta LENS_VRAM_BANK
 
-    lda VERA_DATA1                ; sets ADDR1 to ADDR0
+    lda quadrant_addr0_bank, x   ; Setting bit 16 of ADDR1 to 0 (or 1), auto-increment to +320 or -320 (depending on quadrant)
+    ora LENS_VRAM_BANK
+    sta VERA_ADDR_BANK
+    
+
+    lda #%00000010
+    sta VERA_FX_CTRL         ; polygon addr1-mode
+    
+    lda VERA_DATA1           ; sets ADDR1 to ADDR0
     
     lda #%00000000
     sta VERA_FX_CTRL         ; normal addr1-mode
@@ -557,9 +562,9 @@ clear_bitmap_memory:
 
     ; FIXME: PERFORMANCE we can do this MUCH faster using CACHE writes and UNROLLING!
     
-    ; We need 320*200 + 4096 (top border) + 4096 (bottom border) = 68502 bytes to be cleared
-    ; This means we need 268*256 bytes to be cleared (268 = 256 + 12)
-    
+    ; We need 320*200 + 4096 (top border) + 4096 (bottom border) = 72192 bytes to be cleared
+    ; This means we need 282*256 bytes to be cleared (282 = 256 + 26)
+
     ; First 256*256 bytes
     ldy #0
 clear_bitmap_next_256:
@@ -571,7 +576,8 @@ clear_bitmap_next_1:
     dey
     bne clear_bitmap_next_256
 
-    ldy #12
+    ; FIXME: we take a little extra margin (which is NEEDED!)
+    ldy #26+10
 clear_bitmap_next_256a:
     ldx #0
 clear_bitmap_next_1a:
@@ -955,6 +961,7 @@ generate_next_neg_y_to_address_entry:
     lda VRAM_ADDRESS+2
     sbc #0
     sta VRAM_ADDRESS+2
+    and #$01
     sta NEG_Y_TO_ADDRESS_BANK, y
     
     dey
