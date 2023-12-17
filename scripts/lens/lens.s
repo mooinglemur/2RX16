@@ -100,12 +100,16 @@ BITMAP_QUADRANT_BUFFER    = $6000  ; HALF_LENS_WIDTH * HALF_LENS_HEIGHT bytes = 
 LENS_POSITIONS_ADDRESS    = $6C00  ; around 350? (30 fps) frames of 4 bytes of positions (X and Y each 2 bytes) =~ 1400 bytes (so $600 is enough?)
 Y_TO_ADDRESS_LOW          = $7600
 Y_TO_ADDRESS_HIGH         = $7700
+Y_TO_ADDRESS_BANK         = $7800  ; when Y is positive, BANK is always 0 (so technically we dont need this) 
+NEG_Y_TO_ADDRESS_LOW      = $7900
+NEG_Y_TO_ADDRESS_HIGH     = $7A00
+NEG_Y_TO_ADDRESS_BANK     = $7B00
 DOWNLOAD_RAM_ADDRESS      = $A000
 UPLOAD_RAM_ADDRESS        = $A000
 
 ; === VRAM addresses ===
 
-BITMAP_VRAM_ADDRESS   = $00000
+BITMAP_VRAM_ADDRESS   = $01000   ; We need 11 pixel rows of room above/below the bitmap, so we start at $01000 (=4096). This is 12.8 pixel rows.
 SPRITES_VRAM_ADDRESS  = $12000   ; if you CHANGE this you also have to change quadrant_addr0_high_sprite/quadrant_addr0_low_sprite!!
 
 
@@ -127,6 +131,7 @@ start:
     jsr setup_vera_for_layer0_bitmap
 
     jsr copy_palette_from_index_0
+    jsr clear_bitmap_memory   ; SLOW!
     jsr load_bitmap_into_vram
     jsr generate_y_to_address_table
     
@@ -294,14 +299,34 @@ download_and_upload_quadrants:
 ; - make NEG_Y_TO_ADDRESS_LOW/HIGH for when Y is negative
 ; - move the bitmap 6-10 pixel rows down? (does this not interfere with SPRITE memory?
 ; - clear the bitmap top/bottom border
+; - DOUBLE buffer!
     
-; FIXME   lda LENS_Y_POS+1  ; -> also NEGATIVE NUMBERS!
+    
+    lda LENS_Y_POS+1
+    bpl positive_y_position
+    
+    ; We have a negative Y position
+    
     ldy LENS_Y_POS
     
-; FIXME!
-; FIXME!
-; FIXME!
-;    ldy #0
+    clc
+    lda NEG_Y_TO_ADDRESS_LOW, y
+    adc LENS_X_POS
+    sta LENS_VRAM_ADDRESS
+
+    lda NEG_Y_TO_ADDRESS_HIGH, y
+    adc LENS_X_POS+1
+    sta LENS_VRAM_ADDRESS+1
+    
+; FIXME: NEG_Y_TO_ADDRESS_BANK!
+; FIXME: LENS_VRAM_ADDRESS+2!
+    
+    bra lens_vram_address_determined
+    
+positive_y_position:
+    ; We have a positive Y position
+    
+    ldy LENS_Y_POS
     
     clc
     lda Y_TO_ADDRESS_LOW, y
@@ -309,10 +334,13 @@ download_and_upload_quadrants:
     sta LENS_VRAM_ADDRESS
 
     lda Y_TO_ADDRESS_HIGH, y
-; FIXME: -> also NEGATIVE NUMBERS!
     adc LENS_X_POS+1
     sta LENS_VRAM_ADDRESS+1
+    
+; FIXME: Y_TO_ADDRESS_BANK!
+; FIXME: LENS_VRAM_ADDRESS+2!
 
+lens_vram_address_determined:
     
     ; We iterate through 4 quadrants (either 0-3 OR 4-7)
 
@@ -352,6 +380,10 @@ next_quadrant_to_download_and_upload:
     lda LENS_VRAM_ADDRESS+1
     sbc quadrant_vram_offset_high, x
     sta VERA_ADDR_HIGH
+    
+; FIXME: set VERA_ADDR_BANK!
+; FIXME: set VERA_ADDR_BANK!
+; FIXME: set VERA_ADDR_BANK!
 
     lda VERA_DATA1                ; sets ADDR1 to ADDR0
     
@@ -464,8 +496,8 @@ setup_vera_for_layer0_bitmap:
     lda #(4+3)
     sta VERA_L0_CONFIG
 
-    ; Set layer0 tilebase to 0x00000 and tile width to 320 px
-    lda #0
+    ; Set layer0 tilebase to $01000 and tile width to 320 px
+    lda #%00001000   ; first first 6 bits of $01000 is 000010b
     sta VERA_L0_TILEBASE
 
     ; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
@@ -512,6 +544,45 @@ clear_next_download_buffer_1:
 
     rts
     
+
+clear_bitmap_memory:
+
+    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to 1
+    sta VERA_ADDR_BANK
+
+    lda #0
+    sta VERA_ADDR_LOW
+    lda #0
+    sta VERA_ADDR_HIGH
+
+    ; FIXME: PERFORMANCE we can do this MUCH faster using CACHE writes and UNROLLING!
+    
+    ; We need 320*200 + 4096 (top border) + 4096 (bottom border) = 68502 bytes to be cleared
+    ; This means we need 268*256 bytes to be cleared (268 = 256 + 12)
+    
+    ; First 256*256 bytes
+    ldy #0
+clear_bitmap_next_256:
+    ldx #0
+clear_bitmap_next_1:
+    stz VERA_DATA0
+    inx
+    bne clear_bitmap_next_1
+    dey
+    bne clear_bitmap_next_256
+
+    ldy #12
+clear_bitmap_next_256a:
+    ldx #0
+clear_bitmap_next_1a:
+    stz VERA_DATA0
+    inx
+    bne clear_bitmap_next_1a
+    dey
+    bne clear_bitmap_next_256a
+    
+    rts
+
     
 clear_sprite_memory:
 
@@ -819,12 +890,25 @@ upload_loaded:
     
 generate_y_to_address_table:
 
-    ; TODO: we assume the base address is 0 here!
-    stz VRAM_ADDRESS
-    stz VRAM_ADDRESS+1
-    stz VRAM_ADDRESS+2
+    ; Positive Y
     
+    lda #<BITMAP_VRAM_ADDRESS
+    sta VRAM_ADDRESS
+    lda #>BITMAP_VRAM_ADDRESS
+    sta VRAM_ADDRESS+1
+    lda #(BITMAP_VRAM_ADDRESS>>16)
+    sta VRAM_ADDRESS+2
+
+    ; Our first entry (same for positive and negative y)
     ldy #0
+    lda VRAM_ADDRESS
+    sta Y_TO_ADDRESS_LOW, y
+    lda VRAM_ADDRESS+1
+    sta Y_TO_ADDRESS_HIGH, y
+    lda VRAM_ADDRESS+2
+    sta Y_TO_ADDRESS_BANK, y
+
+    ldy #1
 generate_next_y_to_address_entry:
     clc
     lda VRAM_ADDRESS
@@ -837,16 +921,46 @@ generate_next_y_to_address_entry:
     sta VRAM_ADDRESS+1
     sta Y_TO_ADDRESS_HIGH, y
     
-    ; FIXME: not storing VRAM_ADDRESS+2 at the moment!
-    ; FIXME: not storing Y_TO_ADDRESS_BANK here!
+    lda VRAM_ADDRESS+2
+    adc #0
+    sta VRAM_ADDRESS+2
+    sta Y_TO_ADDRESS_BANK, y
     
     iny
     bne generate_next_y_to_address_entry
+    
+    ; Negative Y
+
+    lda #<BITMAP_VRAM_ADDRESS
+    sta VRAM_ADDRESS
+    lda #>BITMAP_VRAM_ADDRESS
+    sta VRAM_ADDRESS+1
+    lda #(BITMAP_VRAM_ADDRESS>>16)
+    sta VRAM_ADDRESS+2
+    
+    ; Note: the negative-y table does not use its first entry, so we start with -1
+    lda #$FF  ; = -1
+generate_next_neg_y_to_address_entry:
+    sec
+    lda VRAM_ADDRESS
+    sbc #<320
+    sta VRAM_ADDRESS
+    sta NEG_Y_TO_ADDRESS_LOW, y
+    
+    lda VRAM_ADDRESS+1
+    sbc #>320
+    sta VRAM_ADDRESS+1
+    sta NEG_Y_TO_ADDRESS_HIGH, y
+    
+    lda VRAM_ADDRESS+2
+    sbc #0
+    sta VRAM_ADDRESS+2
+    sta NEG_Y_TO_ADDRESS_BANK, y
+    
+    dey
+    bne generate_next_neg_y_to_address_entry
 
     rts
-    
-    
-
 
 
     
