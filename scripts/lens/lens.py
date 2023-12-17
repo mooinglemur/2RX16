@@ -5,6 +5,8 @@ import math
 import time
 import random
 
+random.seed(10)
+
 DO_MOVE_LENS = True
 DRAW_NEW_PALETTE = False
 
