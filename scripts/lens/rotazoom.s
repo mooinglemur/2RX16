@@ -1,7 +1,7 @@
 ; == Very crude PoC of a 128x128px tilemap rotation ==
 
-; To build: cl65 -t cx16 -o POC-ROTAZOOM.PRG poc-rotazoom.s
-; To run: x16emu.exe -prg POC-ROTAZOOM.PRG -run -ram 2048
+; To build: cl65 -t cx16 -o ROTAZOOM.PRG rotazoom.s
+; To run: x16emu.exe -prg ROTAZOOM.PRG -run -ram 2048
 
 .org $080D
 .segment "STARTUP"
@@ -121,7 +121,8 @@ setup_vera_for_layer0_bitmap:
     and #%10011111           ; Disable Layer 1 and sprites
     sta VERA_DC_VIDEO
 
-    lda #$40                 ; 2:1 scale (320 x 240 pixels on screen)
+; OLD    lda #$40                 ; 2:1 scale (320 x 240 pixels on screen)
+    lda #$20                 ; 4:1 scale (160 x 120 pixels on screen)
     sta VERA_DC_HSCALE
     sta VERA_DC_VSCALE
     
@@ -290,7 +291,7 @@ setup_and_draw_rotated_tilemap:
     
     lda #(TILEDATA_VRAM_ADDRESS >> 9)
     and #%11111100   ; only the 6 highest bits of the address can be set
-    ; ora #%00000010   ; clip = 1 -> we are REPEATING!
+    ; ora #%00000010   ; clip = 1 -> we are REPEATING. So no clipping.
     sta VERA_FX_TILEBASE
 
     lda #(MAPDATA_VRAM_ADDRESS >> 9)
@@ -315,6 +316,7 @@ keep_rotating:
     
     jsr draw_rotated_tilemap
     inc ROTATION_ANGLE
+
     bra keep_rotating
 
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
@@ -353,14 +355,16 @@ draw_rotated_tilemap:
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
 
+    ; Y position
     lda #128
     sta Y_SUB_PIXEL
-    
-    lda #256-28          ; We start a litte above the pixture, so (when rotated) the right top part fits into the drawing rectangle
+    lda #14
     sta Y_SUB_PIXEL+1
+    
+    ; X position
     lda #128
     sta X_SUB_PIXEL
-    lda #0
+    lda #256-16
     sta X_SUB_PIXEL+1
     
     ;lda #COSINE_ROTATE       ; X increment low
@@ -468,7 +472,8 @@ y_pixel_pos_high_correct:
     sta X_SUB_PIXEL+1
     
     inx
-    cpx #200             ; nr of row we draw
+;    cpx #200             ; nr of row we draw
+    cpx #100             ; nr of row we draw
     bne rotate_copy_next_row_1
     
     lda #%00000000           ; DCSEL=0, ADDRSEL=0
@@ -546,7 +551,8 @@ next_copy_instruction:
     jsr add_code_byte
 
     inx
-    cpx #320/4
+; OLD    cpx #320/4
+    cpx #160/4
     bne next_copy_instruction
 
     ; -- rts --
