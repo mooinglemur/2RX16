@@ -30,7 +30,8 @@ unique_12bit_colors = {}
 
 byte_index = 0
 new_color_index = 0
-nr_of_palette_bytes = 3*256
+# IMPORTANT: we ONLY take the first 32 colors
+nr_of_palette_bytes = 3*32
 while (byte_index < nr_of_palette_bytes):
     
     red = palette_bytes[byte_index]
@@ -165,8 +166,6 @@ for tile_y in range(map_height):
             tile_map[tile_y][tile_x] = tile_index
             tile_index += 1
 
-print(unique_tiles)
-exit()
 
 tilemap_asm_string = ""
 tile_map_flat = []
