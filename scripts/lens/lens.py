@@ -9,6 +9,8 @@ random.seed(10)
 
 DO_MOVE_LENS = True
 DRAW_NEW_PALETTE = False
+SHOW_LENS_SHIFTS = False
+SHOW_LENS_SOURCE_USAGE = True
 
 # TODO: we should *ALSO* use the LENS.png image! (with the 'glaring' of the lens)
 
@@ -120,6 +122,9 @@ background_color = (0,0,0)
 # x,y offsets
 lens_offsets = []
 
+# DEBUG array (to know/understand which bitmap pixels are being sampled when the lens is on top of it
+lens_source_pixels = []
+
 # black/transparent + 3 shades of blue for each pixel in the lens
 lens_pixels = []
 
@@ -136,9 +141,11 @@ def init_lens(lens_px):
     for y in range(int((half_lens_height * 2) - 1)):
         lens_offsets.append([])
         lens_pixels.append([])
+        lens_source_pixels.append([])
         for x in range(int((half_lens_width * 2) - 1)):
             lens_offsets[y].append(None)
             lens_pixels[y].append(None)
+            lens_source_pixels[y].append(0)
             
     # We use the lens image to fill lens_pixels with the values 0 (black/transparent), 1, 2 and 3 (shades of blue)
 
@@ -348,6 +355,15 @@ def generate_download_and_upload_code():
 
                 address_to_read_from = BITMAP_QUADRANT_BUFFER + (y+y_shift) * hlfw + (x+x_shift)
                 
+                # DEBUG: marking a source pixel as being read
+                lens_source_pixels[hlfh-1 + y+y_shift][hlfw-1 + x+x_shift] += 1
+                if (y+y_shift != 0 and x+x_shift != 0):
+                    lens_source_pixels[hlfh-1 + y+y_shift][hlfw-1 - (x+x_shift)] += 1
+                if (y+y_shift != 0 and x+x_shift != 0):
+                    lens_source_pixels[hlfh-1 - (y+y_shift)][hlfw-1 + x+x_shift] += 1
+                if (not (y+y_shift == 0 and x+x_shift == 0)):
+                    lens_source_pixels[hlfh-1 - (y+y_shift)][hlfw-1 - (x+x_shift)] += 1
+                
                 # lda $6....
                 add_upl_code(upload_codes, upl_idx, 0xAD)  # lda ....
                 add_upl_code(upload_codes, upl_idx, address_to_read_from % 256)  # low part of address
@@ -528,7 +544,7 @@ def run():
     prev_lens_pos_y = lens_pos_y
     
     screen.fill(background_color)
-
+    
     for source_y in range(source_image_height):
         for source_x in range(source_image_width):
 
@@ -542,20 +558,6 @@ def run():
     while running:
         # TODO: We might want to set this to max?
         clock.tick(60)
-        
-        if (DO_MOVE_LENS):
-            lens_pos_x = lens_positions[frame_nr*4] + lens_positions[frame_nr*4+1]*256
-            lens_pos_y = lens_positions[frame_nr*4+2] + lens_positions[frame_nr*4+3]*256
-            if (lens_pos_x > 128*256):
-                lens_pos_x = lens_pos_x-256*256
-            if (lens_pos_y > 128*256):
-                lens_pos_y = lens_pos_y-256*256
-            
-            if (lens_pos_x < 0):
-                # This is the marker that we reached the end
-                break
-                
-        frame_nr += 1    
         
         for event in pygame.event.get():
 
@@ -575,6 +577,82 @@ def run():
             #if event.type == pygame.MOUSEMOTION: 
                 # newrect.center = event.pos
             '''
+            
+        if (SHOW_LENS_SHIFTS):
+            screen.fill(background_color)
+            
+            for lens_y in range(int(half_lens_height*2-1)):
+                for lens_x in range(int(half_lens_width*2-1)):
+                    (x_shift, y_shift) = lens_offsets[lens_y][lens_x]
+                    
+                    if (x_shift is not None):
+                        
+                        # x shift is red
+                        red = abs(x_shift)*16
+                        # y shift is blue
+                        blue = abs(y_shift)*16
+                        
+                        pixel_color = (red, 0x00, blue)
+                        
+                        pygame.draw.rect(screen, pixel_color, pygame.Rect(lens_x*scale, lens_y*scale, scale, scale))
+                    
+            pygame.display.update()
+            time.sleep(0.01)
+            continue
+            
+            
+        if (SHOW_LENS_SOURCE_USAGE):
+        
+            screen.fill(background_color)
+            
+            nr_of_pixels = 0
+            nr_of_used_pixels = 0
+            for lens_y in range(int(half_lens_height*2-1)):
+                for lens_x in range(int(half_lens_width*2-1)):
+                    # Note: nr_of_usages is not entirely correct when X and Y  are both 0!
+                    nr_of_usages = lens_source_pixels[lens_y][lens_x]
+                    
+                    value = 0
+                    if (nr_of_usages > 0):
+                        if(False):
+                            value = nr_of_usages * 64
+                            if value > 255:
+                                value = 255
+                        else:
+                            value = 0xFF
+                        nr_of_used_pixels += 1
+                    nr_of_pixels += 1
+                    
+                    # x shift is red
+                    #red = abs(nr_of_usages)*32
+                    # y shift is blue
+                    #blue = abs(nr_of_usages)*32
+                        
+                    pixel_color = (value, value, value)
+                    
+                    pygame.draw.rect(screen, pixel_color, pygame.Rect(lens_x*scale, lens_y*scale, scale, scale))
+                    
+            pygame.display.update()
+            time.sleep(0.01)
+            
+            print(str(nr_of_pixels) + ":"  + str(nr_of_used_pixels))
+            continue
+        
+
+        if (DO_MOVE_LENS):
+            lens_pos_x = lens_positions[frame_nr*4] + lens_positions[frame_nr*4+1]*256
+            lens_pos_y = lens_positions[frame_nr*4+2] + lens_positions[frame_nr*4+3]*256
+            if (lens_pos_x > 128*256):
+                lens_pos_x = lens_pos_x-256*256
+            if (lens_pos_y > 128*256):
+                lens_pos_y = lens_pos_y-256*256
+            
+            if (lens_pos_x < 0):
+                # This is the marker that we reached the end
+                break
+                
+        frame_nr += 1    
+        
                 
         '''
         screen.fill(background_color)
