@@ -185,19 +185,10 @@ def generate_pos_and_rotation_frames():
     scalea = -0.01
     frame = 0
     
-    
-    cosine_rotate_low  = "cosine_rotate_low:\n  .byte "
-    cosine_rotate_high = "cosine_rotate_high:\n  .byte "
-    sine_rotate_low  = "sine_rotate_low:\n  .byte "
-    sine_rotate_high = "sine_rotate_high:\n  .byte "
-    x_position_low  = "x_position_low:\n  .byte "
-    x_position_high = "x_position_high:\n  .byte "
-    y_position_low  = "y_position_low:\n  .byte "
-    y_position_high = "y_position_high:\n  .byte "
+    pos_and_rotation_data  = "pos_and_rotation_data:\n  .byte "
     
     first_number_added = False
     for frame in range(2000):
-#    for frame in range(512):
     
         x = 70.0 * math.sin(d1) - 30
         y = 70.0 * math.cos(d1) + 60
@@ -218,42 +209,45 @@ def generate_pos_and_rotation_frames():
         
         print('frame: '+str(frame)+' x: '+str(x)+' y: '+str(y)+' xa: '+str(xa)+' ya: '+str(ya)+' sc: '+str(scale))
 
-        if (frame % 8 == 0):
-            comma = ", "
-            if (not first_number_added):
-                comma = ""
-                first_number_added = True
-            
-            # == cosine_rotate is +ya / 8 ==
-            # == sine_rotate is   -xa / 8 ==
-            # == x_position is     -x / 2 ==
-            # == y_position is     +y / 2 ==
-            
-            cosine_rotate = int(ya / 8)
-            sine_rotate = int(-xa / 8)
-            x_position = int(-x / 2)
-            y_position = int(y / 2)
-            
-            if cosine_rotate < 0:
-                cosine_rotate = cosine_rotate+256*256
-            if sine_rotate < 0:
-                sine_rotate = sine_rotate+256*256
-            if x_position < 0:
-                x_position = x_position+256*256
-            if y_position < 0:
-                y_position = y_position+256*256
-            
-            cosine_rotate_low += comma + str(cosine_rotate % 256)
-            cosine_rotate_high += comma + str(cosine_rotate // 256)
-            
-            sine_rotate_low += comma + str(sine_rotate % 256)
-            sine_rotate_high += comma + str(sine_rotate // 256)
-            
-            x_position_low += comma + str(x_position % 256)
-            x_position_high += comma + str(x_position // 256)
-            
-            y_position_low += comma + str(y_position % 256)
-            y_position_high += comma + str(y_position // 256)
+        comma = ", "
+        if (not first_number_added):
+            comma = ""
+            first_number_added = True
+        
+        # == cosine_rotate is +ya / 8 ==
+        # == sine_rotate is   -xa / 8 ==
+        # == x_position is     -x / 2 ==
+        # == y_position is     +y / 2 ==
+        
+        cosine_rotate = int(ya / 8)
+        sine_rotate = int(-xa / 8)
+        x_position = int(-x / 2)
+        y_position = int(y / 2)
+        
+        if cosine_rotate < 0:
+            cosine_rotate = cosine_rotate+256*256
+        if sine_rotate < 0:
+            sine_rotate = sine_rotate+256*256
+        if x_position < 0:
+            x_position = x_position+256*256
+        if y_position < 0:
+            y_position = y_position+256*256
+        
+        pos_and_rotation_data += comma + str(cosine_rotate % 256)
+        pos_and_rotation_data += ", " + str(cosine_rotate // 256)
+        
+        pos_and_rotation_data += ", " + str(sine_rotate % 256)
+        pos_and_rotation_data += ", " + str(sine_rotate // 256)
+        
+        pos_and_rotation_data += ", " + str(x_position % 256)
+        pos_and_rotation_data += ", " + str(x_position // 256)
+        
+        pos_and_rotation_data += ", " + str(y_position % 256)
+        pos_and_rotation_data += ", " + str(y_position // 256)
+        
+        if (frame % 32 == 31):
+            pos_and_rotation_data += "\n  .byte "
+            first_number_added = False
         
         scale += scalea
 
@@ -279,14 +273,7 @@ def generate_pos_and_rotation_frames():
                 scalea += 0.000001 * a
 
 
-    print(cosine_rotate_low)
-    print(cosine_rotate_high)
-    print(sine_rotate_low)
-    print(sine_rotate_high)
-    print(x_position_low)
-    print(x_position_high)
-    print(y_position_low)
-    print(y_position_high)
+    print(pos_and_rotation_data)
 
 
 # FIXME: we need to store the output into a FILE!
