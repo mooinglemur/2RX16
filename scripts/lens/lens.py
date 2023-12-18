@@ -611,6 +611,10 @@ def run():
                 for lens_x in range(int(half_lens_width*2-1)):
                     # Note: nr_of_usages is not entirely correct when X and Y  are both 0!
                     nr_of_usages = lens_source_pixels[lens_y][lens_x]
+
+                    red = 0
+                    if (lens_pixels[lens_y][lens_x] != 0):
+                        red = 0xC0
                     
                     value = 0
                     if (nr_of_usages > 0):
@@ -628,7 +632,7 @@ def run():
                     # y shift is blue
                     #blue = abs(nr_of_usages)*32
                         
-                    pixel_color = (value, value, value)
+                    pixel_color = (red, value, value)
                     
                     pygame.draw.rect(screen, pixel_color, pygame.Rect(lens_x*scale, lens_y*scale, scale, scale))
                     
