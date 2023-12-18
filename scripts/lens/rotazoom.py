@@ -1,5 +1,6 @@
 from PIL import Image
 import hashlib
+import math
 
 PRINT_MAP_AS_ASM = 1  # otherwise write to BIN file
 PRINT_TILEDATA_AS_ASM = 1  # otherwise write to BIN file
@@ -9,13 +10,12 @@ source_image_width = 320
 source_image_height = 200
 
 # FIXME: these .bin files are currently not used!! (the data is copied as asm-text in the .s file)
-tile_map_filename = "scripts/rotazoom/rotazoom_tile_map.bin"
-tile_pixel_data_filename = "scripts/rotazoom/rotazoom_tile_pixel_data.bin"
-map_width = 16
-map_height = 16
-# FIXME: we want to have a 32x32 tile map, so we have to replacite the 16x16 four times!
-#map_width = 32
-#map_height = 32
+tile_map_filename = "scripts/lens/ROTAZOOM-TILEMAP.BIN"
+tile_pixel_data_filename = "scripts/lens/ROTAZOOM-TILEDATA.BIN"
+# Note: we want to end up with a 32x32 tile map, so we first create a 16x16 tile map and replicate it four times!
+# A full 32x32 tile map (256x256 pixels) is not possible, due to the amount of unique tiles that requires.
+half_map_width = 16
+half_map_height = 16
 
 
 # creating a image object for the background
@@ -102,9 +102,9 @@ for y in range(128):
 for x in range(128):
     for y in range(128):
         
-        # The original picture is 320x200. We downscale from 256x256 to 128x128, so we are missing 56 horizontal lines (28 top, 28 bottom). We make them black.
+        # The original picture is 320x200. We downscale from 256x256 to 128x128, so we are missing 56 horizontal lines (at the bottom). We make them black.
         source_x = 32 + x*2
-        source_y = -28 + y*2
+        source_y = 0 + y*2
         
         new_clr_idx = None
         if (source_y < 0 or source_y >= 200):
@@ -123,6 +123,120 @@ for x in range(128):
 
         new_pixels[y][x] = new_clr_idx
 
+    
+''' Original rotation + position:
+
+		d1=0;
+		d2=0.00007654321;
+		d3=0;
+		scale=2;
+		scalea=-0.01;
+		frame=0;
+        
+        /* frame loop */
+        
+            x=70.0*sin(d1)-30;
+			y=70.0*cos(d1)+60;
+			d1-=.005;
+			xa=-1024.0*sin(d2)*scale;
+			ya=1024.0*cos(d2)*scale;
+			x-=xa/16;
+			y-=ya/16;
+			d2+=d3;
+			putw(x,fp);
+			putw(y,fp);
+			putw(xa,fp);
+			putw(ya,fp);
+			rotate(x,y,xa,ya);
+			scale+=scalea;
+			if(frame>25)
+			{
+				if(d3<.02) d3+=0.00005;
+			}
+			if(frame<270)
+			{
+				if(scale<.9)
+				{
+					if(scalea<1) scalea+=0.0001;
+				}
+			}
+			else if(frame<400)
+			{
+				if(scalea>0.001) scalea-=0.0001;
+			}
+			else if(frame>1600)
+			{
+				if(scalea>-.1) scalea-=0.001;
+			}
+			else if(frame>1100)
+			{
+				a=frame-900; if(a>100) a=100;
+				if(scalea<256) scalea+=0.000001*a;
+			}    
+'''
+
+
+def generate_pos_and_rotation_frames():
+
+    d1 = 0
+    d2 = 0.00007654321
+    d3 = 0
+    scale = 2
+    scalea = -0.01
+    frame = 0
+    
+# FIXME!        for frame_nr in range(2000):
+    for frame in range(100):
+    
+        x = 70.0 * math.sin(d1) - 30
+        y = 70.0 * math.cos(d1) + 60
+        d1 -= 0.005
+        xa = -1024.0 * math.sin(d2) * scale
+        ya = 1024.0 * math.cos(d2) * scale
+        x -= xa/16
+        y -= ya/16
+        d2 += d3
+        
+        #putw(x,fp);
+        #putw(y,fp);
+        #putw(xa,fp);
+        #putw(ya,fp);
+        #rotate(x,y,xa,ya);
+        print('x: '+str(x)+' y: '+str(y)+' xa: '+str(xa)+' ya: '+str(ya))
+        
+        scale += scalea
+
+        if (frame > 25):
+            if(d3 < 0.02):
+                d3 += 0.00005
+                
+        if (frame < 270):
+            if (scale < 0.9):
+                if (scalea<1):
+                    scalea += 0.0001
+        elif (frame < 400):
+            if (scalea > 0.001):
+                scalea -= 0.0001
+        elif (frame > 1600):
+            if (scalea > -0.1):
+                scalea -= 0.001
+        elif (frame > 1100): 
+            a = frame - 900
+            if (a > 100):
+                a = 100
+            if(scalea < 256):
+                scalea += 0.000001 * a
+
+
+# FIXME: we need to store the output into a FILE!
+# FIXME: we need to store the output into a FILE!
+# FIXME: we need to store the output into a FILE!
+generate_pos_and_rotation_frames()
+
+# FIXME!
+# FIXME!
+# FIXME!
+exit()
     
 # Printing out asm for palette:
 palette_string = ""
@@ -147,9 +261,9 @@ unique_tiles = {}
 tile_map = []
 tiles_pixel_data = []
 
-for tile_y in range(map_height):
+for tile_y in range(half_map_height):
     tile_map.append([])
-    for tile_x in range(map_width):
+    for tile_x in range(half_map_width):
         tile_map[tile_y].append([])
         tile_pixels_as_string = ""
         tile_pixel_data = []
@@ -169,9 +283,9 @@ for tile_y in range(map_height):
 
 tilemap_asm_string = ""
 tile_map_flat = []
-for tile_y in range(map_height):
+for tile_y in range(half_map_height):
     tilemap_asm_string += "  .byte "
-    for tile_x in range(map_width):
+    for tile_x in range(half_map_width):
         tile_index = tile_map[tile_y][tile_x]
         tile_map_flat.append(tile_index)
         tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
