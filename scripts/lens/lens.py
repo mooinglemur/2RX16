@@ -639,7 +639,7 @@ def run():
             pygame.display.update()
             time.sleep(0.01)
             
-            # nr_of_used_pixels: 6093 pixels
+            # nr_of_used_pixels: 6093 pixels (1570 for one quadrant)
             #print(str(nr_of_pixels) + ":"  + str(nr_of_used_pixels))
             continue
         
