@@ -10,9 +10,7 @@ random.seed(10)
 DO_MOVE_LENS = True
 DRAW_NEW_PALETTE = False
 SHOW_LENS_SHIFTS = False
-SHOW_LENS_SOURCE_USAGE = True
-
-# TODO: we should *ALSO* use the LENS.png image! (with the 'glaring' of the lens)
+SHOW_LENS_SOURCE_USAGE = False
 
 lens_image_filename = "assets/lens/LENS.png"       # This is a picture of the lens itself
 lens_source_image_width = 320
