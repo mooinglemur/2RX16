@@ -4,14 +4,10 @@ import hashlib
 PRINT_MAP_AS_ASM = 1  # otherwise write to BIN file
 PRINT_TILEDATA_AS_ASM = 1  # otherwise write to BIN file
 
+source_image_filename = "assets/lens/LENSPIC.png"  # This is the background picture (the monster)
+source_image_width = 320
+source_image_height = 200
 
-# FIXME: use a BETTER SOURCE IMAGE!
-# FIXME: use a BETTER SOURCE IMAGE!
-# FIXME: use a BETTER SOURCE IMAGE!
-# FIXME: use a BETTER SOURCE IMAGE!
-# FIXME: use a BETTER SOURCE IMAGE!
-
-source_image_filename = "assets/rotazoom/RotazoomImage_128x128px.png"
 # FIXME: these .bin files are currently not used!! (the data is copied as asm-text in the .s file)
 tile_map_filename = "scripts/rotazoom/rotazoom_tile_map.bin"
 tile_pixel_data_filename = "scripts/rotazoom/rotazoom_tile_pixel_data.bin"
@@ -22,55 +18,114 @@ map_height = 16
 #map_height = 32
 
 
-# creating a image object
+# creating a image object for the background
 im = Image.open(source_image_filename)
-# Workaround: the other png does not contain a palette (its RGB) so we convert it to having a palette
-im2 = im.convert("P", palette=Image.ADAPTIVE, colors=256)
-im = im2
 px = im.load()
-
-
-# We first determine all unique 12-bit COLORS, so we can re-index the image (pixels) with the new color indexes
-
-new_colors = []
-unique_12bit_colors = {}
-old_color_index_to_new_color_index = []
-
-old_color_index = 0
-new_color_index = 16  # We start at index 16!
-byte_index = 0
-nr_of_palette_bytes = 3*256
 palette_bytes = im.getpalette()
+
+
+# We first convert to 12-bit COLORS (this is used by the LENS part of the demo, so we need to preserve this!
+colors_12bit = []
+unique_12bit_colors = {}
+
+byte_index = 0
+new_color_index = 0
+nr_of_palette_bytes = 3*256
 while (byte_index < nr_of_palette_bytes):
+    
     red = palette_bytes[byte_index]
-    red = red & 0xF0
     byte_index += 1
-
     green = palette_bytes[byte_index]
-    green = green & 0xF0
     byte_index += 1
-
     blue = palette_bytes[byte_index]
-    blue = blue & 0xF0
     byte_index += 1
+    
+    red = red & 0xF0
+    green = green & 0xF0
+    blue = blue & 0xF0
+    
+    colors_12bit.append((red, green, blue))
+    
+    # TODO: technically we dont know whether there are duplicate colors in the original palette.
+    color_str = format(red, "02x") + format(green, "02x") + format(blue, "02x") 
+    unique_12bit_colors[color_str] = new_color_index
+    
+    new_color_index += 1
+
+
+
+def get_average_12bit_color(four_pixels):
+    avg_r = 0
+    avg_g = 0
+    avg_b = 0
+    
+    # TODO: is there a better way to average 4 colors?
+    for clr_idx in four_pixels:
+        avg_r += palette_bytes[clr_idx*3]
+        avg_g += palette_bytes[clr_idx*3+1]
+        avg_b += palette_bytes[clr_idx*3+2]
+        
+    avg_r = int(avg_r/4) & 0xF0
+    avg_g = int(avg_g/4) & 0xF0
+    avg_b = int(avg_b/4) & 0xF0
+    
+    return (avg_r, avg_g, avg_b)
+        
+        
+def get_new_or_existing_color(average_12bit_color):
+    new_clr_idx = None
+    
+    red = average_12bit_color[0]
+    green = average_12bit_color[1]
+    blue = average_12bit_color[2]
     
     color_str = format(red, "02x") + format(green, "02x") + format(blue, "02x") 
-    
     if color_str in unique_12bit_colors:
-        old_color_index_to_new_color_index.append(unique_12bit_colors.get(color_str))
+        new_clr_idx = unique_12bit_colors[color_str]
     else:
-        old_color_index_to_new_color_index.append(new_color_index)
-        unique_12bit_colors[color_str] = new_color_index
-        new_colors.append((red, green, blue))
-        new_color_index += 1
+        new_clr_idx = len(colors_12bit)
+        colors_12bit.append((red, green, blue))
+        unique_12bit_colors[color_str] = new_clr_idx
     
-    old_color_index += 1
-    
+    return new_clr_idx
+
+# We need to crop the image to 256x256 and shrink/scale down to 128x128 (we do that in one go)
+
+new_pixels = []
+for y in range(128):
+    new_pixels.append([])
+    for x in range(128):
+        new_pixels[y].append(None)
+
+
+for x in range(128):
+    for y in range(128):
+        
+        # The original picture is 320x200. We downscale from 256x256 to 128x128, so we are missing 56 horizontal lines (28 top, 28 bottom). We make them black.
+        source_x = 32 + x*2
+        source_y = -28 + y*2
+        
+        new_clr_idx = None
+        if (source_y < 0 or source_y >= 200):
+            # TODO: We assume color 0 is black. Is this true?
+            new_clr_idx = 0
+        else:
+            four_pixels = []
+            four_pixels.append(px[source_x  , source_y  ])
+            four_pixels.append(px[source_x+1, source_y  ])
+            four_pixels.append(px[source_x  , source_y+1])
+            four_pixels.append(px[source_x+1, source_y+1])
+            
+            average_12bit_color = get_average_12bit_color(four_pixels)
+            
+            new_clr_idx = get_new_or_existing_color(average_12bit_color)
+
+        new_pixels[y][x] = new_clr_idx
+
     
 # Printing out asm for palette:
-
 palette_string = ""
-for new_color in new_colors:
+for new_color in colors_12bit:
     red = new_color[0]
     green = new_color[1]
     blue = new_color[2]
@@ -99,7 +154,7 @@ for tile_y in range(map_height):
         tile_pixel_data = []
         for y_in_tile in range(8):
             for x_in_tile in range(8):
-                new_pixel_color = old_color_index_to_new_color_index[px[tile_x*8+x_in_tile, tile_y*8+y_in_tile]]
+                new_pixel_color = new_pixels[tile_y*8+y_in_tile][tile_x*8+x_in_tile]
                 tile_pixels_as_string += str(new_pixel_color)
                 tile_pixel_data.append(new_pixel_color)
         if (tile_pixels_as_string in unique_tiles):
@@ -109,6 +164,9 @@ for tile_y in range(map_height):
             tiles_pixel_data.append(tile_pixel_data)
             tile_map[tile_y][tile_x] = tile_index
             tile_index += 1
+
+print(unique_tiles)
+exit()
 
 tilemap_asm_string = ""
 tile_map_flat = []
