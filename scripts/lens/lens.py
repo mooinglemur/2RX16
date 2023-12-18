@@ -639,7 +639,8 @@ def run():
             pygame.display.update()
             time.sleep(0.01)
             
-            print(str(nr_of_pixels) + ":"  + str(nr_of_used_pixels))
+            # nr_of_used_pixels: 6093 pixels
+            #print(str(nr_of_pixels) + ":"  + str(nr_of_used_pixels))
             continue
         
 
