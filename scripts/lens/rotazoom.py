@@ -196,8 +196,8 @@ def generate_pos_and_rotation_frames():
     y_position_high = "y_position_high:\n  .byte "
     
     first_number_added = False
-#    for frame_nr in range(2000):
-    for frame in range(512):
+    for frame in range(2000):
+#    for frame in range(512):
     
         x = 70.0 * math.sin(d1) - 30
         y = 70.0 * math.cos(d1) + 60
@@ -218,7 +218,7 @@ def generate_pos_and_rotation_frames():
         
         print('frame: '+str(frame)+' x: '+str(x)+' y: '+str(y)+' xa: '+str(xa)+' ya: '+str(ya)+' sc: '+str(scale))
 
-        if (frame % 2 == 0):
+        if (frame % 8 == 0):
             comma = ", "
             if (not first_number_added):
                 comma = ""
@@ -229,17 +229,31 @@ def generate_pos_and_rotation_frames():
             # == x_position is     -x / 2 ==
             # == y_position is     +y / 2 ==
             
-            cosine_rotate_low += comma + str(int(ya / 8) % 256)
-            cosine_rotate_high += comma + str(int(ya / 8) // 256)
+            cosine_rotate = int(ya / 8)
+            sine_rotate = int(-xa / 8)
+            x_position = int(-x / 2)
+            y_position = int(y / 2)
             
-            sine_rotate_low += comma + str(int(-xa / 8) % 256)
-            sine_rotate_high += comma + str(int(-xa / 8) // 256)
+            if cosine_rotate < 0:
+                cosine_rotate = cosine_rotate+256*256
+            if sine_rotate < 0:
+                sine_rotate = sine_rotate+256*256
+            if x_position < 0:
+                x_position = x_position+256*256
+            if y_position < 0:
+                y_position = y_position+256*256
             
-            x_position_low += comma + str(int(-x / 2) % 256)
-            x_position_high += comma + str(int(-x / 2) // 256)
+            cosine_rotate_low += comma + str(cosine_rotate % 256)
+            cosine_rotate_high += comma + str(cosine_rotate // 256)
             
-            y_position_low += comma + str(int(y / 2) % 256)
-            y_position_high += comma + str(int(y / 2) // 256)
+            sine_rotate_low += comma + str(sine_rotate % 256)
+            sine_rotate_high += comma + str(sine_rotate // 256)
+            
+            x_position_low += comma + str(x_position % 256)
+            x_position_high += comma + str(x_position // 256)
+            
+            y_position_low += comma + str(y_position % 256)
+            y_position_high += comma + str(y_position // 256)
         
         scale += scalea
 
