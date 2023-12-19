@@ -9,9 +9,9 @@ source_image_filename = "assets/lens/LENSPIC.png"  # This is the background pict
 source_image_width = 320
 source_image_height = 200
 
-# FIXME: these .bin files are currently not used!! (the data is copied as asm-text in the .s file)
 tile_map_filename = "scripts/lens/ROTAZOOM-TILEMAP.DAT"
 tile_pixel_data_filename = "scripts/lens/ROTAZOOM-TILEDATA.DAT"
+pos_and_rotate_filename = "scripts/lens/ROTAZOOM-POS-ROTATE.DAT"
 # Note: we want to end up with a 32x32 tile map, so we first create a 16x16 tile map and replicate it four times!
 # A full 32x32 tile map (256x256 pixels) is not possible, due to the amount of unique tiles that requires.
 half_map_width = 16
@@ -185,7 +185,9 @@ def generate_pos_and_rotation_frames():
     scalea = -0.01
     frame = 0
     
-    pos_and_rotation_data  = "pos_and_rotation_data:\n  .byte "
+    # pos_and_rotation_data_str  = "pos_and_rotation_data:\n  .byte "
+    
+    pos_and_rotation_data = []
     
     first_number_added = False
     for frame in range(2000):
@@ -205,9 +207,7 @@ def generate_pos_and_rotation_frames():
         #putw(ya,fp);
         #rotate(x,y,xa,ya);
         
-        # IMPORTANT: y has to be NEGATED!
-        
-        print('frame: '+str(frame)+' x: '+str(x)+' y: '+str(y)+' xa: '+str(xa)+' ya: '+str(ya)+' sc: '+str(scale))
+        # print('frame: '+str(frame)+' x: '+str(x)+' y: '+str(y)+' xa: '+str(xa)+' ya: '+str(ya)+' sc: '+str(scale))
 
         comma = ", "
         if (not first_number_added):
@@ -223,37 +223,50 @@ def generate_pos_and_rotation_frames():
         sine_rotate = int(-xa / 8)
         x_sub_position = int(x*256 / 2)
         y_sub_position = int(y*256 / 2)
-        #x_position = int(x / 2)
-        #y_position = int(y / 2)
         
         if cosine_rotate < 0:
             cosine_rotate = cosine_rotate+256*256
         if sine_rotate < 0:
             sine_rotate = sine_rotate+256*256
         if x_sub_position < 0:
-            #x_position = x_position+256*256
             x_sub_position = x_sub_position+256*256*256
         if y_sub_position < 0:
-            #y_position = y_position+256*256
             y_sub_position = y_sub_position+256*256*256
         
-        pos_and_rotation_data += comma + str(cosine_rotate % 256)
-        pos_and_rotation_data += ", " + str(cosine_rotate // 256)
+        '''
+        pos_and_rotation_data_str += comma + str(cosine_rotate % 256)
+        pos_and_rotation_data_str += ", " + str(cosine_rotate // 256)
         
-        pos_and_rotation_data += ", " + str(sine_rotate % 256)
-        pos_and_rotation_data += ", " + str(sine_rotate // 256)
+        pos_and_rotation_data_str += ", " + str(sine_rotate % 256)
+        pos_and_rotation_data_str += ", " + str(sine_rotate // 256)
         
-        pos_and_rotation_data += ", " + str(x_sub_position % 256)
-        pos_and_rotation_data += ", " + str((x_sub_position//256) % 256)
-        pos_and_rotation_data += ", " + str((x_sub_position//256) // 256)
+        pos_and_rotation_data_str += ", " + str(x_sub_position % 256)
+        pos_and_rotation_data_str += ", " + str((x_sub_position//256) % 256)
+        pos_and_rotation_data_str += ", " + str((x_sub_position//256) // 256)
         
-        pos_and_rotation_data += ", " + str(y_sub_position % 256)
-        pos_and_rotation_data += ", " + str((y_sub_position//256) % 256)
-        pos_and_rotation_data += ", " + str((y_sub_position//256) // 256)
-        
+        pos_and_rotation_data_str += ", " + str(y_sub_position % 256)
+        pos_and_rotation_data_str += ", " + str((y_sub_position//256) % 256)
+        pos_and_rotation_data_str += ", " + str((y_sub_position//256) // 256)
+            
         if (frame % 32 == 31):
-            pos_and_rotation_data += "\n  .byte "
+            pos_and_rotation_data_str += "\n  .byte "
             first_number_added = False
+        '''
+        
+        pos_and_rotation_data.append(cosine_rotate % 256)
+        pos_and_rotation_data.append(cosine_rotate // 256)
+        
+        pos_and_rotation_data.append(sine_rotate % 256)
+        pos_and_rotation_data.append(sine_rotate // 256)
+        
+        pos_and_rotation_data.append(x_sub_position % 256)
+        pos_and_rotation_data.append((x_sub_position//256) % 256)
+        pos_and_rotation_data.append((x_sub_position//256) // 256)
+        
+        pos_and_rotation_data.append(y_sub_position % 256)
+        pos_and_rotation_data.append((y_sub_position//256) % 256)
+        pos_and_rotation_data.append((y_sub_position//256) // 256)
+        
         
         scale += scalea
 
@@ -278,14 +291,9 @@ def generate_pos_and_rotation_frames():
             if(scalea < 256):
                 scalea += 0.000001 * a
 
-
-    print(pos_and_rotation_data)
-
-
-# FIXME: we need to store the output into a FILE!
-# FIXME: we need to store the output into a FILE!
-# FIXME: we need to store the output into a FILE!
-generate_pos_and_rotation_frames()
+    # print(pos_and_rotation_data_str)
+    
+    return pos_and_rotation_data
 
 
 # Printing out asm for palette:
@@ -304,6 +312,32 @@ for new_color in colors_12bit:
     palette_string += "\n"
 
 print(palette_string)
+
+pos_and_rotation_data = generate_pos_and_rotation_frames()
+
+# We fill each ram bank 15/16th so we can detect easely when to switch to the next bank
+# This means we have to fill 768 entries of 10 (7680 bytes) into each bank and fill it with zeros.
+
+pos_and_rotate_packed = []
+idx = 0
+for n in range(7680):
+    pos_and_rotate_packed.append(pos_and_rotation_data[idx])
+    idx += 1
+for n in range(512):
+    pos_and_rotate_packed.append(0)
+for n in range(7680):
+    pos_and_rotate_packed.append(pos_and_rotation_data[idx])
+    idx += 1
+for n in range(512):
+    pos_and_rotate_packed.append(0)
+for n in range(len(pos_and_rotation_data)-(7680+7680)):
+    pos_and_rotate_packed.append(pos_and_rotation_data[idx])
+    idx += 1
+
+tableFile = open(pos_and_rotate_filename, "wb")
+tableFile.write(bytearray(pos_and_rotate_packed))
+tableFile.close()
+print("pos and rotate data written to file: " + pos_and_rotate_filename)
 
 
 tile_index = 0
