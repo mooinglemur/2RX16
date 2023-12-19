@@ -2,16 +2,16 @@ from PIL import Image
 import hashlib
 import math
 
-PRINT_MAP_AS_ASM = 1  # otherwise write to BIN file
-PRINT_TILEDATA_AS_ASM = 1  # otherwise write to BIN file
+PRINT_MAP_AS_ASM = 0  # otherwise write to DAT file
+PRINT_TILEDATA_AS_ASM = 0  # otherwise write to DAT file
 
 source_image_filename = "assets/lens/LENSPIC.png"  # This is the background picture (the monster)
 source_image_width = 320
 source_image_height = 200
 
 # FIXME: these .bin files are currently not used!! (the data is copied as asm-text in the .s file)
-tile_map_filename = "scripts/lens/ROTAZOOM-TILEMAP.BIN"
-tile_pixel_data_filename = "scripts/lens/ROTAZOOM-TILEDATA.BIN"
+tile_map_filename = "scripts/lens/ROTAZOOM-TILEMAP.DAT"
+tile_pixel_data_filename = "scripts/lens/ROTAZOOM-TILEDATA.DAT"
 # Note: we want to end up with a 32x32 tile map, so we first create a 16x16 tile map and replicate it four times!
 # A full 32x32 tile map (256x256 pixels) is not possible, due to the amount of unique tiles that requires.
 half_map_width = 16
@@ -281,11 +281,7 @@ def generate_pos_and_rotation_frames():
 # FIXME: we need to store the output into a FILE!
 generate_pos_and_rotation_frames()
 
-# FIXME!
-# FIXME!
-# FIXME!
-exit()
-    
+
 # Printing out asm for palette:
 palette_string = ""
 for new_color in colors_12bit:
@@ -337,7 +333,23 @@ for tile_y in range(half_map_height):
         tile_index = tile_map[tile_y][tile_x]
         tile_map_flat.append(tile_index)
         tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
+    for tile_x in range(half_map_width):
+        tile_index = tile_map[tile_y][tile_x]
+        tile_map_flat.append(tile_index)
+        tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
     tilemap_asm_string += "\n"
+for tile_y in range(half_map_height):
+    tilemap_asm_string += "  .byte "
+    for tile_x in range(half_map_width):
+        tile_index = tile_map[tile_y][tile_x]
+        tile_map_flat.append(tile_index)
+        tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
+    for tile_x in range(half_map_width):
+        tile_index = tile_map[tile_y][tile_x]
+        tile_map_flat.append(tile_index)
+        tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
+    tilemap_asm_string += "\n"
+
     
 if (PRINT_MAP_AS_ASM):
     # Printing out asm for tilemap:
@@ -347,7 +359,6 @@ else:
     tableFile.write(bytearray(tile_map_flat))
     tableFile.close()
     print("tile map written to file: " + tile_map_filename)
-
 
 tiles_pixel_asm_string = ""
 tile_pixel_data_flat = []
@@ -362,7 +373,6 @@ if (PRINT_TILEDATA_AS_ASM):
     # Printing out tile data:
     print(tiles_pixel_asm_string)
 else:
-    # FIXME: we might want to PAD this file until its 16kB long!
     tableFile = open(tile_pixel_data_filename, "wb")
     tableFile.write(bytearray(tile_pixel_data_flat))
     tableFile.close()
