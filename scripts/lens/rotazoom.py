@@ -216,12 +216,12 @@ def generate_pos_and_rotation_frames():
         
         # == cosine_rotate is +ya / 8 ==
         # == sine_rotate is   -xa / 8 ==
-        # == x_position is     -x / 2 ==
+        # == x_position is     +x / 2 ==
         # == y_position is     +y / 2 ==
         
         cosine_rotate = int(ya / 8)
         sine_rotate = int(-xa / 8)
-        x_position = int(-x / 2)
+        x_position = int(x / 2)
         y_position = int(y / 2)
         
         if cosine_rotate < 0:
