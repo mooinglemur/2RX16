@@ -259,7 +259,7 @@ infinite_loop:
     
     rts
 
-; This is just a dumb verison of a proper vsync    
+; This is just a dumb verison of a proper vsync-wait
 dumb_wait_for_vsync:
 
     ; We wait until SCANLINE == $1FF (indicating the beam is off screen, lines 512-524)

@@ -22,6 +22,11 @@ VERA_DATA0        = $9F23
 VERA_DATA1        = $9F24
 VERA_CTRL         = $9F25
 
+VERA_IEN          = $9F26
+VERA_ISR          = $9F27
+VERA_IRQLINE_L    = $9F28
+VERA_SCANLINE_L   = $9F28
+
 VERA_DC_VIDEO     = $9F29  ; DCSEL=0
 VERA_DC_HSCALE    = $9F2A  ; DCSEL=0
 VERA_DC_VSCALE    = $9F2B  ; DCSEL=0
@@ -250,6 +255,9 @@ keep_rotating:
     lda #>(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
     sta VERA_ADDR_ZP_TO+1
     
+    ; FIXME: replace this with a proper vsync-wait!
+    jsr dumb_wait_for_vsync
+    
     jsr draw_rotated_tilemap
     
 ; FIXME!
@@ -306,6 +314,7 @@ pos_and_rotate_bank_is_ok:
 
     rts
     
+; For debugging
 wait_a_few_ms:
     ldx #8
 wait_a_few_ms_256:
@@ -321,6 +330,23 @@ wait_a_few_ms_1:
     bne wait_a_few_ms_256
     rts
 
+
+
+; This is just a dumb verison of a proper vsync-wait
+dumb_wait_for_vsync:
+
+    ; We wait until SCANLINE == $1FF (indicating the beam is off screen, lines 512-524)
+wait_for_scanline_bit8:
+    lda VERA_IEN
+    and #%01000000
+    beq wait_for_scanline_bit8
+    
+wait_for_scanline_low:
+    lda VERA_SCANLINE_L
+    cmp #$FF
+    bne wait_for_scanline_low
+
+    rts
 
 
 
