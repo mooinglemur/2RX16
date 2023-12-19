@@ -140,6 +140,7 @@ setup_vera_for_layer0_bitmap:
     sta VERA_DC_HSCALE
     sta VERA_DC_VSCALE
     
+; This is for debugging:
 ;    lda #3
 ;    sta VERA_DC_BORDER
     
@@ -259,10 +260,6 @@ keep_rotating:
     jsr dumb_wait_for_vsync
     
     jsr draw_rotated_tilemap
-    
-; FIXME!
-;tmp_loop:
-;    jmp tmp_loop
     
     clc
     lda FRAME_NR

@@ -102,12 +102,14 @@ SINE_OF_ANGLE             = $53 ; 53
 
 BITMAP_QUADRANT_BUFFER    = $6000  ; HALF_LENS_WIDTH * HALF_LENS_HEIGHT bytes = 3068 bytes (= $BFC, so $C00 is ok)
 LENS_POSITIONS_ADDRESS    = $6C00  ; around 350? (30 fps) frames of 4 bytes of positions (X and Y each 2 bytes) =~ 1400 bytes (so $600 is enough?)
+
 Y_TO_ADDRESS_LOW          = $7600
 Y_TO_ADDRESS_HIGH         = $7700
 Y_TO_ADDRESS_BANK         = $7800  ; when Y is positive, BANK is always 0 (so technically we dont need this) 
 NEG_Y_TO_ADDRESS_LOW      = $7900
 NEG_Y_TO_ADDRESS_HIGH     = $7A00
 NEG_Y_TO_ADDRESS_BANK     = $7B00
+
 DOWNLOAD_RAM_ADDRESS      = $A000
 UPLOAD_RAM_ADDRESS        = $A000
 
@@ -118,9 +120,6 @@ SPRITES_VRAM_ADDRESS  = $12000   ; if you CHANGE this you also have to change qu
 
 
 ; === Other constants ===
-
-BITMAP_WIDTH = 256
-BITMAP_HEIGHT = 192
 
 HALF_LENS_WIDTH = 59            ; 117 total width, 1 pixel overlapping so 117 // 2 + 1 = 59 (or 118 // 2 if you will)
 HALF_LENS_HEIGHT = 52           ; 103 total height, 1 pixel overlapping so 103 // 2 + 1 = 52 (or 104 // 2 if you will)
@@ -565,7 +564,7 @@ clear_download_buffer:
     
     ; Number of bytes to clear is: HALF_LENS_WIDTH*HALF_LENS_HEIGHT
     
-    ; FIXME: We *ASSUME* this is 59*52=3068 bytes. So clearing 12*256 would be enough
+    ; TODO: We *ASSUME* this is 59*52=3068 bytes. So clearing 12*256 would be enough
     
     lda #0
     
@@ -645,10 +644,7 @@ clear_next_256:
     ldx #0
 clear_next_1:
 
-; FIXME: we should CLEAR! (for now filling with red)
     stz VERA_DATA0
-;    lda #2
-;    sta VERA_DATA0
 
     inx
     bne clear_next_1
