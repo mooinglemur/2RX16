@@ -288,8 +288,7 @@ keep_rotating:
     
 pos_and_rotate_bank_is_ok:
 
-; FIXME!
-    jsr wait_a_few_ms
+;    jsr wait_a_few_ms
     
     ; check if 2000 frames played (= $7D0)
     lda FRAME_NR+1

@@ -22,6 +22,11 @@ VERA_DATA0        = $9F23
 VERA_DATA1        = $9F24
 VERA_CTRL         = $9F25
 
+VERA_IEN          = $9F26
+VERA_ISR          = $9F27
+VERA_IRQLINE_L    = $9F28
+VERA_SCANLINE_L   = $9F28
+
 VERA_DC_VIDEO     = $9F29  ; DCSEL=0
 VERA_DC_HSCALE    = $9F2A  ; DCSEL=0
 VERA_DC_VSCALE    = $9F2B  ; DCSEL=0
@@ -200,24 +205,26 @@ load_next_upload_quadrant:
     jsr clear_sprite_memory
     jsr clear_download_buffer ; TODO: this is not really needed, but makes debugging easier
     
-; FIXME: this might be too early, sprite data is not filled yet! (and this will flip the buffer, right?)
-    jsr setup_sprites
-    
+
+    ; FIXME: disable all sprites beforehand!
     ; FIXME: we have to set X1-increment and X1-position to 0! (NOW we rely on the DEFAULT settings of VERA!)
 
     
-move_lens:
-    ; FIXME: we should *DOUBLE BUFFER* the SPRITES! (we already have most for this in place!)
-    ;         now we are simply resetting to the single buffer each time, but we should *switch* (aka turn on/off) between the quadruples of sprites
+    ; We start filling the first 4 sprites (QUADRANT = 0 instead of 4)
     lda #0
     sta QUADRANT
+    
+move_lens:
+    ; This will fill the buffer for 4 sprites
     jsr download_and_upload_quadrants
 
-;tmp_loop:
-;    jmp tmp_loop
 
+    ; FIXME: replace this with something proper!
+    jsr dumb_wait_for_vsync
+    
+    ; IMPORTANT: this has to run during/just after VSYNC so the other sprites (which have just been drawn) become visible (aka double buffer)
+    ; It will also flip the Z_DEPTH_BIT so *next* time the other 4 sprites become visible
     jsr setup_sprites
-
 
     ; We set the start position of the lens
     ldy #0
@@ -250,6 +257,22 @@ move_lens:
 infinite_loop:
     jmp infinite_loop
     
+    rts
+
+; This is just a dumb verison of a proper vsync    
+dumb_wait_for_vsync:
+
+    ; We wait until SCANLINE == $1FF (indicating the beam is off screen, lines 512-524)
+wait_for_scanline_bit8:
+    lda VERA_IEN
+    and #%01000000
+    beq wait_for_scanline_bit8
+    
+wait_for_scanline_low:
+    lda VERA_SCANLINE_L
+    cmp #$FF
+    bne wait_for_scanline_low
+
     rts
     
     
@@ -455,6 +478,9 @@ next_quadrant_to_download_and_upload:
     cpx #8
     beq done_downloading_and_uploading_quadrants
     
+; FIXME!    
+;    jsr wait_a_few_ms
+    
     jmp next_quadrant_to_download_and_upload
 
 done_downloading_and_uploading_quadrants:
@@ -466,10 +492,31 @@ done_downloading_and_uploading_quadrants:
     stz QUADRANT
     
 quadrant_is_ok:
-    
 
     rts
-    
+
+
+
+; For debugging    
+wait_a_few_ms:
+    phx
+    phy
+    ldx #64
+wait_a_few_ms_256:
+    ldy #0
+wait_a_few_ms_1:
+    nop
+    nop
+    nop
+    nop
+    iny
+    bne wait_a_few_ms_1
+    dex
+    bne wait_a_few_ms_256
+    ply
+    plx
+    rts
+
     
     
 setup_vera_for_layer0_bitmap:
@@ -689,12 +736,9 @@ setup_next_sprite:
     cpx #4
     bne z_depth_bit_is_correct
     
-; FIXME: ENABLE THIS!!
-; FIXME: ENABLE THIS!!
-; FIXME: ENABLE THIS!!
-;    lda Z_DEPTH_BIT
-;    eor #%00001000
-;    sta Z_DEPTH_BIT
+    lda Z_DEPTH_BIT
+    eor #%00001000
+    sta Z_DEPTH_BIT
 
 z_depth_bit_is_correct:
 
