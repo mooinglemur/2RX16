@@ -13,7 +13,7 @@ This is a bit of an explanation for the LENS/ROTAZOOM parts of the demo:
         - BACKGROUND.DAT: background image (the 'monster')
         - LENS-POS.DAT: the position of the LENS for each frame
         - It generates code that has RAM addresses hardcoded in it. If the base-address needs to be changed then BITMAP_QUADRANT_BUFFER needs to change in the .py and .s file
-      - This output (in console): palette bytes for the *LENS* part (copy paste in .s file)
+      - This outputs (in console): palette bytes for the *LENS* part (copy paste in .s file)
         - This palette consists of 64 colors for the background and 192 colors (3*64) for the same color with different levels of blue-ness
       - It uses the same formula/routines for positioning of the lens as the original
       - It uses (almost) the same formula for the lens-distorion-effect as the original
@@ -33,8 +33,15 @@ This is a bit of an explanation for the LENS/ROTAZOOM parts of the demo:
       - Right now, there is a 'dumb_wait_for_vsync' routine that should probably be replaced by a proper one. This waits for the next vsync.
 
 - ROTAZOOM part
-  - Python-script:
-      - This output (in console): palette bytes for the *ROTAZOOM* part (copy paste in .s file)
+  - To build the needed .DAT file:
+    - change dir to the root dir of the repo
+    - python ./scripts/lens/rotazoom.py
+      - This requires one input file (in assets/lens): LENS.png
+      - This outputs files (in scripts/lens): 
+        - ROTAZOOM-TILEMAP.DAT (containing the FX tilemap)
+        - ROTAZOOM-TILEDATA.DAT (containing the pixels in the tiles, right now 149 unique tiles)
+        - ROTAZOOM-POS-ROTATE.DAT (contains the position / rotate data needed for the FX affine helper. For each frame: 10 bytes)
+      - This outputs (in console): palette bytes for the *ROTAZOOM* part (copy paste in .s file)
         - This palette *shares* the same first 64 colors of the LENS part, but also contains *new* colors (created when converting from 256x256 to 128x128 pixels)
       - It uses the same formula/routines for rotation, zooming and positioning of the background as the original
         - There is a conversion between the original formula and the way the FX affine helper works: this is probably not perfect and might need tweaking.
