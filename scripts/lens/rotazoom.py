@@ -221,6 +221,8 @@ def generate_pos_and_rotation_frames():
         
         cosine_rotate = int(ya / 8)
         sine_rotate = int(-xa / 8)
+        x_sub_position = int(x*256 / 2)
+        y_sub_position = int(y*256 / 2)
         x_position = int(x / 2)
         y_position = int(y / 2)
         
@@ -230,8 +232,10 @@ def generate_pos_and_rotation_frames():
             sine_rotate = sine_rotate+256*256
         if x_position < 0:
             x_position = x_position+256*256
+            x_sub_position = x_sub_position+256*256*256
         if y_position < 0:
             y_position = y_position+256*256
+            y_sub_position = y_sub_position+256*256*256
         
         pos_and_rotation_data += comma + str(cosine_rotate % 256)
         pos_and_rotation_data += ", " + str(cosine_rotate // 256)
@@ -239,9 +243,11 @@ def generate_pos_and_rotation_frames():
         pos_and_rotation_data += ", " + str(sine_rotate % 256)
         pos_and_rotation_data += ", " + str(sine_rotate // 256)
         
+        pos_and_rotation_data += ", " + str(x_sub_position % 256)
         pos_and_rotation_data += ", " + str(x_position % 256)
         pos_and_rotation_data += ", " + str(x_position // 256)
         
+        pos_and_rotation_data += ", " + str(y_sub_position % 256)
         pos_and_rotation_data += ", " + str(y_position % 256)
         pos_and_rotation_data += ", " + str(y_position // 256)
         
