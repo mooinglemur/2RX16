@@ -280,7 +280,7 @@ keep_rotating:
     rts
     
 wait_a_few_ms:
-    ldx #16
+    ldx #8
 wait_a_few_ms_256:
     ldy #0
 wait_a_few_ms_1:
