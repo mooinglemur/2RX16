@@ -481,7 +481,7 @@ background_color = (0,0,0)
 
 pygame.init()
 
-pygame.display.set_caption('X16 2R Lens test')
+pygame.display.set_caption('X16 2R Rotazoom/tilemap test')
 screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 clock = pygame.time.Clock()
 
