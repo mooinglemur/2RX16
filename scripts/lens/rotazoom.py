@@ -1,4 +1,5 @@
 from PIL import Image
+import pygame
 import hashlib
 import math
 
@@ -342,7 +343,7 @@ print("pos and rotate data written to file: " + pos_and_rotate_filename)
 
 tile_index = 0
 unique_tiles = {}
-tile_map = []
+tile_map = []  # this is actually a *quarter* of the tilemap
 tiles_pixel_data = []
 
 for tile_y in range(half_map_height):
@@ -419,3 +420,100 @@ else:
     print("tile data written to file: " + tile_pixel_data_filename)
 
 print("nr of unique tiles: " + str(len(unique_tiles.keys())))
+
+
+
+screen_width = 256
+screen_height = 256
+scale = 3
+
+background_color = (0,0,0)
+
+pygame.init()
+
+pygame.display.set_caption('X16 2R Lens test')
+screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
+clock = pygame.time.Clock()
+
+def run():
+
+    running = True
+    
+    frame_nr = 0
+    
+    screen.fill(background_color)
+    
+    '''
+    for source_y in range(128):
+        for source_x in range(128):
+
+            y_screen = source_y
+            x_screen = source_x
+            
+            pixel_color = colors_12bit[new_pixels[source_y][source_x]]
+            
+            pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale*2, y_screen*scale*2, scale*2, scale*2))
+    '''
+
+    black_tile_string = '0' * 64
+    empty_tile_index = unique_tiles[black_tile_string]
+
+    for tile_y in range(half_map_height):
+        for tile_x in range(half_map_width):
+            
+            tile_index = tile_map[tile_y][tile_x]
+            tile_data = tiles_pixel_data[tile_index]
+
+            if (tile_index != empty_tile_index):
+                tile_bg_color = (0x33, 0x00, 0x33)
+                pygame.draw.rect(screen, tile_bg_color, pygame.Rect(tile_x*8*scale, tile_y*8*scale, 8*scale, 8*scale))
+            
+            grid_color = (0x33, 0x33, 0x33)
+            pygame.draw.rect(screen, grid_color, pygame.Rect(tile_x*8*scale, tile_y*8*scale, 8*scale, 8*scale), 1)
+            
+            for y_in_tile in range(8):
+                for x_in_tile in range(8):
+                    clr_idx = tile_data[y_in_tile*8+x_in_tile]
+                    if clr_idx != 0:
+                        pixel_color = colors_12bit[tile_data[y_in_tile*8+x_in_tile]]
+                        
+                        x_screen = tile_x*8 + x_in_tile
+                        y_screen = tile_y*8 + y_in_tile
+                        
+                        pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
+    
+    while running:
+        # TODO: We might want to set this to max?
+        clock.tick(60)
+        
+        for event in pygame.event.get():
+
+            if event.type == pygame.QUIT: 
+                running = False
+
+            '''
+            # if event.type == pygame.KEYDOWN:
+                    
+                #if event.key == pygame.K_LEFT:
+                #if event.key == pygame.K_RIGHT:
+                #if event.key == pygame.K_COMMA:
+                #if event.key == pygame.K_PERIOD:
+                #if event.key == pygame.K_UP:
+                #if event.key == pygame.K_DOWN:
+                    
+            #if event.type == pygame.MOUSEMOTION: 
+                # newrect.center = event.pos
+            '''
+            
+
+        
+        pygame.display.update()
+        
+        #time.sleep(0.01)
+   
+        
+    pygame.quit()
+
+
+    
+run()
