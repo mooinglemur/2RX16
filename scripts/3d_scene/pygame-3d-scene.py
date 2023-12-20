@@ -94,7 +94,7 @@ def load_vertices_and_faces(frame_nr):
     
     # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
-    obj_file = open('assets/3d_scene/U2E_anim' + str(frame_nr) + '.obj', 'r')
+    obj_file = open('assets/3d_scene/U2E_anim/U2E_anim' + str(frame_nr) + '.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube1.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube50.obj', 'r')
     lines = obj_file.readlines()
