@@ -6,6 +6,8 @@ import math
 PRINT_MAP_AS_ASM = 0  # otherwise write to DAT file
 PRINT_TILEDATA_AS_ASM = 0  # otherwise write to DAT file
 
+TRY_ONLY_HALF_X = False  # Trying to fit the original 256x256px image into half a 32x32 tile map (effectively 128x256px)
+
 source_image_filename = "assets/lens/LENSPIC.png"  # This is the background picture (the monster)
 source_image_width = 320
 source_image_height = 200
@@ -73,6 +75,23 @@ def get_average_12bit_color(four_pixels):
     
     return (avg_r, avg_g, avg_b)
         
+def get_average_12bit_color_2(two_pixels):
+    avg_r = 0
+    avg_g = 0
+    avg_b = 0
+    
+    # TODO: is there a better way to average 4 colors?
+    for clr_idx in two_pixels:
+        avg_r += palette_bytes[clr_idx*3]
+        avg_g += palette_bytes[clr_idx*3+1]
+        avg_b += palette_bytes[clr_idx*3+2]
+        
+    avg_r = int(avg_r/2) & 0xF0
+    avg_g = int(avg_g/2) & 0xF0
+    avg_b = int(avg_b/2) & 0xF0
+    
+    return (avg_r, avg_g, avg_b)
+
         
 def get_new_or_existing_color(average_12bit_color):
     new_clr_idx = None
@@ -94,35 +113,63 @@ def get_new_or_existing_color(average_12bit_color):
 # We need to crop the image to 256x256 and shrink/scale down to 128x128 (we do that in one go)
 
 new_pixels = []
-for y in range(128):
-    new_pixels.append([])
+
+if (TRY_ONLY_HALF_X):
+    for y in range(256):
+        new_pixels.append([])
+        for x in range(128):
+            new_pixels[y].append(None)
+            
     for x in range(128):
-        new_pixels[y].append(None)
+        for y in range(256):
+            
+            # The original picture is 320x200. We downscale from 256x256 to 128x256, so we are missing 56 horizontal lines (at the bottom). We make them black.
+            source_x = 32 + x*2 + 12
+            source_y = 0 + y - 2
+            
+            new_clr_idx = None
+            if (source_y < 0 or source_y >= 200):
+                # TODO: We assume color 0 is black. Is this true?
+                new_clr_idx = 0
+            else:
+                two_pixels = []
+                two_pixels.append(px[source_x  , source_y  ])
+                two_pixels.append(px[source_x+1, source_y  ])
+                
+                average_12bit_color = get_average_12bit_color_2(two_pixels)
+                
+                new_clr_idx = get_new_or_existing_color(average_12bit_color)
 
-
-for x in range(128):
+            new_pixels[y][x] = new_clr_idx
+else:
     for y in range(128):
-        
-        # The original picture is 320x200. We downscale from 256x256 to 128x128, so we are missing 56 horizontal lines (at the bottom). We make them black.
-        source_x = 32 + x*2
-        source_y = 0 + y*2
-        
-        new_clr_idx = None
-        if (source_y < 0 or source_y >= 200):
-            # TODO: We assume color 0 is black. Is this true?
-            new_clr_idx = 0
-        else:
-            four_pixels = []
-            four_pixels.append(px[source_x  , source_y  ])
-            four_pixels.append(px[source_x+1, source_y  ])
-            four_pixels.append(px[source_x  , source_y+1])
-            four_pixels.append(px[source_x+1, source_y+1])
+        new_pixels.append([])
+        for x in range(128):
+            new_pixels[y].append(None)
             
-            average_12bit_color = get_average_12bit_color(four_pixels)
+    for x in range(128):
+        for y in range(128):
             
-            new_clr_idx = get_new_or_existing_color(average_12bit_color)
+            # The original picture is 320x200. We downscale from 256x256 to 128x128, so we are missing 56 horizontal lines (at the bottom). We make them black.
+            source_x = 32 + x*2
+            source_y = 0 + y*2
+            
+            new_clr_idx = None
+            if (source_y < 0 or source_y >= 200):
+                # TODO: We assume color 0 is black. Is this true?
+                new_clr_idx = 0
+            else:
+                four_pixels = []
+                four_pixels.append(px[source_x  , source_y  ])
+                four_pixels.append(px[source_x+1, source_y  ])
+                four_pixels.append(px[source_x  , source_y+1])
+                four_pixels.append(px[source_x+1, source_y+1])
+                
+                average_12bit_color = get_average_12bit_color(four_pixels)
+                
+                new_clr_idx = get_new_or_existing_color(average_12bit_color)
 
-        new_pixels[y][x] = new_clr_idx
+            new_pixels[y][x] = new_clr_idx
 
     
 ''' Original rotation + position:
@@ -346,6 +393,10 @@ unique_tiles = {}
 tile_map = []  # this is actually a *quarter* of the tilemap
 tiles_pixel_data = []
 
+if (TRY_ONLY_HALF_X):
+    # FIXME: the naming is not correct here!
+    half_map_height = half_map_height * 2
+
 for tile_y in range(half_map_height):
     tile_map.append([])
     for tile_x in range(half_map_width):
@@ -364,7 +415,6 @@ for tile_y in range(half_map_height):
             tiles_pixel_data.append(tile_pixel_data)
             tile_map[tile_y][tile_x] = tile_index
             tile_index += 1
-
 
 tilemap_asm_string = ""
 tile_map_flat = []
