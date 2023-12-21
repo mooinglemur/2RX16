@@ -117,6 +117,8 @@ entry:
 	inx
 	bne :-
 
+	DISABLE_SPRITES
+
 	; begin "forest" subroutines
 
 	jsr generate_shift_by_one_pixel_code

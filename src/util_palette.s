@@ -67,6 +67,15 @@ fade_iter3:
 fade_iter4:
 	.res 1
 
+flush_flag:
+	.res 1
+flush_flag2:
+	.res 1
+flush_flag3:
+	.res 1
+flush_flag4:
+	.res 1
+
 palette_offset:
 	.res 1
 palette_offset2:
@@ -138,6 +147,8 @@ pal44:
 	lda #16
 	sta fade_iter
 
+	stz flush_flag
+
 	rts
 .endproc
 
@@ -200,6 +211,8 @@ pal44:
 
 	lda #16
 	sta fade_iter2
+
+	stz flush_flag2
 
 	rts
 .endproc
@@ -264,6 +277,8 @@ pal44:
 	lda #16
 	sta fade_iter3
 
+	stz flush_flag3
+
 	rts
 .endproc
 
@@ -326,6 +341,8 @@ pal44:
 
 	lda #16
 	sta fade_iter4
+
+	stz flush_flag4
 
 	rts
 .endproc
@@ -420,6 +437,8 @@ done_y:
 	lda diff+i
 	sta diff_palette_exp+i,y
 .endrepeat
+	lda #1
+	sta flush_flag
 	rts
 
 offset:
@@ -440,6 +459,7 @@ diff:
 .proc apply_palette_fade_step
 	lda fade_iter
 	beq end
+	sta flush_flag
 
 	dec fade_iter
 
@@ -473,6 +493,7 @@ end:
 .proc apply_palette_fade_step2
 	lda fade_iter2
 	beq end
+	sta flush_flag2
 
 	dec fade_iter2
 
@@ -506,6 +527,7 @@ end:
 .proc apply_palette_fade_step3
 	lda fade_iter3
 	beq end
+	sta flush_flag3
 
 	dec fade_iter3
 
@@ -540,6 +562,7 @@ end:
 .proc apply_palette_fade_step4
 	lda fade_iter4
 	beq end
+	sta flush_flag4
 
 	dec fade_iter4
 
@@ -572,8 +595,7 @@ end:
 
 
 .proc flush_palette
-	lda fade_iter
-	cmp #16
+	lda flush_flag
 	beq end
 
 	lda palette_offset
@@ -591,8 +613,7 @@ end:
 .endproc
 
 .proc flush_palette2
-	lda fade_iter2
-	cmp #16
+	lda flush_flag2
 	beq end
 
 	lda palette_offset2
@@ -610,8 +631,7 @@ end:
 .endproc
 
 .proc flush_palette3
-	lda fade_iter3
-	cmp #16
+	lda flush_flag3
 	beq end
 
 	lda palette_offset3
@@ -629,8 +649,7 @@ end:
 .endproc
 
 .proc flush_palette4
-	lda fade_iter4
-	cmp #16
+	lda flush_flag4
 	beq end
 
 	lda palette_offset4
