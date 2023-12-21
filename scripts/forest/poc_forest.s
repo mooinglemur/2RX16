@@ -77,7 +77,7 @@ CURRENT_SCROLLTEXT_BANK   = $42
 
 ; === RAM addresses ===
 
-SCROLLER_BUFFER_ADDRESS   = $6000  ; (237+1)*31 = 7378 bytes (= $1CD2, so rougly $1D00 is ok) -> Note: the +1 is the extra column used to add a single column just before 'shifting' every pixel to the left
+SCROLLER_BUFFER_ADDRESS   = $8000  ; (237+1)*31 = 7378 bytes (= $1CD2, so rougly $1D00 is ok) -> Note: the +1 is the extra column used to add a single column just before 'shifting' every pixel to the left
 SHIFT_PIXEL_CODE_ADDRESS  = $5000  ; 237*6 + rts = 1423 bytes
 
 SCROLLTEXT_RAM_ADDRESS    = $A000
