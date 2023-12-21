@@ -19,15 +19,15 @@ lens_source_image_height = 200
 source_image_filename = "assets/lens/LENSPIC.png"  # This is the background picture (the monster)
 source_image_width = 320
 source_image_height = 200
-bitmap_filename = "scripts/lens/BACKGROUND.DAT"
+bitmap_filename = "scripts/lens/LENS-BACKGROUND.DAT"
 lens_positions_filename = "scripts/lens/LENS-POS.DAT"
-download_code_filename = "scripts/lens/DOWNLOAD?.DAT"  # The question mark will be filled in later
-upload_code_filename = "scripts/lens/UPLOAD?-?.DAT"    # The question marks will be filled in later
+download_code_filename = "scripts/lens/LENS-DOWNLOAD?.DAT"  # The question mark will be filled in later
+upload_code_filename = "scripts/lens/LENS-UPLOAD?-?.DAT"    # The question marks will be filled in later
 
 screen_width = 320
 screen_height = 200
 
-BITMAP_QUADRANT_BUFFER = 0x6000
+BITMAP_QUADRANT_BUFFER = 0x8000
 half_lens_width = 59 # 117 total width, 1 pixel overlapping so 117 // 2 + 1 = 59 (or 118 // 2 if you will)
 half_lens_height = 52 # 103 total height, 1 pixel overlapping so 103 // 2 + 1 = 52 (or 104 // 2 if you will)
 lens_zoom = 16
@@ -49,12 +49,25 @@ colors_12bit = []
 byte_index = 0
 nr_of_palette_bytes = 3*256
 while (byte_index < nr_of_palette_bytes):
-    
-    red = palette_bytes[byte_index]
+    try:
+        red = palette_bytes[byte_index]
+    except:
+        red = 0
+
     byte_index += 1
-    green = palette_bytes[byte_index]
+
+    try:
+        green = palette_bytes[byte_index]
+    except:
+        green = 0
+
     byte_index += 1
-    blue = palette_bytes[byte_index]
+
+    try:
+        blue = palette_bytes[byte_index]
+    except:
+        blue = 0
+
     byte_index += 1
     
     red = red & 0xF0
@@ -498,8 +511,8 @@ for frame_nr in range(1000):
             
     lens_speed_y += 2/64
 
-    # FIXME: we now add every other frame, but we should interpolate from 70fps frames to 30fps frames instead!
-    if (frame_nr % 2 == 0):
+    # interpolate from 70fps to 30fps
+    if (math.floor(frame_nr*(30/70)) > math.floor((frame_nr-1)*(30/70))):
         lens_positions.append(lens_pos_x % 256)
         lens_positions.append(lens_pos_x // 256)
         if int(lens_pos_y) < 0:

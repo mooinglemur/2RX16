@@ -572,6 +572,10 @@ end:
 
 
 .proc flush_palette
+	lda fade_iter
+	cmp #16
+	beq end
+
 	lda palette_offset
 	jsr point_data0_to_palette
 
@@ -582,10 +586,15 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+end:
 	rts
 .endproc
 
 .proc flush_palette2
+	lda fade_iter2
+	cmp #16
+	beq end
+
 	lda palette_offset2
 	jsr point_data0_to_palette
 
@@ -596,10 +605,15 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+end:
 	rts
 .endproc
 
 .proc flush_palette3
+	lda fade_iter3
+	cmp #16
+	beq end
+
 	lda palette_offset3
 	jsr point_data0_to_palette
 
@@ -610,10 +624,15 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+end:
 	rts
 .endproc
 
 .proc flush_palette4
+	lda fade_iter4
+	cmp #16
+	beq end
+
 	lda palette_offset4
 	jsr point_data0_to_palette
 
@@ -624,6 +643,7 @@ shadowpal:
 	sta Vera::Reg::Data0
 	inx
 	bne shadowpal
+end:
 	rts
 .endproc
 

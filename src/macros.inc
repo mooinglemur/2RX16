@@ -193,7 +193,7 @@ syncloop:
 	wai
 	lda syncval
 	cmp #val
-	bne syncloop
+	bcc syncloop
 .endmacro
 
 .macro DISABLE_SPRITES

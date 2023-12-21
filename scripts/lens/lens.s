@@ -100,15 +100,15 @@ SINE_OF_ANGLE             = $53 ; 53
 ; === RAM addresses ===
 
 
-BITMAP_QUADRANT_BUFFER    = $6000  ; HALF_LENS_WIDTH * HALF_LENS_HEIGHT bytes = 3068 bytes (= $BFC, so $C00 is ok)
-LENS_POSITIONS_ADDRESS    = $6C00  ; around 350? (30 fps) frames of 4 bytes of positions (X and Y each 2 bytes) =~ 1400 bytes (so $600 is enough?)
+BITMAP_QUADRANT_BUFFER    = $8000  ; HALF_LENS_WIDTH * HALF_LENS_HEIGHT bytes = 3068 bytes (= $BFC, so $C00 is ok)
+LENS_POSITIONS_ADDRESS    = $8C00  ; around 350? (30 fps) frames of 4 bytes of positions (X and Y each 2 bytes) =~ 1400 bytes (so $600 is enough?)
 
-Y_TO_ADDRESS_LOW          = $7600
-Y_TO_ADDRESS_HIGH         = $7700
-Y_TO_ADDRESS_BANK         = $7800  ; when Y is positive, BANK is always 0 (so technically we dont need this) 
-NEG_Y_TO_ADDRESS_LOW      = $7900
-NEG_Y_TO_ADDRESS_HIGH     = $7A00
-NEG_Y_TO_ADDRESS_BANK     = $7B00
+Y_TO_ADDRESS_LOW          = $9600
+Y_TO_ADDRESS_HIGH         = $9700
+Y_TO_ADDRESS_BANK         = $9800  ; when Y is positive, BANK is always 0 (so technically we dont need this) 
+NEG_Y_TO_ADDRESS_LOW      = $9900
+NEG_Y_TO_ADDRESS_HIGH     = $9A00
+NEG_Y_TO_ADDRESS_BANK     = $9B00
 
 DOWNLOAD_RAM_ADDRESS      = $A000
 UPLOAD_RAM_ADDRESS        = $A000
@@ -779,7 +779,7 @@ next_packed_color_1:
     rts
 
 
-bitmap_filename:      .byte    "background.dat" 
+bitmap_filename:      .byte    "lens-background.dat" 
 end_bitmap_filename:
 
 load_bitmap_into_vram:
@@ -843,7 +843,7 @@ lens_pos_loaded:
     rts
 
 
-download_filename:      .byte    "download0.dat" 
+download_filename:      .byte    "lens-download0.dat" 
 end_download_filename:
 
 load_download_code_into_banked_ram:
@@ -881,7 +881,7 @@ download_loaded:
     rts
     
     
-upload_filename:      .byte    "upload0-0.dat" 
+upload_filename:      .byte    "lens-upload0-0.dat" 
 end_upload_filename:
 
 load_upload_code_into_banked_ram:
