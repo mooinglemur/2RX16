@@ -375,11 +375,11 @@ nofade:
 
 	; do some of the rotazoom loading
 
-    LOADFILE "ROTAZOOM-TILEDATA.DAT", 0, .loword(TILEDATA_VRAM_ADDRESS), (TILEDATA_VRAM_ADDRESS >> 16)
+	LOADFILE "ROTAZOOM-TILEDATA.DAT", 0, .loword(TILEDATA_VRAM_ADDRESS), (TILEDATA_VRAM_ADDRESS >> 16)
 
-    LOADFILE "ROTAZOOM-TILEMAP.DAT", 0, .loword(MAPDATA_VRAM_ADDRESS), (MAPDATA_VRAM_ADDRESS >> 16)
+	LOADFILE "ROTAZOOM-TILEMAP.DAT", 0, .loword(MAPDATA_VRAM_ADDRESS), (MAPDATA_VRAM_ADDRESS >> 16)
 
-    jsr generate_copy_row_code
+	jsr generate_copy_row_code
 
 	; Now wait for the quick fade to white
 	
@@ -426,7 +426,7 @@ nofade:
 
 	; do the rotazoom itself
 
-    jsr setup_and_draw_rotated_tilemap
+	jsr setup_and_draw_rotated_tilemap
 
 
 	MUSIC_SYNC $6F
@@ -1401,142 +1401,142 @@ generate_next_neg_y_to_address_entry:
 
 .proc generate_copy_row_code
 
-    lda #<COPY_ROW_CODE
-    sta CODE_ADDRESS
-    lda #>COPY_ROW_CODE
-    sta CODE_ADDRESS+1
-    
-    ldy #0                 ; generated code byte counter
-    
-    ldx #0                 ; counts nr of copy instructions
+	lda #<COPY_ROW_CODE
+	sta CODE_ADDRESS
+	lda #>COPY_ROW_CODE
+	sta CODE_ADDRESS+1
+	
+	ldy #0                 ; generated code byte counter
+	
+	ldx #0                 ; counts nr of copy instructions
 
 next_copy_instruction:
 
-    ; -- lda VERA_DATA1 ($9F24)
-    lda #$AD               ; lda ....
-    jsr add_code_byte
-    
-    lda #$24               ; VERA_DATA1
-    jsr add_code_byte
-    
-    lda #$9F         
-    jsr add_code_byte
+	; -- lda VERA_DATA1 ($9F24)
+	lda #$AD               ; lda ....
+	jsr add_code_byte
+	
+	lda #$24               ; VERA_DATA1
+	jsr add_code_byte
+	
+	lda #$9F         
+	jsr add_code_byte
 
-    ; When using the cache for writing we only write 1/4th of the time, so we read 3 extra bytes here (they go into the cache)
-    
-    ; -- lda VERA_DATA1 ($9F24)
-    lda #$AD               ; lda ....
-    jsr add_code_byte
-    
-    lda #$24               ; VERA_DATA1
-    jsr add_code_byte
-    
-    lda #$9F         
-    jsr add_code_byte
+	; When using the cache for writing we only write 1/4th of the time, so we read 3 extra bytes here (they go into the cache)
+	
+	; -- lda VERA_DATA1 ($9F24)
+	lda #$AD               ; lda ....
+	jsr add_code_byte
+	
+	lda #$24               ; VERA_DATA1
+	jsr add_code_byte
+	
+	lda #$9F         
+	jsr add_code_byte
 
-    ; -- lda VERA_DATA1 ($9F24)
-    lda #$AD               ; lda ....
-    jsr add_code_byte
-    
-    lda #$24               ; VERA_DATA1
-    jsr add_code_byte
-    
-    lda #$9F         
-    jsr add_code_byte
+	; -- lda VERA_DATA1 ($9F24)
+	lda #$AD               ; lda ....
+	jsr add_code_byte
+	
+	lda #$24               ; VERA_DATA1
+	jsr add_code_byte
+	
+	lda #$9F         
+	jsr add_code_byte
 
-    ; -- lda VERA_DATA1 ($9F24)
-    lda #$AD               ; lda ....
-    jsr add_code_byte
-    
-    lda #$24               ; VERA_DATA1
-    jsr add_code_byte
-    
-    lda #$9F         
-    jsr add_code_byte
+	; -- lda VERA_DATA1 ($9F24)
+	lda #$AD               ; lda ....
+	jsr add_code_byte
+	
+	lda #$24               ; VERA_DATA1
+	jsr add_code_byte
+	
+	lda #$9F         
+	jsr add_code_byte
 
-    ; We use the cache for writing, we do not want a mask to we store 0 (stz)
+	; We use the cache for writing, we do not want a mask to we store 0 (stz)
 
-    ; -- stz VERA_DATA0 ($9F23)
-    lda #$9C               ; stz ....
-    jsr add_code_byte
+	; -- stz VERA_DATA0 ($9F23)
+	lda #$9C               ; stz ....
+	jsr add_code_byte
 
-    lda #$23               ; $23
-    jsr add_code_byte
-    
-    lda #$9F               ; $9F
-    jsr add_code_byte
+	lda #$23               ; $23
+	jsr add_code_byte
+	
+	lda #$9F               ; $9F
+	jsr add_code_byte
 
-    inx
-    cpx #160/4
-    bne next_copy_instruction
+	inx
+	cpx #160/4
+	bne next_copy_instruction
 
-    ; -- rts --
-    lda #$60
-    jsr add_code_byte
+	; -- rts --
+	lda #$60
+	jsr add_code_byte
 
-    rts
-    
+	rts
+	
 add_code_byte:
-    sta (CODE_ADDRESS),y   ; store code byte at address (located at CODE_ADDRESS) + y
-    iny                    ; increase y
-    cpy #0                 ; if y == 0
-    bne done_adding_code_byte
-    inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
+	sta (CODE_ADDRESS),y   ; store code byte at address (located at CODE_ADDRESS) + y
+	iny                    ; increase y
+	cpy #0                 ; if y == 0
+	bne done_adding_code_byte
+	inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
 done_adding_code_byte:
-    rts
+	rts
 .endproc
 
 .proc setup_and_draw_rotated_tilemap
 
-    ; Setup TO VRAM start address
-    
-    ; FIXME: HACK we are ASSUMING we never reach the second part of VRAM here! (VERA_ADDR_ZP_TO+2 is not used here!)
-    
-    lda #%00000100           ; DCSEL=2, ADDRSEL=0
-    sta VERA_CTRL
-    
-    ; Setting base address and map size
-    
-    lda #(TILEDATA_VRAM_ADDRESS >> 9)
-    and #%11111100   ; only the 6 highest bits of the address can be set
-    ; ora #%00000010   ; clip = 1 -> we are REPEATING. So no clipping.
-    sta VERA_FX_TILEBASE
+	; Setup TO VRAM start address
+	
+	; FIXME: HACK we are ASSUMING we never reach the second part of VRAM here! (VERA_ADDR_ZP_TO+2 is not used here!)
+	
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+	
+	; Setting base address and map size
+	
+	lda #(TILEDATA_VRAM_ADDRESS >> 9)
+	and #%11111100   ; only the 6 highest bits of the address can be set
+	; ora #%00000010   ; clip = 1 -> we are REPEATING. So no clipping.
+	sta VERA_FX_TILEBASE
 
-    lda #(MAPDATA_VRAM_ADDRESS >> 9)
-    ora #%00000010   ; Map size = 32x32 tiles
-    sta VERA_FX_MAPBASE
-    
-    lda #%00000011  ; affine helper mode
-    ; ora #%10000010  ; transparency enabled = 1 -> currently not drawing transparent pixels
-    ora #%00100000  ; cache fill enabled = 1
-    ora #%01000000  ; blit write enabled = 1
-    sta VERA_FX_CTRL
-    
-    
-    lda #POS_AND_ROTATE_START_BANK
-    sta POS_AND_ROTATE_BANK
-    sta RAM_BANK
-    
-    lda #0
-    sta FRAME_NR
-    sta FRAME_NR+1
-    
-    lda #<POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA
-    lda #>POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA+1
-    
-    
+	lda #(MAPDATA_VRAM_ADDRESS >> 9)
+	ora #%00000010   ; Map size = 32x32 tiles
+	sta VERA_FX_MAPBASE
+	
+	lda #%00000011  ; affine helper mode
+	; ora #%10000010  ; transparency enabled = 1 -> currently not drawing transparent pixels
+	ora #%00100000  ; cache fill enabled = 1
+	ora #%01000000  ; blit write enabled = 1
+	sta VERA_FX_CTRL
+	
+	
+	lda #POS_AND_ROTATE_START_BANK
+	sta POS_AND_ROTATE_BANK
+	sta RAM_BANK
+	
+	lda #0
+	sta FRAME_NR
+	sta FRAME_NR+1
+	
+	lda #<POS_AND_ROTATE_RAM_ADDRESS
+	sta POS_AND_ROTATE_DATA
+	lda #>POS_AND_ROTATE_RAM_ADDRESS
+	sta POS_AND_ROTATE_DATA+1
+	
+	
 keep_rotating:
-    lda #<(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
-    sta VERA_ADDR_ZP_TO
-    lda #>(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
-    sta VERA_ADDR_ZP_TO+1
+	lda #<(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
+	sta VERA_ADDR_ZP_TO
+	lda #>(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
+	sta VERA_ADDR_ZP_TO+1
 
 	; temporarily disable FX
 
-    lda #%00000100           ; DCSEL=2, ADDRSEL=0
-    sta VERA_CTRL
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
 
 	stz VERA_FX_CTRL
 	stz VERA_CTRL
@@ -1556,255 +1556,255 @@ keep_rotating:
 
 	; re-enable FX
 	
-    lda #%00000100           ; DCSEL=2, ADDRSEL=0
-    sta VERA_CTRL
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
 
 	lda #%01100011
 	sta VERA_FX_CTRL
 
-    jsr draw_rotated_tilemap
-    
-    clc
-    lda FRAME_NR
-    adc #1
-    sta FRAME_NR
-    lda FRAME_NR+1
-    adc #0
-    sta FRAME_NR+1
-    
-    clc
-    lda POS_AND_ROTATE_DATA
-    adc #10
-    sta POS_AND_ROTATE_DATA
-    lda POS_AND_ROTATE_DATA+1
-    adc #0
-    sta POS_AND_ROTATE_DATA+1
-    
-    ; If we reached $BE00 we should switch to the next bank and start at $A000 again
-    lda POS_AND_ROTATE_DATA+1
-    cmp #$BE
-    bne pos_and_rotate_bank_is_ok
-    
-    lda #<POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA
-    lda #>POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA+1
-    
-    inc POS_AND_ROTATE_BANK
-    lda POS_AND_ROTATE_BANK
-    sta RAM_BANK
-    
+	jsr draw_rotated_tilemap
+	
+	clc
+	lda FRAME_NR
+	adc #1
+	sta FRAME_NR
+	lda FRAME_NR+1
+	adc #0
+	sta FRAME_NR+1
+	
+	clc
+	lda POS_AND_ROTATE_DATA
+	adc #10
+	sta POS_AND_ROTATE_DATA
+	lda POS_AND_ROTATE_DATA+1
+	adc #0
+	sta POS_AND_ROTATE_DATA+1
+	
+	; If we reached $BE00 we should switch to the next bank and start at $A000 again
+	lda POS_AND_ROTATE_DATA+1
+	cmp #$BE
+	bne pos_and_rotate_bank_is_ok
+	
+	lda #<POS_AND_ROTATE_RAM_ADDRESS
+	sta POS_AND_ROTATE_DATA
+	lda #>POS_AND_ROTATE_RAM_ADDRESS
+	sta POS_AND_ROTATE_DATA+1
+	
+	inc POS_AND_ROTATE_BANK
+	lda POS_AND_ROTATE_BANK
+	sta RAM_BANK
+	
 pos_and_rotate_bank_is_ok:
 
 ;    jsr wait_a_few_ms
-    
-    ; check if 1715 frames played (= $6B3)
-    lda FRAME_NR+1
-    cmp #$6
-    bne keep_rotating
-    lda FRAME_NR
-    cmp #$B3
-    bne keep_rotating
-    
-    lda #%00000100           ; DCSEL=2, ADDRSEL=0
-    sta VERA_CTRL
-    
-    lda #%00000000  ; blit write enabled = 0, normal mode
-    sta VERA_FX_CTRL
+	
+	; check if 1715 frames played (= $6B3)
+	lda FRAME_NR+1
+	cmp #$6
+	bne keep_rotating
+	lda FRAME_NR
+	cmp #$B3
+	bne keep_rotating
+	
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+	
+	lda #%00000000  ; blit write enabled = 0, normal mode
+	sta VERA_FX_CTRL
 
-    rts
+	rts
 .endproc
 
 .proc draw_rotated_tilemap
 
-    ldy #0
-    
-    ; cosine_rotate
-    lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_low
-    sta COSINE_OF_ANGLE
-    iny
-    lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_high
-    sta COSINE_OF_ANGLE+1
-    iny
-    
-    ; sine_rotate
-    lda (POS_AND_ROTATE_DATA), y   ; sine_rotate_low
-    sta SINE_OF_ANGLE
-    iny
-    lda (POS_AND_ROTATE_DATA), y   ; sine_rotate_high
-    sta SINE_OF_ANGLE+1
-    iny
+	ldy #0
+	
+	; cosine_rotate
+	lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_low
+	sta COSINE_OF_ANGLE
+	iny
+	lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_high
+	sta COSINE_OF_ANGLE+1
+	iny
+	
+	; sine_rotate
+	lda (POS_AND_ROTATE_DATA), y   ; sine_rotate_low
+	sta SINE_OF_ANGLE
+	iny
+	lda (POS_AND_ROTATE_DATA), y   ; sine_rotate_high
+	sta SINE_OF_ANGLE+1
+	iny
 
-    lda #%00000110           ; DCSEL=3, ADDRSEL=0
-    sta VERA_CTRL
+	lda #%00000110           ; DCSEL=3, ADDRSEL=0
+	sta VERA_CTRL
 
-    ; starting X position
-    lda (POS_AND_ROTATE_DATA), y   ; x_position_sub
-    sta X_SUB_PIXEL
-    iny
-    
-    lda (POS_AND_ROTATE_DATA), y   ; x_position_low
-    sta X_SUB_PIXEL+1
-    iny
-    
-    lda (POS_AND_ROTATE_DATA), y   ; x_position_high
-    sta X_SUB_PIXEL+2
-    iny
-    
-    ; starting Y position
-    lda (POS_AND_ROTATE_DATA), y   ; y_position_sub
-    sta Y_SUB_PIXEL
-    iny
+	; starting X position
+	lda (POS_AND_ROTATE_DATA), y   ; x_position_sub
+	sta X_SUB_PIXEL
+	iny
+	
+	lda (POS_AND_ROTATE_DATA), y   ; x_position_low
+	sta X_SUB_PIXEL+1
+	iny
+	
+	lda (POS_AND_ROTATE_DATA), y   ; x_position_high
+	sta X_SUB_PIXEL+2
+	iny
+	
+	; starting Y position
+	lda (POS_AND_ROTATE_DATA), y   ; y_position_sub
+	sta Y_SUB_PIXEL
+	iny
 
-    lda (POS_AND_ROTATE_DATA), y   ; y_position_low
-    sta Y_SUB_PIXEL+1
-    iny
-    
-    lda (POS_AND_ROTATE_DATA), y   ; y_position_high
-    sta Y_SUB_PIXEL+2
-    iny
-    
-    lda COSINE_OF_ANGLE       ; X increment low
-    asl
-    sta VERA_FX_X_INCR_L
-    lda COSINE_OF_ANGLE+1
-    rol                      
-    and #%01111111            ; increment is only 15 bits long
-    sta VERA_FX_X_INCR_H
-    
-    lda SINE_OF_ANGLE
-    asl
-    sta VERA_FX_Y_INCR_L      ; Y increment low
-    lda SINE_OF_ANGLE+1
-    rol
-    and #%01111111            ; increment is only 15 bits long
-    sta VERA_FX_Y_INCR_H
+	lda (POS_AND_ROTATE_DATA), y   ; y_position_low
+	sta Y_SUB_PIXEL+1
+	iny
+	
+	lda (POS_AND_ROTATE_DATA), y   ; y_position_high
+	sta Y_SUB_PIXEL+2
+	iny
+	
+	lda COSINE_OF_ANGLE       ; X increment low
+	asl
+	sta VERA_FX_X_INCR_L
+	lda COSINE_OF_ANGLE+1
+	rol                      
+	and #%01111111            ; increment is only 15 bits long
+	sta VERA_FX_X_INCR_H
+	
+	lda SINE_OF_ANGLE
+	asl
+	sta VERA_FX_Y_INCR_L      ; Y increment low
+	lda SINE_OF_ANGLE+1
+	rol
+	and #%01111111            ; increment is only 15 bits long
+	sta VERA_FX_Y_INCR_H
 
-    ldx #0
-    
+	ldx #0
+	
 rotate_copy_next_row_1:
-    lda #%00000110           ; DCSEL=3, ADDRSEL=0
-    sta VERA_CTRL
+	lda #%00000110           ; DCSEL=3, ADDRSEL=0
+	sta VERA_CTRL
 
-    lda #%00110000           ; Setting auto-increment value to 4 byte increment (=%0011) 
-    sta VERA_ADDR_BANK
-    lda VERA_ADDR_ZP_TO+1
-    sta VERA_ADDR_HIGH
-    lda VERA_ADDR_ZP_TO
-    sta VERA_ADDR_LOW
+	lda #%00110000           ; Setting auto-increment value to 4 byte increment (=%0011) 
+	sta VERA_ADDR_BANK
+	lda VERA_ADDR_ZP_TO+1
+	sta VERA_ADDR_HIGH
+	lda VERA_ADDR_ZP_TO
+	sta VERA_ADDR_LOW
 
-    ; Setting the position
-    
-    lda #%00001001           ; DCSEL=4, ADDRSEL=1
-    sta VERA_CTRL
-    
-    lda X_SUB_PIXEL+1
-    sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
-    
-    lda X_SUB_PIXEL+2
-    and #%00000111
-    sta VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
+	; Setting the position
+	
+	lda #%00001001           ; DCSEL=4, ADDRSEL=1
+	sta VERA_CTRL
+	
+	lda X_SUB_PIXEL+1
+	sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
+	
+	lda X_SUB_PIXEL+2
+	and #%00000111
+	sta VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
 
-    lda Y_SUB_PIXEL+1
-    sta VERA_FX_Y_POS_L      ; Y pixel position low [7:0]
-    
-    lda Y_SUB_PIXEL+2
-    and #%00000111
-    sta VERA_FX_Y_POS_H      ; Y subpixel position[0] = 0,  Y pixel position high [10:8] = 000 or 111
-    
-    ; Setting the Subpixel X/Y positions
-    
-    lda #%00001010           ; DCSEL=5, ADDRSEL=0
-    sta VERA_CTRL
-    
-    lda X_SUB_PIXEL
-    sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
-    lda Y_SUB_PIXEL
-    sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
-    
+	lda Y_SUB_PIXEL+1
+	sta VERA_FX_Y_POS_L      ; Y pixel position low [7:0]
+	
+	lda Y_SUB_PIXEL+2
+	and #%00000111
+	sta VERA_FX_Y_POS_H      ; Y subpixel position[0] = 0,  Y pixel position high [10:8] = 000 or 111
+	
+	; Setting the Subpixel X/Y positions
+	
+	lda #%00001010           ; DCSEL=5, ADDRSEL=0
+	sta VERA_CTRL
+	
+	lda X_SUB_PIXEL
+	sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
+	lda Y_SUB_PIXEL
+	sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
+	
 
-    ; Copy one row of pixels
-    jsr COPY_ROW_CODE
-    
-    ; FIXME: HACK we are ASSUMING we never reach the second part of VRAM here! (VERA_ADDR_ZP_TO+2 is not used here!)
-    
-    ; We increment our VERA_ADDR_ZP_TO with 320
-    clc
-    lda VERA_ADDR_ZP_TO
-    adc #<(320)
-    sta VERA_ADDR_ZP_TO
-    lda VERA_ADDR_ZP_TO+1
-    adc #>(320)
-    sta VERA_ADDR_ZP_TO+1
+	; Copy one row of pixels
+	jsr COPY_ROW_CODE
+	
+	; FIXME: HACK we are ASSUMING we never reach the second part of VRAM here! (VERA_ADDR_ZP_TO+2 is not used here!)
+	
+	; We increment our VERA_ADDR_ZP_TO with 320
+	clc
+	lda VERA_ADDR_ZP_TO
+	adc #<(320)
+	sta VERA_ADDR_ZP_TO
+	lda VERA_ADDR_ZP_TO+1
+	adc #>(320)
+	sta VERA_ADDR_ZP_TO+1
 
-    clc
-    lda Y_SUB_PIXEL
-    adc COSINE_OF_ANGLE
-    sta Y_SUB_PIXEL
-    lda Y_SUB_PIXEL+1
-    adc COSINE_OF_ANGLE+1
-    sta Y_SUB_PIXEL+1
-    
-    sec
-    lda X_SUB_PIXEL
-    sbc SINE_OF_ANGLE
-    sta X_SUB_PIXEL
-    lda X_SUB_PIXEL+1
-    sbc SINE_OF_ANGLE+1
-    sta X_SUB_PIXEL+1
-    
-    inx
-    cpx #100             ; nr of row we draw
-    bne rotate_copy_next_row_1
-    
-    lda #%00000000           ; DCSEL=0, ADDRSEL=0
-    sta VERA_CTRL
-    
-    rts
+	clc
+	lda Y_SUB_PIXEL
+	adc COSINE_OF_ANGLE
+	sta Y_SUB_PIXEL
+	lda Y_SUB_PIXEL+1
+	adc COSINE_OF_ANGLE+1
+	sta Y_SUB_PIXEL+1
+	
+	sec
+	lda X_SUB_PIXEL
+	sbc SINE_OF_ANGLE
+	sta X_SUB_PIXEL
+	lda X_SUB_PIXEL+1
+	sbc SINE_OF_ANGLE+1
+	sta X_SUB_PIXEL+1
+	
+	inx
+	cpx #100             ; nr of row we draw
+	bne rotate_copy_next_row_1
+	
+	lda #%00000000           ; DCSEL=0, ADDRSEL=0
+	sta VERA_CTRL
+	
+	rts
 .endproc
 
 .proc setup_vera_for_layer0_bitmap_rota
 	stz VERA_CTRL
 
-    lda VERA_DC_VIDEO
-    ora #%00010000           ; Enable Layer 0 
-    and #%10011111           ; Disable Layer 1 and sprites
-    sta VERA_DC_VIDEO
+	lda VERA_DC_VIDEO
+	ora #%00010000           ; Enable Layer 0 
+	and #%10011111           ; Disable Layer 1 and sprites
+	sta VERA_DC_VIDEO
 
-    lda #$20                 ; 4:1 scale (160 x 120 pixels on screen)
-    sta VERA_DC_HSCALE
-    sta VERA_DC_VSCALE
-    
+	lda #$20                 ; 4:1 scale (160 x 120 pixels on screen)
+	sta VERA_DC_HSCALE
+	sta VERA_DC_VSCALE
+	
 ; This is for debugging:
 ;    lda #3
 ;    sta VERA_DC_BORDER
-    
-    ; -- Setup Layer 0 --
-    
-    lda #%00000000           ; DCSEL=0, ADDRSEL=0
-    sta VERA_CTRL
-    
-    ; Enable bitmap mode and color depth = 8bpp on layer 0
-    lda #(4+3)
-    sta VERA_L0_CONFIG
+	
+	; -- Setup Layer 0 --
+	
+	lda #%00000000           ; DCSEL=0, ADDRSEL=0
+	sta VERA_CTRL
+	
+	; Enable bitmap mode and color depth = 8bpp on layer 0
+	lda #(4+3)
+	sta VERA_L0_CONFIG
 
-    ; Set layer0 tilebase to 0x00000 and tile width to 320 px
-    lda #0
-    sta VERA_L0_TILEBASE
+	; Set layer0 tilebase to 0x00000 and tile width to 320 px
+	lda #0
+	sta VERA_L0_TILEBASE
 
-    ; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
+	; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
 
-    lda #%00000010  ; DCSEL=1
-    sta VERA_CTRL
+	lda #%00000010  ; DCSEL=1
+	sta VERA_CTRL
    
-    lda #20
-    sta VERA_DC_VSTART
-    lda #400/2+20-1
-    sta VERA_DC_VSTOP
-    
+	lda #20
+	sta VERA_DC_VSTART
+	lda #400/2+20-1
+	sta VERA_DC_VSTOP
+	
 	stz VERA_CTRL
 
-    rts
+	rts
 .endproc
 
 ; Python script to generate sine and cosine bytes
