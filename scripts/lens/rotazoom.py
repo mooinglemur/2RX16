@@ -301,19 +301,21 @@ def generate_pos_and_rotation_frames():
             first_number_added = False
         '''
         
-        pos_and_rotation_data.append(cosine_rotate % 256)
-        pos_and_rotation_data.append(cosine_rotate // 256)
-        
-        pos_and_rotation_data.append(sine_rotate % 256)
-        pos_and_rotation_data.append(sine_rotate // 256)
-        
-        pos_and_rotation_data.append(x_sub_position % 256)
-        pos_and_rotation_data.append((x_sub_position//256) % 256)
-        pos_and_rotation_data.append((x_sub_position//256) // 256)
-        
-        pos_and_rotation_data.append(y_sub_position % 256)
-        pos_and_rotation_data.append((y_sub_position//256) % 256)
-        pos_and_rotation_data.append((y_sub_position//256) // 256)
+        if (frame % 7) != 6:  # interpolate from 70 to 60 fps
+
+            pos_and_rotation_data.append(cosine_rotate % 256)
+            pos_and_rotation_data.append(cosine_rotate // 256)
+            
+            pos_and_rotation_data.append(sine_rotate % 256)
+            pos_and_rotation_data.append(sine_rotate // 256)
+            
+            pos_and_rotation_data.append(x_sub_position % 256)
+            pos_and_rotation_data.append((x_sub_position//256) % 256)
+            pos_and_rotation_data.append((x_sub_position//256) // 256)
+            
+            pos_and_rotation_data.append(y_sub_position % 256)
+            pos_and_rotation_data.append((y_sub_position//256) % 256)
+            pos_and_rotation_data.append((y_sub_position//256) // 256)
         
         
         scale += scalea
