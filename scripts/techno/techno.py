@@ -30,7 +30,7 @@ for frame_buffer_idx in range(8):
     # frame_buffers.append([0] * screen_width *screen_height)
     
 pygame.display.set_caption('X16 2R Techno test')
-screen = pygame.display.set_mode((screen_width*5, screen_height*5))
+screen = pygame.display.set_mode((screen_width*4.5, screen_height*3.5))
 clock = pygame.time.Clock()
 
 #palette = [
@@ -193,19 +193,7 @@ def run():
                 pixel_color = (0xFF, 0xFF, 0xFF)
                 polygon = [(x1,y1),(x2,y2),(x3,y3),(x4,y4)]
                 pygame.draw.polygon(offline_surface, 255, polygon, 0)
-                
-            screen.blit(offline_surface, (offline_on_screen_x, offline_on_screen_y))
-            
-            frame_buffer = frame_buffers[frame_buffer_idx]
-            combine_offline_with_frame_buffer(offline_surface, frame_buffer, mask)
-            
-            screen_x = frame_buffers_on_screen_x + int(frame_buffer_idx % 4) * (screen_width+frame_buffer_x_margin)
-            screen_y = frame_buffers_on_screen_y + int(frame_buffer_idx // 4) * (screen_height+frame_buffer_y_margin)
-            screen.blit(frame_buffer, (screen_x, screen_y))
-            
-            #print((screen_x,screen_y))
-            
-            
+
                 
             rot += 2
             vm += vma
@@ -215,20 +203,43 @@ def run():
             vma -= 1
         
         
-# FIXME!
-# FIXME!
-# FIXME!
-        frame_buffer_idx += 1
+            # in original: "asmdoit"
+            frame_buffer = frame_buffers[frame_buffer_idx]
+            combine_offline_with_frame_buffer(offline_surface, frame_buffer, mask)
+            
+
+            # Show buffers on screen
+            screen.blit(offline_surface, (offline_on_screen_x, offline_on_screen_y))
+            
+            screen_x = frame_buffers_on_screen_x + int(frame_buffer_idx % 4) * (screen_width+frame_buffer_x_margin)
+            screen_y = frame_buffers_on_screen_y + int(frame_buffer_idx // 4) * (screen_height+frame_buffer_y_margin)
+            screen.blit(frame_buffer, (screen_x, screen_y))
+                
         
-        if (frame_buffer_idx >= 8):
-            frame_buffer_idx = 0
-# FIXME!
-            # keep_animating = False
         
-        # FIXME!
-        # keep_animating = False
+            # in original: "plv++"
+            frame_buffer_idx += 1
         
-        frame_nr += 1    
+            # in original: "plv&=7"
+            if (frame_buffer_idx >= 8):
+                frame_buffer_idx = 0
+                
+                # Original:
+                '''
+                if(!plv)
+                {
+                    pl<<=1;
+                    if(pl>15) pl=1;
+                }  
+                '''        
+                mask = mask << 1
+                if mask > 15:
+                    mask = 1
+
+                # FIXME!
+                # keep_animating = False
+        
+            frame_nr += 1    
         
         pygame.display.update()
         
