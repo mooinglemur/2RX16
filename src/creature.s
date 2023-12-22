@@ -177,8 +177,11 @@ entry:
 	; load first 64 of palette
 	jsr copy_palette_from_index_0
 
+	; if we're ahead of where we expected, wait for the music
+	MUSIC_SYNC $61
+
 	; do wipe transition
-	; XXX
+	jsr wipe_sprites
 
 	; load the target color for indices 64, 128, and 192 into each of the next groups of 64 indices (fade from black w/ blue tint)
 	jsr copy_palette_blue_zeros
@@ -343,11 +346,307 @@ nofade:
 
 	rts
 
+.proc wipe_sprites
+	; this routine depends on setup_wipe_sprites placing the sprites
+
+	lda #30
+	sta count
+mainloop:
+	WAITVSYNC
+
+	VERA_SET_ADDR (2+(Vera::VRAM_sprattr)), 0 ; increment 0
+
+	ldx #0
+sprloop:
+	lda Vera::Reg::Data0
+	clc
+	adc xinc_l,x
+	sta Vera::Reg::Data0
+	inc Vera::Reg::AddrL
+	lda Vera::Reg::Data0
+	adc xinc_h,x
+	and #$03
+	sta Vera::Reg::Data0
+	lda Vera::Reg::AddrL
+	clc
+	adc #7
+	sta Vera::Reg::AddrL
+	bcc :+
+	inc Vera::Reg::AddrM
+:	inx
+	cpx #96
+	bcc sprloop
+
+	dec count
+	jne mainloop
+
+	WAITVSYNC
+
+	DISABLE_SPRITES
+
+	rts
+count:
+	.byte 0
+xinc_l:
+.repeat 6, i
+.repeat 2
+.repeat 4
+	.byte <($10000-((7-i)))
+.endrepeat
+.repeat 4
+	.byte <($10000+((i+2)))
+.endrepeat
+.endrepeat
+.endrepeat
+xinc_h:
+.repeat 6, i
+.repeat 2
+.repeat 4
+	.byte >($10000-((7-i)))
+.endrepeat
+.repeat 4
+	.byte >($10000+((i+2)))
+.endrepeat
+.endrepeat
+.endrepeat
+.endproc
 
 .proc setup_wipe_sprites
+	; We're going to make three sprite regions
+	; 1) a solid 64x40 block - ◼
+	; 2) a west curtain sprite 64x40 with the slope part 3/4 - ◤
+	; 3) an east curtain sprite 64x40 with the slope part 3/4 - ◢
+	
+	; each one of these will be assigned to two sprites, a 64x32
+	; and a 64x8
+
+	; we'll use palette index $80 for the filled pixels and $00 for the transparent ones
+	VERA_SET_ADDR SPRITES_VRAM_ADDRESS, 1 ; increment 1
+
+	; first make the #1 sprite
+	; solid part
+	lda #$80
+	ldx #5
+	ldy #0
+s64x40:
+	sta Vera::Reg::Data0
+	sta Vera::Reg::Data0
+	dey
+	bne s64x40
+	dex
+	bne s64x40
+
+	; transparent part
+	ldx #3
+	ldy #0
+t64x24:
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	dey
+	bne t64x24
+	dex
+	bne t64x24
+
+	; now the #2 sprite
+	ldy #0 ; row
+sprite2:
+	ldx #0
+sprite2i:
+	txa
+	cmp slopetable_3_4l,y
+	lda #0
+	ror
+	eor #$80
+	sta Vera::Reg::Data0
+	inx
+	cpx #64
+	bcc sprite2i
+	iny
+	cpy #40
+	bcc sprite2
+
+	; transparent part
+	ldx #3
+	ldy #0
+t64x24_2:
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	dey
+	bne t64x24_2
+	dex
+	bne t64x24_2
+
+
+	; now the #3 sprite
+	ldy #0 ; row
+sprite3:
+	ldx #0
+sprite3i:
+	txa
+	cmp slopetable_3_4r,y
+	lda #0
+	ror
+	sta Vera::Reg::Data0
+	inx
+	cpx #64
+	bcc sprite3i
+	iny
+	cpy #40
+	bcc sprite3
+	; transparent part
+	ldx #3
+	ldy #0
+t64x24_3:
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	dey
+	bne t64x24_3
+	dex
+	bne t64x24_3
+
+
+	; now place the sprites
+	VERA_SET_ADDR Vera::VRAM_sprattr, 1
+
+	ldx #0
+sprplaceloop:
+	lda spraddr_l,x
+	sta Vera::Reg::Data0
+	lda spraddr_h,x
+	sta Vera::Reg::Data0
+	lda sprx_l,x
+	sta Vera::Reg::Data0
+	lda sprx_h,x
+	sta Vera::Reg::Data0
+	lda spry_l,x
+	sta Vera::Reg::Data0
+	lda spry_h,x
+	sta Vera::Reg::Data0
+	lda #$0c
+	sta Vera::Reg::Data0
+	lda sprattr,x
+	sta Vera::Reg::Data0
+
+	inx
+
+	cpx #96
+	bcc sprplaceloop
 
 
 	rts
+slopetable_3_4l:
+	.byte $40,$3f,$3f,$3e,$3d,$3c,$3c,$3b
+	.byte $3a,$39,$39,$38,$37,$36,$36,$35
+	.byte $34,$33,$33,$32,$31,$30,$30,$2f
+	.byte $2e,$2d,$2d,$2c,$2b,$2a,$2a,$29
+	.byte $28,$27,$27,$26,$25,$24,$24,$23
+slopetable_3_4r:
+	.byte $1d,$1c,$1c,$1b,$1a,$19,$19,$18
+	.byte $17,$16,$16,$15,$14,$13,$13,$12
+	.byte $11,$10,$10,$0f,$0e,$0d,$0d,$0c
+	.byte $0b,$0a,$0a,$09,$08,$07,$07,$06
+	.byte $05,$04,$04,$03,$02,$01,$01,$00
+sprattr:
+.repeat 6
+.repeat 8
+	.byte $b0
+.endrepeat
+.repeat 8
+	.byte $30
+.endrepeat
+.endrepeat
+spraddr_l:
+.repeat 6
+.repeat 3
+	.byte <((SPRITES_VRAM_ADDRESS+$0000) >> 5)
+.endrepeat
+	.byte <((SPRITES_VRAM_ADDRESS+$1000) >> 5)
+	.byte <((SPRITES_VRAM_ADDRESS+$2000) >> 5)
+.repeat 3
+	.byte <((SPRITES_VRAM_ADDRESS+$0000) >> 5)
+.endrepeat
+.repeat 3
+	.byte <((SPRITES_VRAM_ADDRESS+$0800) >> 5)
+.endrepeat
+	.byte <((SPRITES_VRAM_ADDRESS+$1800) >> 5)
+	.byte <((SPRITES_VRAM_ADDRESS+$2800) >> 5)
+.repeat 3
+	.byte <((SPRITES_VRAM_ADDRESS+$0800) >> 5)
+.endrepeat
+.endrepeat
+spraddr_h:
+.repeat 6
+.repeat 3
+	.byte >((SPRITES_VRAM_ADDRESS+$0000) >> 5) | $80
+.endrepeat
+	.byte >((SPRITES_VRAM_ADDRESS+$1000) >> 5) | $80
+	.byte >((SPRITES_VRAM_ADDRESS+$2000) >> 5) | $80
+.repeat 3
+	.byte >((SPRITES_VRAM_ADDRESS+$0000) >> 5) | $80
+.endrepeat
+.repeat 3
+	.byte >((SPRITES_VRAM_ADDRESS+$0800) >> 5) | $80
+.endrepeat
+	.byte >((SPRITES_VRAM_ADDRESS+$1800) >> 5) | $80
+	.byte >((SPRITES_VRAM_ADDRESS+$2800) >> 5) | $80
+.repeat 3
+	.byte >((SPRITES_VRAM_ADDRESS+$0800) >> 5) | $80
+.endrepeat
+.endrepeat
+sprx_l:
+.repeat 6, i
+.repeat 2
+.repeat 4, j
+	.byte <($10000+(j*64)-(i*30))
+.endrepeat
+.repeat 4, j
+	.byte <($10000+((j+4)*64)-(i*30)-40)
+.endrepeat
+.endrepeat
+.endrepeat
+sprx_h:
+.repeat 6, i
+.repeat 2
+.repeat 4, j
+	.byte >($10000+(j*64)-(i*30)) & $03
+.endrepeat
+.repeat 4, j
+	.byte >($10000+((j+4)*64)-(i*30)-40) & $03
+.endrepeat
+.endrepeat
+.endrepeat
+
+spry_l:
+.repeat 6, i
+.repeat 4, j
+	.byte <($10000+(i*40)-10)
+.endrepeat
+.repeat 4, j
+	.byte <($10000+(i*40))
+.endrepeat
+.repeat 4, j
+	.byte <($10000+(i*40)+22)
+.endrepeat
+.repeat 4, j
+	.byte <($10000+(i*40)+32)
+.endrepeat
+.endrepeat
+spry_h:
+.repeat 6, i
+.repeat 4, j
+	.byte >($10000+(i*40)-10) & $03
+.endrepeat
+.repeat 4, j
+	.byte >($10000+(i*40)) & $03
+.endrepeat
+.repeat 4, j
+	.byte >($10000+(i*40)+22) & $03
+.endrepeat
+.repeat 4, j
+	.byte >($10000+(i*40)+32) & $03
+.endrepeat
+.endrepeat
+
 .endproc
 	
 	

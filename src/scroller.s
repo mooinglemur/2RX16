@@ -445,7 +445,7 @@ shift_nex_row:
 	; and exit the scroller after 16 fade steps
 	lda syncval
 	cmp #$60
-	bne no_fade_yet
+	bcc no_fade_yet
 	lda fadeout
 	cmp #16
 	beq setup_fade
