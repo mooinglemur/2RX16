@@ -112,6 +112,8 @@ PREFADE: .res 1
 
 VERA_ADDR_ZP_TO: .res 3
 
+FADING: .res 1
+
 ; For affine transformation
 X_SUB_PIXEL: .res 3
 Y_SUB_PIXEL: .res 3
@@ -248,7 +250,7 @@ entry:
 	LOADFILE "LENS-UPLOAD3-1.DAT", UPLOAD_RAM_BANK+10, UPLOAD_RAM_ADDRESS
 	LOADFILE "LENS-UPLOAD3-2.DAT", UPLOAD_RAM_BANK+11, UPLOAD_RAM_ADDRESS
 
-	; preload this rotazoom code because it will take too long to do it later
+	; preload this rotazoom data because it will take too long to do it later
 	LOADFILE "ROTAZOOM-POS-ROTATE.DAT", POS_AND_ROTATE_START_BANK, POS_AND_ROTATE_RAM_ADDRESS
 
 	MUSIC_SYNC $62
@@ -373,7 +375,7 @@ nofade:
 
 	jsr setup_rota_target_palette
 
-	; do some of the rotazoom loading
+	; do the remainder of the rotazoom data loading
 
 	LOADFILE "ROTAZOOM-TILEDATA.DAT", 0, .loword(TILEDATA_VRAM_ADDRESS), (TILEDATA_VRAM_ADDRESS >> 16)
 
@@ -475,7 +477,7 @@ sprloop:
 	bcc sprloop
 
 	dec count
-	jne mainloop
+	bne mainloop
 
 	WAITVSYNC
 
@@ -1526,7 +1528,7 @@ done_adding_code_byte:
 	lda #>POS_AND_ROTATE_RAM_ADDRESS
 	sta POS_AND_ROTATE_DATA+1
 	
-	
+	stz FADING
 keep_rotating:
 	lda #<(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
 	sta VERA_ADDR_ZP_TO
@@ -1541,14 +1543,54 @@ keep_rotating:
 	stz VERA_FX_CTRL
 	stz VERA_CTRL
 
+	lda syncval
+	cmp #$6c
+	bcc rota_fade_in
+
+	; have we started the slow fade?
+	lda FADING
+	bne continue_rota_fade_out
+
+	; initialize slow fade to white
+
+	inc FADING
+	ldx #0
+@1:
+	lda #$ff
+	sta target_palette, x
+	inx
+	lda #$0f
+	sta target_palette, x
+	inx
+	bne @1
+
+	lda #0
+	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
+
+continue_rota_fade_out:
+	lda FADING
+	inc
+	cmp #6
+	bcc @1
+	lda #1
+	sta FADING
+	jmp rota_fade_out
+@1:
+	sta FADING
+	jmp rota_vsync
+
+rota_fade_in:
 	jsr apply_palette_fade_step
 	jsr apply_palette_fade_step2
 	jsr apply_palette_fade_step
 	jsr apply_palette_fade_step2
+rota_fade_out:
 	jsr apply_palette_fade_step
 	jsr apply_palette_fade_step2
 
-
+rota_vsync:
 	WAITVSYNC
 
 	jsr flush_palette
@@ -1601,10 +1643,10 @@ pos_and_rotate_bank_is_ok:
 	; check if 1715 frames played (= $6B3)
 	lda FRAME_NR+1
 	cmp #$6
-	bne keep_rotating
+	jne keep_rotating
 	lda FRAME_NR
 	cmp #$B3
-	bne keep_rotating
+	jne keep_rotating
 	
 	lda #%00000100           ; DCSEL=2, ADDRSEL=0
 	sta VERA_CTRL
