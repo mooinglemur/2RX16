@@ -389,6 +389,7 @@ tableFile.write(bytearray(pos_and_rotate_packed))
 tableFile.close()
 print("pos and rotate data written to file: " + pos_and_rotate_filename)
 
+print(f"number of interpolated frames: {int(len(pos_and_rotation_data)/10):d}")
 
 tile_index = 0
 unique_tiles = {}

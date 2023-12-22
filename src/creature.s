@@ -1598,12 +1598,12 @@ pos_and_rotate_bank_is_ok:
 
 ;    jsr wait_a_few_ms
     
-    ; check if 2000 frames played (= $7D0)
+    ; check if 1715 frames played (= $6B3)
     lda FRAME_NR+1
-    cmp #$7
+    cmp #$6
     bne keep_rotating
     lda FRAME_NR
-    cmp #$D0
+    cmp #$B3
     bne keep_rotating
     
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
