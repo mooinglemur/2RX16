@@ -33,6 +33,7 @@ $4A = last beat / end of moire effect (transition off screen)
 $4C = slide static image on screen
 $4E = trigger CRT off effect
 $50 = MUSIC2 end, cue to load MUSIC3 and scroller scene
+$54 = Fade clouds in
 $60 = trigger fadeout of scroller / transition to creature
 $61 = start wipe to creature
 $62 = trigger lens ball drop (hits bottom at top of next measure)

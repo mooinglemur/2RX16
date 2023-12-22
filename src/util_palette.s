@@ -14,6 +14,8 @@
 .export flush_palette3
 .export flush_palette4
 
+.export zero_entire_palette_and_target
+
 ; only one of these
 .export cycle_palette
 
@@ -681,4 +683,23 @@ end:
 	lda #((^Vera::VRAM_palette) | $10)
 	sta Vera::Reg::AddrH
 	rts
+.endproc
+
+.proc zero_entire_palette_and_target
+	; zero the entire palette
+	VERA_SET_ADDR (Vera::VRAM_palette), 1
+	ldx #128
+:	stz target_palette-128,x
+	stz target_palette2-128,x
+	stz target_palette3-128,x
+	stz target_palette4-128,x
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	inx
+	bne :-
+
+	rts
+
 .endproc

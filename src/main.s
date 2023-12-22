@@ -2,6 +2,14 @@
 .exportzp ptr1, ptr2, pstart, pend, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp, tmp10zp
 .exportzp blob_to_read, blob_target_ptr
 
+.import zero_entire_palette_and_target
+
+.scope SCROLLER
+	.import BITMAP_VRAM_ADDRESS
+	.importzp SCROLL_COPY_CODE_RAM_BANK
+	.import SCROLL_COPY_CODE_RAM_ADDRESS
+.endscope
+
 .segment "LOADADDR"
 	.word $0801
 .segment "BASICSTUB"
@@ -123,6 +131,12 @@ SCENE = $4800
 .ifndef SKIP_SONG3
 	LOADFILE "MUSIC3.ZSM", SONG_BANK, $a000
 	LOADFILE "SCROLLER.BIN", 0, SCENE
+	jsr zero_entire_palette_and_target
+
+	; do some of the SCROLLER lengthy loads here
+	LOADFILE "FOREST.DAT", 0, .loword(SCROLLER::BITMAP_VRAM_ADDRESS), <(.hiword(SCROLLER::BITMAP_VRAM_ADDRESS))
+	LOADFILE "SCROLLCOPY.DAT", SCROLLER::SCROLL_COPY_CODE_RAM_BANK, SCROLLER::SCROLL_COPY_CODE_RAM_ADDRESS
+
 	jsr play_song
 	jsr SCENE
 

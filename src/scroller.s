@@ -18,6 +18,9 @@
 .import target_palette3
 .import target_palette4
 
+.export BITMAP_VRAM_ADDRESS
+.exportzp SCROLL_COPY_CODE_RAM_BANK
+.export SCROLL_COPY_CODE_RAM_ADDRESS
 
 .macpack longbranch
 
@@ -70,16 +73,18 @@ LOAD              = $FFD5  ; Load a file into main memory or VRAM
 VERA_PALETTE      = $1FA00
 VERA_SPRITES      = $1FC00
 
-BITMAP_VRAM_ADDRESS   = $00000
+BITMAP_VRAM_ADDRESS   := $00000
 
 BITMAP_WIDTH = 320
 BITMAP_HEIGHT = 200
 
 SCROLLTEXT_RAM_BANK        = $20  ; This is 640x32 bytes
-SCROLL_COPY_CODE_RAM_BANK  = $24  ; This is 13 RAM Banks of scroll copy code (actually 12.06 RAM banks)
+SCROLL_COPY_CODE_RAM_BANK  := $24  ; This is 13 RAM Banks of scroll copy code (actually 12.06 RAM banks)
 NR_OF_SCROLL_COPY_CODE_BANKS = 13
-; FIXME: we should change this!
-INITIAL_SCROLL = 100
+; This is very close to the original, maybe +/- 5
+INITIAL_SCROLL = 140
+; This is plenty of trailing emptiness that we'll never hit
+; before the music cue fades us out
 NR_OF_SCROLL_ITERATIONS = 1000-INITIAL_SCROLL
 
 
@@ -98,24 +103,12 @@ SHIFT_PIXEL_CODE_ADDRESS: .res 1423
 .assert * < $8000, error, "SCROLLER CODE+BSS must end before $8000"
 
 SCROLLER_BUFFER_ADDRESS   = $8000 ; needs $1D00, and needs to match python
-SCROLLTEXT_RAM_ADDRESS    = $A000
-SCROLL_COPY_CODE_RAM_ADDRESS = $A000
+SCROLLTEXT_RAM_ADDRESS    := $A000
+SCROLL_COPY_CODE_RAM_ADDRESS := $A000
 
 .segment "SCROLLER"
 entry:
-	; zero the entire palette
-	VERA_SET_ADDR (Vera::VRAM_palette), 1
-	ldx #128
-:	stz target_palette-128,x
-	stz target_palette2-128,x
-	stz target_palette3-128,x
-	stz target_palette4-128,x
-	stz Vera::Reg::Data0
-	stz Vera::Reg::Data0
-	stz Vera::Reg::Data0
-	stz Vera::Reg::Data0
-	inx
-	bne :-
+
 
 	DISABLE_SPRITES
 
@@ -126,7 +119,8 @@ entry:
 	jsr setup_vera_for_layer0_bitmap
 
 	jsr copy_palette_from_index_0
-	jsr load_bitmap_into_vram
+
+	; FOREST.DAT is loaded in MAIN before the music is started
 
 	; set up our fade
 
@@ -178,10 +172,13 @@ PG2 = * - 1
 	; continue with setup
 
 	jsr load_scrolltext_into_banked_ram
-	jsr load_scroll_copy_code_into_banked_ram
+	
+	; SCROLLCOPY.DAT is loaded in main
 
 	jsr clear_initial_scroll_text_slow
 	jsr load_initial_scroll_text_slow
+
+	MUSIC_SYNC $54
 
 	; do the scrolling, including the requested fade-in
 	; as well as the fade-out when the music trigger hits
@@ -582,14 +579,6 @@ next_packed_color_256:
 	rts
 .endproc
 
-.proc load_bitmap_into_vram
-
-	LOADFILE "FOREST.DAT", 0, .loword(BITMAP_VRAM_ADDRESS), <(.hiword(BITMAP_VRAM_ADDRESS))
-
-	rts
-.endproc
-
-
 .proc load_scrolltext_into_banked_ram
 
 	LOADFILE "SCROLLTEXT.DAT", SCROLLTEXT_RAM_BANK, SCROLLTEXT_RAM_ADDRESS
@@ -597,13 +586,6 @@ next_packed_color_256:
 	rts
 .endproc
 
-
-.proc load_scroll_copy_code_into_banked_ram
-
-	LOADFILE "SCROLLCOPY.DAT", SCROLL_COPY_CODE_RAM_BANK, SCROLL_COPY_CODE_RAM_ADDRESS
-
-	rts
-.endproc
 
 .proc generate_shift_by_one_pixel_code
 
