@@ -432,6 +432,7 @@ def do_tables():
     ptau[0] = 0
     for a in range(1,129):
         ptau[a]=math.trunc(math.cos(a*math.pi*2/128+math.pi)*31+32) & 0xff
+    print(ptau)
 
 def init_plz():
     global pals
