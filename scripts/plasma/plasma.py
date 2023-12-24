@@ -20,15 +20,16 @@ FRAME_BUFFER_HEIGHT = 400
 YADD = 0
 
 fb = [0] * (FRAME_BUFFER_WIDTH * FRAME_BUFFER_HEIGHT)
+prevfb = [0] * (FRAME_BUFFER_WIDTH * FRAME_BUFFER_HEIGHT)
 
 psini = [0] * (16384 + 8192 + 8192)
 ptau = [0] * 129
 
-pals=[[0] * 768] * 6
+pals=[[0] * 768 for i in range(6)]
 
-selfmod = [[0] * 84] * 5
+selfmod = [[0] * 84 for i in range(5)]
 
-fadepal = [768 * 2]
+fadepal = [0] * (768 * 2)
 cop_fadepal = 0
 
 palette = [63] * 768
@@ -36,7 +37,6 @@ line_compare = 0
 
 frame_count = 0
 cop_drop = 0
-cop_pal = 0
 do_pal = 0
 cop_start = 0
 cop_scrl = 0
@@ -75,7 +75,16 @@ inittable=[
     [1000,2000,3000,4000,3500,2300,3900,3670]
 ]
 
+dtau = [0] * 65
+
 plane_select = [0] * 4
+
+x16_pal = [[] for i in range(6)]
+
+def init_copper():
+    global dtau
+    for ccc in range(65):
+        dtau[ccc] = math.trunc(ccc * ccc / 4 * 43 / 128 + 60)
 
 def setplzparas(c1, c2, c3, c4):
     global selfmod
@@ -84,13 +93,13 @@ def setplzparas(c1, c2, c3, c4):
         lc1 = c1 + PSINI_OFFSET + (ccc * 8)
         selfmod[1][ccc] = lc1
 
-        lc2 = (c2 * 2) + LSINI16_OFFSET - (ccc * 8) + (80 * 8)
+        lc2 = c2 + LSINI16_OFFSET - (ccc * 4) + (80 * 4)
         selfmod[2][ccc] = lc2
 
         lc3 = c3 + PSINI_OFFSET - (ccc * 4) + (80 * 4)
         selfmod[3][ccc] = lc3
 
-        lc4 = (c4 * 2) + LSINI4_OFFSET + (ccc * 32)
+        lc4 = c4 + LSINI4_OFFSET + (ccc * 16)
         selfmod[4][ccc] = lc4
 
 def plzline(y, vseg):
@@ -145,6 +154,11 @@ def plzline(y, vseg):
             eax |= (ah << 8) | al
             vga_write32(nVgaYOffset + ccc, eax)
 
+def vga_upload_palette():
+    global palette
+    global pals
+    for i in range(768):
+        palette[i] = fadepal[i]
 
 def vga_select_bitplanes_02():
     global plane_select
@@ -169,15 +183,20 @@ def vga_write32(offset, val):
             for j in range(4):
                 b = (val >> (j * 8)) & 0xff
 
-                fb_offs = i + (offset + j * 4)
+                fb_offs = i + (offset + j) * 4
 
                 fb[fb_offs] = b
 
 def do_drop():
     global cop_drop
     global line_compare
+    global do_pal
+    global fadepal
 
     cop_drop += 1
+
+    print(f"cop_drop: {cop_drop}")
+
     if cop_drop <= 64:
         line_compare = dtau[cop_drop]
     
@@ -187,13 +206,12 @@ def do_drop():
             pass
         elif cop_drop >= 128:
             bShouldFade = 1
-        elif cop_drop >= 96:
+        elif cop_drop > 96:
             pass
         else:
             bShouldFade = 1
 
         if bShouldFade > 0:
-            cop_pal = fadepal
             do_pal = 1
 
             if cop_drop == 65:
@@ -206,32 +224,137 @@ def do_drop():
                 pfadepal = 0
                 for i in range(768//16):
                     for ccc in range(16):
-                        al = fadepal
+                        ax = pals[cop_fadepal][(pcop_fadepal//2) + ccc]
+                        while ax < 0:
+                            ax += 0x10000
+                        al = ax & 0xff
+                        ah = ax >> 8
+
+                        oldval = fadepal[pfadepal + ccc + 768]
+                        fadepal[pfadepal + ccc + 768] = (fadepal[pfadepal + ccc + 768] + al) & 0xff
+                        newval = fadepal[pfadepal + ccc + 768]
+                        carry = 0
+                        if newval < oldval:
+                            carry = 1
+                        
+                        fadepal[pfadepal + ccc] = (fadepal[pfadepal + ccc] + ah + carry) & 0xff
+                    
+                    pcop_fadepal += 32
+                    pfadepal += 16
+        else:
+            cop_drop = 0
+
+def initpparas():
+    global l1
+    global l2
+    global l3
+    global l4
+
+    global k1
+    global k2
+    global k3
+    global k4
+
+    global il1
+    global il2
+    global il3
+    global il4
+
+    global ik1
+    global ik2
+    global ik3
+    global ik4
+
+    l1 = il1
+    l2 = il2
+    l3 = il3
+    l4 = il4
+
+    k1 = ik1
+    k2 = ik2
+    k3 = ik3
+    k4 = ik4
+
 
 
 def vga_show_framebuffer():
 
+    global palette
+    global x16_pal
+    global cop_fadepal
+
+    for event in pygame.event.get():
+        pass
+
     copper1()
     copper2()
+
+    if cop_drop == 0:
+        if len(x16_pal[cop_fadepal]) < 256:
+            x16_pal[cop_fadepal] = []
+            for i in range(256):
+                r = palette[i*3] & 0x3f
+                g = palette[i*3+1] & 0x3f
+                b = palette[i*3+2] & 0x3f
+
+                r <<= 2
+                g <<= 2
+                b <<= 2
+
+                r = (r * 15 + 135) >> 8
+                g = (g * 15 + 135) >> 8
+                b = (b * 15 + 135) >> 8
+
+                rgb = (r << 8) | (g << 4) | b
+                x16_pal[cop_fadepal].append(rgb)
+
+
+
+
+    screen.fill(((palette[0] << 2) & 0xff, (palette[1] << 2) & 0xff, (palette[2] << 2) & 0xff))
 
     nFirstLineIndex = (line_compare + 1)
 
     ptr = 0
 
     for y in range(nFirstLineIndex, SCREEN_HEIGHT):
-        for x in range(SCREEN_WIDTH):
+        for x in range(FRAME_BUFFER_WIDTH):
             idx = fb[ptr + x] * 3
 
-            r = palette[idx]
-            g = palette[idx+1]
-            b = palette[idx+2]
+            r = palette[idx] & 0x3f
+            g = palette[idx+1] & 0x3f
+            b = palette[idx+2] & 0x3f
             idx += 3
 
-            color = [r << 2, g << 2, b << 2]
+            r <<= 2
+            g <<= 2
+            b <<= 2
+
+            r = (r * 15 + 135) >> 8
+            g = (g * 15 + 135) >> 8
+            b = (b * 15 + 135) >> 8
+
+            r |= r*16
+            g |= g*16
+            b |= b*16
+
+            color = [r,g,b]
 
             screen.set_at((x, y), color)
     
         ptr += FRAME_BUFFER_WIDTH
+    """
+    chcount = 0
+    for y in range(SCREEN_HEIGHT):
+        for x in range(SCREEN_WIDTH):
+            off = (y*FRAME_BUFFER_WIDTH) + x
+            if fb[off] != prevfb[off]:
+                print(".", end="")
+                chcount+=1
+                prevfb[off] = fb[off]
+    print("")
+    print(f"chcount: {chcount}")
+    """
 
     pygame.display.flip()
     clock.tick(60)
@@ -274,13 +397,12 @@ def copper1():
 def copper2():
     global frame_count
     global do_pal
-    global cop_pal
 
     frame_count += 1
 
     if do_pal != 0:
         do_pal = 0
-        vga_upload_palette(cop_pal)
+        vga_upload_palette()
 
     pompota()
     moveplz()
@@ -295,24 +417,26 @@ def do_tables():
 
     for a in range(1024*16):
         if a<1024*8:
-            psini[a+LSINI4_OFFSET]=(int(math.sin(a*math.pi*2/4096)*55+
+            psini[a+LSINI4_OFFSET]=(math.trunc(math.sin(a*math.pi*2/4096)*55+
                 math.sin(a*math.pi*2/4096*5)*8+
                 math.sin(a*math.pi*2/4096*15)*2+64)*8) & 0xffff
-            psini[a+LSINI16_OFFSET]=(int(math.sin(a*math.pi*2/4096)*55+
+            psini[a+LSINI16_OFFSET]=(math.trunc(math.sin(a*math.pi*2/4096)*55+
                 math.sin(a*math.pi*2/4096*4)*5+
                 math.sin(a*math.pi*2/4096*17)*3+64)*16) & 0xffff
-        psini[a]=int(math.sin(a*math.pi*2/4096)*55+
+
+        psini[a]=math.trunc(math.sin(a*math.pi*2/4096)*55+
             math.sin(a*math.pi*2/4096*6)*5+
             math.sin(a*math.pi*2*21)*4+
             64) & 0xff
 
     ptau[0] = 0
     for a in range(1,129):
-        ptau[a]=int(math.cos(a*math.pi/128+math.pi)*31+32) & 0xff
-
+        ptau[a]=math.trunc(math.cos(a*math.pi*2/128+math.pi)*31+32) & 0xff
 
 def init_plz():
     global pals
+    global cop_start
+    global line_compare
 
     do_tables()
     
@@ -400,35 +524,35 @@ def init_plz():
     # white
     pidx=3
     for a in range(1,64):
-        pals[2][pidx+0] = int(ptau[0]/2)
-        pals[2][pidx+1] = int(ptau[0]/2)
-        pals[2][pidx+2] = int(ptau[0]/2)
+        pals[2][pidx+0] = ptau[0]//2
+        pals[2][pidx+1] = ptau[0]//2
+        pals[2][pidx+2] = ptau[0]//2
         pidx += 3
 
     for a in range(64):
-        pals[2][pidx+0] = int(ptau[a]/2)
-        pals[2][pidx+1] = int(ptau[a]/2)
-        pals[2][pidx+2] = int(ptau[a]/2)
+        pals[2][pidx+0] = ptau[a]//2
+        pals[2][pidx+1] = ptau[a]//2
+        pals[2][pidx+2] = ptau[a]//2
         pidx += 3
     
     for a in range(64):
-        pals[2][pidx+0] = int(ptau[63-a]/2)
-        pals[2][pidx+1] = int(ptau[63-a]/2)
-        pals[2][pidx+2] = int(ptau[63-a]/2)
+        pals[2][pidx+0] = ptau[63-a]//2
+        pals[2][pidx+1] = ptau[63-a]//2
+        pals[2][pidx+2] = ptau[63-a]//2
         pidx += 3
     
     for a in range(64):
-        pals[2][pidx+0] = int(ptau[0]/2)
-        pals[2][pidx+1] = int(ptau[0]/2)
-        pals[2][pidx+2] = int(ptau[0]/2)
+        pals[2][pidx+0] = ptau[0]//2
+        pals[2][pidx+1] = ptau[0]//2
+        pals[2][pidx+2] = ptau[0]//2
         pidx += 3
 
     # white II
     pidx=3
     for a in range(1,75):
-        pals[4][pidx+0] = ptau[int(63-a*64/75)]
-        pals[4][pidx+1] = ptau[int(63-a*64/75)]
-        pals[4][pidx+2] = ptau[int(63-a*64/75)]
+        pals[4][pidx+0] = ptau[math.trunc(63-a*64/75)]
+        pals[4][pidx+1] = ptau[math.trunc(63-a*64/75)]
+        pals[4][pidx+2] = ptau[math.trunc(63-a*64/75)]
         pidx += 3
 
     for a in range(106):
@@ -438,21 +562,19 @@ def init_plz():
         pidx += 3
     
     for a in range(75):
-        pals[4][pidx+0] = int(ptau[int(a*64/75)]*8/10)
-        pals[4][pidx+1] = int(ptau[int(a*64/75)]*9/10)
-        pals[4][pidx+2] = ptau[int(a*64/75)]
+        pals[4][pidx+0] = math.trunc(ptau[math.trunc(a*64/75)]*8/10)
+        pals[4][pidx+1] = math.trunc(ptau[math.trunc(a*64/75)]*9/10)
+        pals[4][pidx+2] = ptau[math.trunc(a*64/75)]
         pidx += 3
 
-    pidx=0
-    for a in range(768):
-        pals[0][pidx] = (pals[0][pidx]-63)*2
+    for pidx in range(768):
+        pals[0][pidx] = ((pals[0][pidx])-63)*2
         pals[1][pidx] *= 8
         pals[2][pidx] *= 8
         pals[3][pidx] *= 8
         pals[4][pidx] *= 8
         pals[5][pidx] *= 8
 
-        pidx += 1
 
 def plz():
     global curpal
@@ -481,7 +603,6 @@ def plz():
 
     global frame_count
     global cop_drop
-    global cop_pal
     global do_pal
     global cop_start
     global cop_scrl
@@ -492,11 +613,14 @@ def plz():
     global fadepal
 
     global line_compare
+    global cop_fadepal
 
     tim=0
     count=0
-    cop_drop=128
     init_plz()
+    cop_drop=128
+    cop_fadepal = curpal
+    curpal+=1
 
     disframe=0
 
@@ -505,11 +629,11 @@ def plz():
         frame_count = 0
         count += 1
         disframe += 1
-        print(disframe)
-        print(timetable[ttptr])
+        print(f"{disframe:d}/{timetable[ttptr]:d}", end="\r")
         if disframe > timetable[ttptr]: # time exceeded
-            print("nextpal")
-            fadepal = [0] * 768
+            print("\nnextplasma")
+            for i in range(768):
+                fadepal[i] = 0
             cop_drop = 1
             cop_fadepal = curpal
             curpal += 1
@@ -523,7 +647,7 @@ def plz():
             ik3 = inittable[ttptr][6]
             ik4 = inittable[ttptr][7]
 
-        if curpal == 5 and cop_drop > 64:
+        if curpal == 4 and cop_drop > 64:
             break
 
         vga_select_bitplanes_02()
@@ -555,4 +679,13 @@ clock=pygame.time.Clock()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Plasma")
 
+init_copper()
 plz()
+
+palnum = 0
+
+for i in x16_pal:
+    print(f"pal{palnum}:")
+    print("\t.word ", end="")
+    print(",".join([f"${n:04x}" for n in i]))
+#print(x16_pal)
