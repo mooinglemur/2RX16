@@ -287,7 +287,7 @@ midloop:
 	sta time
 	lda syncval
 	cmp #$2a
-	bne midloop
+	bcc midloop
 endloop:
 	jsr X16::Kernal::RDTIM
 	sta jdelta

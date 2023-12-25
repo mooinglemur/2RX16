@@ -126,7 +126,7 @@ main_dance:
 
 	lda syncval
 	cmp #$40
-	bne main_dance
+	bcc main_dance
 
 	lda paliter
 	cmp #16

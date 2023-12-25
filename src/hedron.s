@@ -828,7 +828,7 @@ redloop:
 	jsr flip_and_clear_l1
 	lda syncval
 	cmp #$1F
-	beq redtransition
+	bcs redtransition
 	bra redloop
 redworksplit:
 	jsr wait_flip_and_clear_sprite1
