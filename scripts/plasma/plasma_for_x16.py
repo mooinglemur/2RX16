@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+
+### NOTE: this script no longer correctly visualizes the X16 plasma
+### but it is useful for creating the LUTS
+
 from PIL import Image
 import pygame
 import math
