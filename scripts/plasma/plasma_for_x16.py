@@ -24,6 +24,7 @@ sint4 = [0] * 256
 yscale = [0] * 256
 
 ptau = [0] * 64
+dtau = [0] * 64
 
 pals=[[0] * 768 for i in range(6)]
 
@@ -33,15 +34,15 @@ palette = [63] * 768
 
 curpal=0
 
-l1=50
-l2=100
-l3=150
-l4=200
+l1=500
+l2=1000
+l3=1500
+l4=2000
 
-k1=210
-k2=178
-k3=230
-k4=155
+k1=2100
+k2=1780
+k3=23000
+k4=1550
 
 il1=l1
 il2=l2
@@ -181,22 +182,22 @@ def moveplz():
     global l4
     global ml
 
-    k1 += -120
+    k1 += 120
     k1 &= 0xffff
-    k2 += -60
+    k2 += 60
     k2 &= 0xffff
-    k3 += 99
+    k3 += 100
     k3 &= 0xffff
-    k4 += 55
+    k4 += 80
     k4 &= 0xffff
 
-    l1 += 60
+    l1 += -60
     l1 &= 0xffff
-    l2 += 144
+    l2 += -140
     l2 &= 0xffff
     l3 += -120
     l3 &= 0xffff
-    l4 += -130
+    l4 += -170
     l4 &= 0xffff
 
     ml += 1
@@ -232,11 +233,13 @@ def do_tables():
     byteprint(sint4,"sint4")
 
 
-    ptau[0] = 0
-    for a in range(1,64):
+    for a in range(64):
         ptau[a]=math.trunc(math.cos(a*math.pi*2/64+math.pi)*31+32) & 0xff
-
+    ptau[0] = 0
     byteprint(ptau,"ptau")
+    for a in range(64):
+        dtau[a]=a*a/4*43/256+21
+    byteprint(dtau,"dtau")
 
 def init_plz():
     global pals
@@ -244,7 +247,7 @@ def init_plz():
 
     do_tables()
     
-    # RGB
+    # Reds
     pidx=3
     for a in range(1,64):
         pals[0][pidx+0] = ptau[a]
@@ -325,27 +328,27 @@ def init_plz():
     # white
     pidx=3
     for a in range(1,64):
-        pals[2][pidx+0] = ptau[0]//2
-        pals[2][pidx+1] = ptau[0]//2
-        pals[2][pidx+2] = ptau[0]//2
+        pals[2][pidx+0] = ptau[0]//2+4
+        pals[2][pidx+1] = ptau[0]//2+4
+        pals[2][pidx+2] = ptau[0]//2+4
         pidx += 3
 
     for a in range(64):
-        pals[2][pidx+0] = ptau[a]//2
-        pals[2][pidx+1] = ptau[a]//2
-        pals[2][pidx+2] = ptau[a]//2
+        pals[2][pidx+0] = ptau[a]//2+16
+        pals[2][pidx+1] = ptau[a]//2+16
+        pals[2][pidx+2] = ptau[a]//2+16
         pidx += 3
     
     for a in range(64):
-        pals[2][pidx+0] = ptau[63-a]//2
-        pals[2][pidx+1] = ptau[63-a]//2
-        pals[2][pidx+2] = ptau[63-a]//2
+        pals[2][pidx+0] = ptau[63-a]//2+16
+        pals[2][pidx+1] = ptau[63-a]//2+16
+        pals[2][pidx+2] = ptau[63-a]//2+16
         pidx += 3
     
     for a in range(64):
-        pals[2][pidx+0] = ptau[0]//2
-        pals[2][pidx+1] = ptau[0]//2
-        pals[2][pidx+2] = ptau[0]//2
+        pals[2][pidx+0] = ptau[0]//2+4
+        pals[2][pidx+1] = ptau[0]//2+4
+        pals[2][pidx+2] = ptau[0]//2+4
         pidx += 3
 
     # white II

@@ -433,16 +433,6 @@ nofade:
 
 	MUSIC_SYNC $6F
 
-	ldx #32
-:   stz target_palette-1,x
-	dex
-	bne :-
-
-	lda #0
-	jsr setup_palette_fade
-
-	PALETTE_FADE 1
-
 	rts
 
 .proc wipe_sprites

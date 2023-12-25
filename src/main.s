@@ -2,6 +2,8 @@
 .exportzp ptr1, ptr2, pstart, pend, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp, tmp10zp
 .exportzp blob_to_read, blob_target_ptr
 
+.export scenevector
+
 .import zero_entire_palette_and_target
 
 .scope SCROLLER
@@ -59,6 +61,9 @@ blob_target_ptr:
 	.res 2
 
 .segment "CODE"
+
+; this is where the scene-specific IRQ calls can go.
+scenevector := $9EFC
 
 .include "x16.inc"
 .include "macros.inc"
@@ -281,6 +286,12 @@ clear_irq_handler:
 setup_irq_handler:
 	sei
 
+	lda #$60 ; 'RTS' // This will be NOPed out by anything that wants to hook here and then restored to RTS later
+	sta scenevector
+
+	lda #$4C ; 'JMP'
+	sta scenevector+1
+
 	lda X16::Vec::IRQVec
 	sta OLDIRQ
 	lda X16::Vec::IRQVec+1
@@ -291,13 +302,11 @@ setup_irq_handler:
 	lda #>handler
 	sta X16::Vec::IRQVec+1
 
-	stz irqsub
-	stz irqsub+1
-
 	cli
 
 	rts
 handler:
+
     lda X16::Reg::ROMBank
     pha
     lda #$0A
@@ -311,12 +320,10 @@ handler:
     and #$40
     bne via
 
-	lda irqsub+1
-	beq :+
+	; do this one first
+	jsr scenevector
 
-	jsr $ffff
-irqsub = * - 2
-:	lda #1
+	lda #1
 	jsr zsmkit::zsm_tick
 
     pla

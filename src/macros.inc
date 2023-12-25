@@ -275,7 +275,20 @@ cont:
 	pla
 .endmacro
 
-
+.macro SET16VAL dst, val
+.if .const(val) && <(val) = 0
+	stz dst + 0
+.else
+	lda #<(val)
+	sta dst + 0
+.endif
+.if .const(val) && >(val) = 0
+	stz dst + 1
+.else
+	lda #>(val)
+	sta dst + 1
+.endif
+.endmacro
 
 
 .endif
