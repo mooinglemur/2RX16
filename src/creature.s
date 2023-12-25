@@ -330,7 +330,9 @@ dofade:
 	jsr apply_palette_fade_step3
 	jsr apply_palette_fade_step4
 nofade:
-
+	lda syncval
+	cmp #$64
+	bcs bail_lens
 	WAITVSYNC
 
 	jsr flush_palette2
@@ -366,7 +368,7 @@ nofade:
 	; X never gets negative, so it is negative, we know we are done (this is a marker)
 	lda LENS_X_POS+1
 	bpl move_lens
-
+bail_lens:
 	stz VERA_CTRL
 
 	DISABLE_SPRITES
@@ -1581,6 +1583,9 @@ rota_fade_out:
 	jsr apply_palette_fade_step2
 
 rota_vsync:
+	lda syncval
+	cmp #$6f
+	bcs bail_rota
 	WAITVSYNC
 
 	jsr flush_palette
@@ -1637,7 +1642,7 @@ pos_and_rotate_bank_is_ok:
 	lda FRAME_NR
 	cmp #$B3
 	jne keep_rotating
-	
+bail_rota:	
 	lda #%00000100           ; DCSEL=2, ADDRSEL=0
 	sta VERA_CTRL
 	
