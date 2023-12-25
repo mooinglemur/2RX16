@@ -177,7 +177,7 @@ noslide:
 	jsr flush_palette3
 	jsr flush_palette4
 	
-	VERA_SET_ADDR ($00000 + (70*320)), 1 ; 70 rows down
+	VERA_SET_ADDR ($00000 + (10*320)), 1 ; 10 rows down
 	stz cur_row
 
 rowloop1:
@@ -276,20 +276,25 @@ colloop1:
 	sty Vera::Reg::Data1
 	
 	inx
-	cpx #80
+	cpx #40
 	jcc colloop1
 
 	lda #1
 	sta Vera::Reg::Ctrl
-	ldx Vera::Reg::AddrL
-	ldy Vera::Reg::AddrM
+	lda Vera::Reg::AddrL
+	clc
+	adc #160
+	tax
+	lda Vera::Reg::AddrM
+	adc #0
+	tay
 	stz Vera::Reg::Ctrl
 	stx Vera::Reg::AddrL
 	sty Vera::Reg::AddrM
 
 	inc cur_row
 	lda cur_row
-	cmp #25
+	cmp #40
 	jcc rowloop1
 
 	jsr move_plz
@@ -313,7 +318,7 @@ colloop1:
 	inc k2+1
 :	lda l1
 	sec
-	sbc #233
+	sbc #133
 	sta l1
 	bcs :+
 	dec l1+1
@@ -595,8 +600,8 @@ clearloop:
 	sta Vera::Reg::DCVStop
 	stz Vera::Reg::Ctrl
 
-	; 2:1 scale
-	lda #$40
+	; 4:1 scale
+	lda #$20
 	sta Vera::Reg::DCHScale
 	sta Vera::Reg::DCVScale
 
