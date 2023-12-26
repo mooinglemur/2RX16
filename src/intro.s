@@ -57,6 +57,9 @@ blackpal:
 	sta Vera::Reg::DCVStart
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
+	stz Vera::Reg::DCHStart
+	lda #$a0
+	sta Vera::Reg::DCHStop
 	stz Vera::Reg::Ctrl
 
 	; set up layer 0 as tilemap

@@ -5,6 +5,11 @@
 .export scenevector
 
 .import zero_entire_palette_and_target
+.import zero_entire_target
+
+.import flush_palette
+.import apply_palette_fade_step
+.import setup_palette_fade
 
 .scope SCROLLER
 	.import BITMAP_VRAM_ADDRESS
@@ -90,6 +95,29 @@ SCENE = $4800
 	jsr setup_zsmkit
 	jsr setup_irq_handler
 
+	; set up 60 Hz VIA timer
+	lda #60
+	jsr setup_via_timer
+	; tell ZSMKit about the 60 Hz timer
+	lda #60
+	ldy #0
+	jsr zsmkit::zsm_set_int_rate
+
+	jsr zero_entire_target
+	lda #0
+	jsr setup_palette_fade
+	
+	PALETTE_FADE 2
+.ifndef SKIP_SONG0
+	LOADFILE "MUSIC0.ZSM", SONG_BANK, $a000
+
+	jsr play_song
+	LOADFILE "DOSBOOT.BIN", 0, SCENE
+	jsr SCENE
+	; stop song
+	ldx #0
+	jsr zsmkit::zsm_close
+.endif
 	; set up 50 Hz VIA timer
 	lda #50
 	jsr setup_via_timer

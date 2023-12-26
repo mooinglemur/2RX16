@@ -15,6 +15,7 @@
 .export flush_palette4
 
 .export zero_entire_palette_and_target
+.export zero_entire_target
 
 ; only one of these
 .export cycle_palette
@@ -697,6 +698,19 @@ end:
 	stz Vera::Reg::Data0
 	stz Vera::Reg::Data0
 	stz Vera::Reg::Data0
+	inx
+	bne :-
+
+	rts
+.endproc
+
+.proc zero_entire_target
+	; zero the entire target
+	ldx #128
+:	stz target_palette-128,x
+	stz target_palette2-128,x
+	stz target_palette3-128,x
+	stz target_palette4-128,x
 	inx
 	bne :-
 

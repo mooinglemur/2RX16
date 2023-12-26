@@ -1,6 +1,6 @@
 These are the sync codes that are embedded in the music to help sync the demo to the music.  The value can be polled by importing the label and reading from `syncval`.  A callback from the music will change this value at the appropriate time in playback
 
-$00 = start value for the demo
+$00 = intro start
 $03 = show equivalent to "A Future Crew Production"
 $04 = show equivalent to "First Presented at Assembly 93"
 $05 = "in DOLBY SURROUND"
@@ -58,3 +58,9 @@ $C0 = transition to bounce
 $CC = end of MUSIC4
 $D4 = ship flyby effect
 $E0 = credits
+
+$FA = DOS boot initial beep
+$FB = DOS boot begin RAM test
+$FC = DOS boot drive test
+$FD = DOS boot starting OS
+$FE = DOS boot fadeout

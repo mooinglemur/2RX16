@@ -315,6 +315,10 @@ x16_inc = 1
         IOBASE                        := $FFF3
     .endscope
 
+    .scope Math
+        GIVAYF                        := $FE03
+        FOUT                          := $FE06
+    .endscope
 
 
 .endscope

@@ -216,19 +216,19 @@ def do_tables():
     global ptau
 
     for a in range(256):
-        sint4[a]=(math.trunc(math.sin(a*math.pi*2/128)*55+
-            math.sin(a*math.pi*2/128*2)+
-            math.sin(a*math.pi*2/128*4)*4+128)) & 0xff
-        sint3[a]=(math.trunc(math.sin(a*math.pi*2/128)*55+
-            math.sin(a*math.pi*2/128*4)*2+
-            math.sin(a*math.pi*2/128*17)*3+64)*2) & 0xff
-        sint2[a]=math.trunc(math.sin(a*math.pi*2/128)*55+
-            math.sin(a*math.pi*2/128*3)*4+
-            math.sin(a*math.pi*2*19)*4) & 0xff
         sint1[a]=math.trunc(math.sin(a*math.pi*2/128)*55+
             math.sin(a*math.pi*2/128*6)*5+
             math.sin(a*math.pi*2*21)*4+
             64) & 0xff
+        sint2[a]=math.trunc(math.sin(a*math.pi*2/128)*55+
+            math.sin(a*math.pi*2/128*3)*4+
+            math.sin(a*math.pi*2*19)*4) & 0xff
+        sint3[a]=math.trunc(math.sin(a*math.pi*2/128)*55+
+            math.sin(a*math.pi*2/128*4)*2+
+            math.sin(a*math.pi*2/128*17)*3+64) & 0xff
+        sint4[a]=math.trunc(math.sin(a*math.pi*2/128)*55+
+            math.sin(a*math.pi*2/128*2)+
+            math.sin(a*math.pi*2/128*4)*4+128) & 0xff
         yscale[a]=a//6
 
     byteprint(sint1,"sint1")

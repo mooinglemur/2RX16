@@ -20,17 +20,13 @@ entry:
 
 	LOADFILE "CIRCLES1.VTS", 0, $0000, 0 ; $00000 VRAM
 
-.ifndef SKIP_TUNNEL
 	MUSIC_SYNC $32
-.endif
 
 	jsr circles1_palette_cycle
 
 	LOADFILE "CIRCLES2.VTS", 0, $8000, 0 ; $08000 VRAM
 
-.ifndef SKIP_TUNNEL
 	MUSIC_SYNC $34
-.endif
 
 	jsr circles12_dance
 

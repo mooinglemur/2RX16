@@ -18,7 +18,7 @@
 .import target_palette3
 .import target_palette4
 
-.export BITMAP_VRAM_ADDRESS
+.export BITMAP_VRAM_ADDRESS : near
 .exportzp SCROLL_COPY_CODE_RAM_BANK
 .export SCROLL_COPY_CODE_RAM_ADDRESS
 
@@ -73,7 +73,7 @@ LOAD              = $FFD5  ; Load a file into main memory or VRAM
 VERA_PALETTE      = $1FA00
 VERA_SPRITES      = $1FC00
 
-BITMAP_VRAM_ADDRESS   := $00000
+BITMAP_VRAM_ADDRESS  := $00000
 
 BITMAP_WIDTH = 320
 BITMAP_HEIGHT = 200
