@@ -40,6 +40,12 @@ txtptr: .res 2
 memtmp: .res 2
 .segment "DOSBOOT"
 entry:
+	stz Vera::Reg::Ctrl
+	lda Vera::Reg::DCVideo
+	pha ; preserve old video mode so that we can
+	; restore it to 240p if we had it set that way
+	; since this part of the demo is high res
+
 	; initialize vera
 	jsr setup_vera
 
@@ -58,7 +64,7 @@ entry:
 	lda #0
 	jsr setup_palette_fade
 
-	PALETTE_FADE 14
+	PALETTE_FADE 28
 
 	MUSIC_SYNC $FA
 
@@ -67,6 +73,8 @@ entry:
 	BIOS_WRITE_TEXT "Commander X16 KERNAL (c) 2019-2023 Michael Steil, et al,\n\n\n"
 
 	MUSIC_SYNC $FB
+
+	BIOS_WRITE_TEXT "40 KB LOW RAM Detected\n"
 
 	ldx #0
 memtestloop:
@@ -86,7 +94,7 @@ memtestloop:
 
 	jsr bios_output_number
 
-	BIOS_WRITE_TEXT " KB OK \r"
+	BIOS_WRITE_TEXT " KB HIGH RAM OK \r"
 
 	WAITVSYNC 5
 
@@ -121,7 +129,7 @@ is2048:
 finalramtest:
 	jsr bios_output_number
 
-	BIOS_WRITE_TEXT " KB OK \n\n\n"
+	BIOS_WRITE_TEXT " KB HIGH RAM OK \n\n\n"
 
 	BIOS_WRITE_TEXT "VGA: VERA with 128KB VRAM\n"
 	BIOS_WRITE_TEXT "CPU: Western Design Center 65C02\n"
@@ -188,6 +196,11 @@ endsoundchk:
 	PALETTE_FADE 1
 
 	jsr deregister_cursor_handler
+
+	; restore video mode, keeping 240p if we started that way
+	pla
+	stz Vera::Reg::Ctrl
+	sta Vera::Reg::DCVideo
 
 	rts
 
@@ -473,7 +486,7 @@ bottom:
 	; show layer 1+sprites
 	stz Vera::Reg::Ctrl
 	lda Vera::Reg::DCVideo
-	and #$0f
+	and #$07
 	ora #$60
 	sta Vera::Reg::DCVideo
 
@@ -488,7 +501,7 @@ bottom:
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
 	; shift ourselves over a little
-	lda #10
+	lda #14
 	sta Vera::Reg::DCHStart
 	stz Vera::Reg::Ctrl
 
