@@ -58,6 +58,32 @@ cont:
 .include "blob_loadfile.inc"
 .endif
 
+.ifndef ASSETBLOB
+.macro OPENFILE name
+.local fn
+.local FNLEN
+.local cont
+	lda #1
+	ldx #8
+	ldy #2
+	jsr X16::Kernal::SETLFS
+
+	lda #FNLEN
+	ldx #<fn
+	ldy #>fn
+	jsr X16::Kernal::SETNAM
+
+	jsr X16::Kernal::OPEN
+	bra cont
+fn:
+	.byte name
+FNLEN = * - fn
+cont:
+.endmacro
+.else
+.include "blob_openfile.inc"
+.endif
+
 .macro WAITVSYNC frames
 .local endless
 .local FRC

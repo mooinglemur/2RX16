@@ -5,7 +5,8 @@ import struct
 
 input_dir = "../ROOT"
 output_file = "../REALITY.X16"
-macro_include = "../src/blob_loadfile.inc"
+macro_include_load = "../src/blob_loadfile.inc"
+macro_include_open = "../src/blob_openfile.inc"
 
 excluded_extensions = ['.PRG', '.X16']
 
@@ -30,7 +31,7 @@ with open(output_file, 'wb') as output:
         length = len(content)
         offset_lengths.append((file_name, offset, length))
 
-with open(macro_include, 'w') as macro_file:
+with open(macro_include_load, 'w') as macro_file:
 
     macro_file.write(".macro LOADFILE name, bank, addr, vbank\n")
     macro_file.write("\tjsr blobopen\n")
@@ -72,4 +73,35 @@ with open(macro_include, 'w') as macro_file:
     macro_file.write("\tjsr blobload\n")
     macro_file.write(".endmacro\n")
 
+
+with open(macro_include_open, 'w') as macro_file:
+
+    macro_file.write(".macro OPENFILE name\n")
+    macro_file.write("\tjsr blobopen\n")
+
+    el = ""
+    for entry in offset_lengths:
+        macro_file.write(f".{el}if .xmatch(name,\"{entry[0]}\")\n")
+        macro_file.write(f"\tlda #${entry[1] & 0xff:02x}\n")
+        macro_file.write(f"\tsta blobseekfn+2\n")
+        macro_file.write(f"\tlda #${(entry[1] >> 8) & 0xff:02x}\n")
+        macro_file.write(f"\tsta blobseekfn+3\n")
+        macro_file.write(f"\tlda #${(entry[1] >> 16) & 0xff:02x}\n")
+        macro_file.write(f"\tsta blobseekfn+4\n")
+
+        macro_file.write(f"\tlda #${entry[2] & 0xff:02x}\n")
+        macro_file.write(f"\tsta blob_to_read\n")
+        macro_file.write(f"\tlda #${(entry[2] >> 8) & 0xff:02x}\n")
+        macro_file.write(f"\tsta blob_to_read+1\n")
+        macro_file.write(f"\tlda #${(entry[2] >> 16) & 0xff:02x}\n")
+        macro_file.write(f"\tsta blob_to_read+2\n")
+
+        el = "else"
+
+    macro_file.write(f".else\n")
+    macro_file.write(f".error \"OPENFILE macro expansion failed\"\n")
+    macro_file.write(f".endif\n")
+
+    macro_file.write("\tjsr blobseek\n")
+    macro_file.write(".endmacro\n")
 

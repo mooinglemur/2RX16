@@ -13,6 +13,7 @@
 .include "macros.inc"
 
 ym_get_chip_type = $C0A5
+fat32_get_free_space = $C012
 
 .macro BIOS_WRITE_TEXT text, delay
 .local btxt
@@ -163,7 +164,12 @@ opm:
 endsoundchk:
 	MUSIC_SYNC $FC
 
-	BIOS_WRITE_TEXT "\nMass storage: 1\xab\x22 SD card\n"
+	BIOS_WRITE_TEXT "\nRemovable storage: 1\xab\x22 SD card: "
+
+	WAITVSYNC 60
+
+	BIOS_WRITE_TEXT "OK\n"
+	
 
 	MUSIC_SYNC $FD
 
