@@ -1,6 +1,8 @@
 .importzp blob_to_read
 .importzp blob_target_ptr
 
+.import graceful_fail
+
 .export blobload, blobseek, blobopen
 .export blobseekfn
 
@@ -56,7 +58,7 @@ vreadit:
 	ldy #>Vera::Reg::Data0
 	sec
 	jsr X16::Kernal::MACPTR
-	jcs eof ; yeah, this is lazy
+	jcs graceful_fail
 	stx tmp1
 	lda blob_to_read
 	sec
@@ -99,7 +101,7 @@ readit:
 	ldy blob_target_ptr+1
 	clc
 	jsr X16::Kernal::MACPTR
-	bcs eof ; yeah, this is lazy
+	jcs graceful_fail
 	txa
 	adc blob_target_ptr
 	sta blob_target_ptr

@@ -3,6 +3,7 @@
 .exportzp blob_to_read, blob_target_ptr
 
 .export scenevector
+.export graceful_fail
 
 .import zero_entire_palette_and_target
 .import zero_entire_target
@@ -10,6 +11,8 @@
 .import flush_palette
 .import apply_palette_fade_step
 .import setup_palette_fade
+
+.macpack longbranch
 
 .scope SCROLLER
 	.import BITMAP_VRAM_ADDRESS
@@ -263,6 +266,46 @@ SCENE = $4800
 	jmp X16::Kernal::ENTER_BASIC ; won't return!
 .endproc
 
+.proc graceful_fail
+	; stop song
+	ldx #0
+	jsr zsmkit::zsm_close
+
+	jsr clear_irq_handler
+
+	stz X16::Reg::ROMBank
+
+	; reset VERA
+	jsr X16::Kernal::SCINIT
+
+	stz Vera::Reg::L0HScrollL
+	stz Vera::Reg::L0HScrollH
+	stz Vera::Reg::L0VScrollL
+	stz Vera::Reg::L0VScrollH
+
+	stz Vera::Reg::L1HScrollL
+	stz Vera::Reg::L1HScrollH
+	stz Vera::Reg::L1VScrollL
+	stz Vera::Reg::L1VScrollH
+
+	; clear screen when full
+	jsr X16::Kernal::PRIMM
+	.byte $90,$01,$1c,$93,0
+
+	; set screen mode 11
+	lda #11
+	jsr X16::Kernal::SCREEN_MODE
+
+	jsr X16::Kernal::PRIMM
+	.byte $90,$01,$1c,$93
+	.byte "THE DEMO HAS STOPPED DUE TO AN",13
+	.byte " UNEXPECTED FILE I/O PROBLEM.",13,13
+	.byte "    THE SYSTEM HAS HALTED."
+	.byte 0
+
+	jmp *
+.endproc
+
 .proc play_song
 	ldx #0
 	jsr zsmkit::zsm_close
@@ -505,18 +548,6 @@ tmp3:
 
 .endproc
 
-.proc clear_via_timer: near
-    php
-    sei
-
-    ; disable T1 interrupts
-    lda #%01000000
-    sta VIA1::Reg::IER
-    
-    plp
-    rts
-.endproc
-
 .proc measure_machine_speed: near
 	WAITVSYNC
 	; grab the least significant byte of the timer
@@ -621,6 +652,18 @@ mhz2:
 	rts
 delta1:
 	.byte 0
+.endproc
+
+.proc clear_via_timer: near
+    php
+    sei
+
+    ; disable T1 interrupts
+    lda #%01000000
+    sta VIA1::Reg::IER
+    
+    plp
+    rts
 .endproc
 
 machine_speed:

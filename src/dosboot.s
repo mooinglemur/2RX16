@@ -77,8 +77,36 @@ entry:
 	MUSIC_SYNC $FA
 
 	; write first line banner
-	BIOS_WRITE_TEXT "     VERA VGA BIOS\n"
-	BIOS_WRITE_TEXT "     Copyright (C) 2023, Frank van den Hoef\n\n\n"
+	BIOS_WRITE_TEXT "     VERA VGA BIOS v"
+
+	lda #(63 << 1)
+	sta Vera::Reg::Ctrl
+
+	ldx $9f2a
+	ldy #0
+
+	jsr bios_output_number
+	BIOS_WRITE_TEXT "."
+
+	lda #(63 << 1)
+	sta Vera::Reg::Ctrl
+
+	ldx $9f2b
+	ldy #0
+
+	jsr bios_output_number
+	BIOS_WRITE_TEXT "."
+
+	lda #(63 << 1)
+	sta Vera::Reg::Ctrl
+
+	ldx $9f2c
+	ldy #0
+
+	jsr bios_output_number
+
+
+	BIOS_WRITE_TEXT "\n     Copyright (C) 2023, Frank van den Hoef\n\n\n"
 
 	jsr place_estar_and_bfly
 
@@ -244,18 +272,15 @@ ESTARDATA = $4000
 BFLYDATA = $2000
 sprattr:
 .repeat 6, i
-	.byte <((ESTARDATA+(i * $800)) >> 5)
-	.byte >((ESTARDATA+(i * $800)) >> 5)
-	.byte <(ESTARX+((i .mod 3)*64))
-	.byte >(ESTARX+((i .mod 3)*64))
-	.byte <(ESTARY+((i / 3)*64))
-	.byte >(ESTARY+((i / 3)*64))
+	.word ((ESTARDATA+(i * $800)) >> 5)
+	.word (ESTARX+((i .mod 3)*64))
+	.word (ESTARY+((i / 3)*64))
 	.byte $04,$f0
 .endrepeat
 	;butterfly
-	.byte <(BFLYDATA >> 5)
-	.byte >(BFLYDATA >> 5)
-	.byte $00,$00,$00,$00
+	.word (BFLYDATA >> 5)
+	.word $0000
+	.word $0000
 	.byte $04,$a0
 
 .endproc
