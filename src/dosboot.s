@@ -53,8 +53,6 @@ entry:
 	jsr clear_text_area
 
 	jsr setup_cursor_sprite
-	; load text tiles into VRAM
-	LOADFILE "DOS-CHARSET.VTS", 0, $0000, 0
 
 	jsr set_text_palette_target
 
@@ -62,16 +60,27 @@ entry:
 	stz cur_x
 	stz cur_y
 
+	; load text tiles into VRAM
+	LOADFILE "DOS-CHARSET.VTS", 0, $0000, 0
+
 	lda #0
 	jsr setup_palette_fade
 
 	PALETTE_FADE 28
 
+	; load butterfly into VRAM
+	LOADFILE "DOS-BFLY.VBM", 0, $2000, 0
+	; load energy star tiles into VRAM
+	LOADFILE "DOS-ESTAR.VTS", 0, $4000, 0
+
+
 	MUSIC_SYNC $FA
 
 	; write first line banner
-	BIOS_WRITE_TEXT "VERA VGA BIOS (c) 2019-2023 Frank van den Hoef, et al,\n"
-	BIOS_WRITE_TEXT "Commander X16 KERNAL (c) 2019-2023 Michael Steil, et al,\n\n\n"
+	BIOS_WRITE_TEXT "     VERA VGA BIOS\n"
+	BIOS_WRITE_TEXT "     Copyright (C) 2023, Frank van den Hoef\n\n\n"
+
+	jsr place_estar_and_bfly
 
 	MUSIC_SYNC $FB
 
@@ -217,6 +226,38 @@ endsoundchk:
 	dec
 	bne spinny
 	rts
+.endproc
+
+.proc place_estar_and_bfly
+	VERA_SET_ADDR ((Vera::VRAM_sprattr)+8), 1
+	ldx #0
+loop:
+	lda sprattr,x
+	sta Vera::Reg::Data0
+	inx
+	cpx #(7 * 8)
+	bcc loop
+	rts
+ESTARX = 364
+ESTARY = 0
+ESTARDATA = $4000
+BFLYDATA = $2000
+sprattr:
+.repeat 6, i
+	.byte <((ESTARDATA+(i * $800)) >> 5)
+	.byte >((ESTARDATA+(i * $800)) >> 5)
+	.byte <(ESTARX+((i .mod 3)*64))
+	.byte >(ESTARX+((i .mod 3)*64))
+	.byte <(ESTARY+((i / 3)*64))
+	.byte >(ESTARY+((i / 3)*64))
+	.byte $04,$f0
+.endrepeat
+	;butterfly
+	.byte <(BFLYDATA >> 5)
+	.byte >(BFLYDATA >> 5)
+	.byte $00,$00,$00,$00
+	.byte $04,$a0
+
 .endproc
 
 .proc bios_output_number ; .X .Y (lo hi)
