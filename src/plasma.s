@@ -69,6 +69,7 @@ entry:
 	lda #$72
 	sta nextsync
 
+	lda #2 ; fade in speed
 	jsr do_plasma
 
 	jsr init_params2
@@ -79,6 +80,7 @@ entry:
 	lda #$74
 	sta nextsync
 
+	lda #1 ; fade in speed
 	jsr do_plasma
 
 	jsr init_params3
@@ -89,6 +91,7 @@ entry:
 	lda #$7c
 	sta nextsync
 
+	lda #1 ; fade in speed
 	jsr do_plasma
 
 	jsr deregister_drop_handler
@@ -142,6 +145,7 @@ end:
 .endproc
 
 .proc do_plasma
+	sta PFADE ; number of frames per fade step
 	; reset V-scroll offset
 	lda #$02
 	sta Vera::Reg::Ctrl
@@ -150,14 +154,22 @@ end:
 	stz Vera::Reg::Ctrl
 
 	stz cop_drop
+	lda #2
+	sta pfade_ctr
 
 	jsr set_plz_params ; initial setup
 mainloop:
+	dec pfade_ctr 
+	bne nofade
+	lda #2
+PFADE = * - 1
+	sta pfade_ctr
+
 	jsr apply_palette_fade_step
 	jsr apply_palette_fade_step2
 	jsr apply_palette_fade_step3
 	jsr apply_palette_fade_step4
-
+nofade:
 	lda syncval
 	cmp nextsync
 	bcc noslide
