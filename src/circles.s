@@ -252,9 +252,15 @@ hold:
 
 	VERA_SET_ADDR (Vera::VRAM_palette), 1
 
-	; blank palette
+	; blank whole palette and target
+	; blanking the whole palette because the screen
+	; might flicker some junk tiles in unused palettes
+	; during layer setup
 	ldx #0
 :   stz target_palette,x
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
 	stz Vera::Reg::Data0
 	inx
 	bpl :-
