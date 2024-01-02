@@ -1154,8 +1154,8 @@ while running:
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
 # TODO:
-# - bundle all objects into ONE list of vertices/faces
-#   - do the step-by-step, backwards
+# OK (almost done) - bundle all objects into ONE list of vertices/faces
+# OK (almost done)  - do the step-by-step, backwards
 # - after projection, implement a function that gets two lists: projected and unprojected triangles (aka faces)
 #   - for each pair of faces/triangles:
 #     - determine the 0-2 intersection points
@@ -1163,15 +1163,18 @@ while running:
 #     - calculate the 3D intersection POINTS (2x) between this 3D-direction and the two PLANES of the two triangles
 #     - mark the relationship between the two triangles (one in front of the other)
 #     - MAYBE: already split the triangles?
-# - when sorting the triangles, use the relationship between triangles
-#   - ISSUE: what if there is NO relationship? See Wolf3D solution to this problem!
+# OK - when sorting the triangles, use the relationship between triangles
+# OK? (using sum_of_z)  - ISSUE: what if there is NO relationship? See Wolf3D solution to this problem!
 # - maybe THINK about re-using vertices that are CREATED during z-clipping, splitting and camera-side-clipping!
 #   - One option is to determine if the (2D/3D) point already exists as a vertex
 #     - By comparing coordinates (with an EPSILON) of all known vertices, so can find the closely-matching one -- SLOW!
 #   - Another option is to semantically store new vertices: "v[1]->v[2]->CLIP_RIGHT", "v[4]->v[17]->CLIP_Z", "v[38]->v[97]->INTERSECTION->v[21]->v[53]"
-#     - ISSUE: how do you determine in which ORDER you have to create these identifiers? -> simply by vertex_index? 
-#                - And which EDGE of the INTERSECTION should go first? Simply the lowest vertex_index again?
-#     - ISSUE: how to deal with 2D vs 3D faces/vertices? OR are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
+#     - ISSUE: how do you determine in which ORDER you have to create these identifiers? 
+#          SOLUTION: -> simply by vertex_index? 
+#             - And which EDGE of the INTERSECTION should go first?
+#               SOLUTION:  -> Simply the lowest vertex_index again?
+#     - ISSUE: how to deal with 2D vs 3D faces/vertices? 
+#         SOLUTION:  are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
 
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
