@@ -527,62 +527,52 @@ center_offset = (screen_width // 2, screen_height // 2)
 # FIXME: REMOVE or set to 0,0,0!
 camera = (0, 0, 6)
 
-def project_objects(view_objects, camera_info):
+def project_triangles(view_faces, view_vertices, camera_info):
 
-    projected_objects = {}
+    projected_faces = copy.deepcopy(view_faces)
+    projected_vertices = []
     
-    for current_object_name in view_objects:
-        view_object = view_objects[current_object_name]
-        projected_object = copy.deepcopy(view_object)
+    # We calculate the sum of z for every face
+# FIXME: REMOVE THIS WHEN NOT USED ANYMORE!
+    for face in projected_faces:
+        face_vertex_indices = face['vertex_indices']
+        
+        vertex1 = view_vertices[face_vertex_indices[0]]
+        vertex2 = view_vertices[face_vertex_indices[1]]
+        vertex3 = view_vertices[face_vertex_indices[2]]
+        
+        sum_of_z = vertex1[2] + vertex2[2] + vertex3[2]
+        
+        face['sum_of_z'] = sum_of_z
     
-        view_vertices = view_object['vertices']
+    # Projection of the vertices of the visible faces
+    for vertex in view_vertices:
+        x = vertex[0]
+        y = vertex[1]
+        z = vertex[2]
         
-        # We calculate the sum of z for every face
-        for face in projected_object['faces']:
-            face_vertex_indices = face['vertex_indices']
-            
-            vertex1 = view_vertices[face_vertex_indices[0]]
-            vertex2 = view_vertices[face_vertex_indices[1]]
-            vertex3 = view_vertices[face_vertex_indices[2]]
-            
-            sum_of_z = vertex1[2] + vertex2[2] + vertex3[2]
-            
-            face['sum_of_z'] = sum_of_z
-        
-        projected_vertices = []
-        
-        # Projection of the vertices of the visible faces
-        for vertex in view_object['vertices']:
-            x = vertex[0]
-            y = vertex[1]
-            z = vertex[2]
-            
-            new_x = x
-            new_y = y
-            new_z = z
+        new_x = x
+        new_y = y
+        new_z = z
 
-            # FIXME: we should use a ~42? degree FOV!
-            # --> use camera_info for this!
-            
-            # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
-            z_ratio = 1 / -new_z
+        # FIXME: we should use a ~42? degree FOV!
+        # --> use camera_info for this!
+        
+        # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
+        z_ratio = 1 / -new_z
 
 # FIXME!
-            new_x *= (z_ratio*6)
-            new_y *= (z_ratio*6)
-            
-            x_proj = new_x * camera_scale + center_offset[0]
-            y_proj = new_y * camera_scale + center_offset[1]
-            z_proj = new_z * camera_scale
+        new_x *= (z_ratio*6)
+        new_y *= (z_ratio*6)
+        
+        x_proj = new_x * camera_scale + center_offset[0]
+        y_proj = new_y * camera_scale + center_offset[1]
+        z_proj = new_z * camera_scale
 
-            # Note: we also flip the y here!
-            projected_vertices.append((round(x_proj), screen_height - round(y_proj)))
-            
-        projected_object['vertices'] = projected_vertices
+        # Note: we also flip the y here!
+        projected_vertices.append((round(x_proj), screen_height - round(y_proj)))
         
-        projected_objects[current_object_name] = projected_object
-        
-    return projected_objects
+    return (projected_faces, projected_vertices)
     
 LEFT_EDGE_X = 0
 RIGHT_EDGE_X = 320
@@ -1139,9 +1129,30 @@ while running:
     
     lit_view_objects = apply_light_to_faces_of_objects(z_clipped_view_objects, camera_light)
     
+    print("Assemble all objects into one list of faces/vertices")
+    lit_view_faces = []
+    lit_view_vertices = []
+    for current_object_name in lit_view_objects:
+        # We assemble all objects but the camera(box) here
+        
+        if (current_object_name == 'CameraBox'):
+            continue
+        
+        object_projected_vertices = lit_view_objects[current_object_name]['vertices']
+        object_faces = lit_view_objects[current_object_name]['faces']
+        
+        start_vertex_index = len(lit_view_vertices)
+        lit_view_vertices += object_projected_vertices
+        for object_face in object_faces:
+            object_face['vertex_indices'][0] += start_vertex_index
+            object_face['vertex_indices'][1] += start_vertex_index
+            object_face['vertex_indices'][2] += start_vertex_index
+            
+            lit_view_faces.append(object_face)
+
     print("Project")
     # Project all vertices to screen-space
-    projected_objects = project_objects(lit_view_objects, camera_info)
+    (projected_faces, projected_vertices) = project_triangles(lit_view_faces, lit_view_vertices, camera_info)
     
 # ISSUE: for comparing triangles from *DIFFERENT* objects and store RELATIONSHIPS between these triangles, 
 #        we need to be able to *REFER* triangles of other objects! Its EASIER to have all triangles BUNDLED into one list here!
@@ -1149,27 +1160,6 @@ while running:
     #print("Determine 2D intersections and sort relationships")
     #determine_triangle_2d_intersections_and_split(projected_objects, lit_view_objects)
     
-    print("Assemble all objects into one list of faces/vertices")
-    projected_vertices = []
-    projected_faces = []
-    for current_object_name in projected_objects:
-        # We assemble all objects but the camera(box) here
-        
-        if (current_object_name == 'CameraBox'):
-            continue
-        
-        object_projected_vertices = projected_objects[current_object_name]['vertices']
-        object_faces = projected_objects[current_object_name]['faces']
-        
-        start_vertex_index = len(projected_vertices)
-        projected_vertices += object_projected_vertices
-        for object_face in object_faces:
-            object_face['vertex_indices'][0] += start_vertex_index
-            object_face['vertex_indices'][1] += start_vertex_index
-            object_face['vertex_indices'][2] += start_vertex_index
-            
-            projected_faces.append(object_face)
-
     print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
     (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info)
