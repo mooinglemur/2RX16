@@ -1149,6 +1149,24 @@ while running:
     # Clip 4 sides of the camera -> creating NEW triangles!
     camera_clipped_projected_objects = camera_clip_projected_objects(projected_objects, camera_info)
 
+
+    # Background: Sorting triangles and splitting them (where they overlap): 
+    # 
+    # We want to split triangles when they overlap (in camera view) with another triangle. The one in the BACK will have to be split.
+    # The tricky part is that knowing which triangle is in the BACK is hard to do when you are in 2D projected space.
+    # We need to know (for each pair of triangles) if there are overlapping points, and if there are, which point is closer.
+    #
+    # We can choose any overlapping point really (IMPORTANT: we are ASSUMING the triangles DONT intersect in 3D space!).
+    # In projected space, its easier to know the *intersection points* of the two triangles. But we somehow need to calculate the
+    # world coordinates of these intersection points. We know at which (x/y) *ANGLE* of the camera-view these intersection points lie.
+    # We can determine a 3D vector/DIRECTION (given the camera focal length) for each intersection point.
+    # If we regard the two triangles as *3D planes* we can calculate the intersection point in 3D for both trianles/planes.
+    
+    # Split 2D triangles on overlap: https://stackoverflow.com/questions/5654831/split-triangles-on-overlap
+    # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
+    # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
+
+
     '''
      === Implement this ===
 
