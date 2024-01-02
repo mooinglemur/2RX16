@@ -809,8 +809,8 @@ compare_key = cmp_to_key(compare_faces)
 
 def sort_light_draw_and_export(projected_vertices, faces):
 
-    def face_sorter(item):
-        return -item['sum_of_z']
+    #def face_sorter(item):
+    #    return -item['sum_of_z']
         
     def y_sorter(item):
         return projected_vertices[item][1]
@@ -1239,11 +1239,11 @@ while running:
     # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
 
     print("Determine 2D intersections and sort relationships")
-    determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
+    (split_projected_faces, split_projected_vertices) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
     print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
-    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info)
+    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(split_projected_faces, split_projected_vertices, camera_info)
 
 
 
