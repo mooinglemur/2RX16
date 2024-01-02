@@ -589,16 +589,76 @@ def project_triangles(view_faces, view_vertices, camera_info):
     return (projected_faces, projected_vertices)
     
     
+def intersection_point(vi1, vi2, vi3, vi4, pv):
+    v1 = pv[vi1]
+    v2 = pv[vi2]
+    v3 = pv[vi3]
+    v4 = pv[vi4]
+    
+    '''
+    judge if line (v1,v2) intersects with line(v3,v4)
+    '''
+    d = (v4[1]-v3[1])*(v2[0]-v1[0])-(v4[0]-v3[0])*(v2[1]-v1[1])
+    n_a = (v4[0]-v3[0])*(v1[1]-v3[1])-(v4[1]-v3[1])*(v1[0]-v3[0])
+    n_b = (v2[0]-v1[0])*(v1[1]-v3[1])-(v2[1]-v1[1])*(v1[0]-v3[0])
+
+    if (d != 0):
+        # The line segments are *not* parallel
+        u_a = n_a / d
+        u_b = n_b / d
+    
+        if (u_a >= 0 and u_a <= 1) and (u_b >= 0 and u_b <= 1):
+            point_x = (u_a * (v2[0]-v1[0])) + v1[0]
+            point_y = (u_a * (v2[1]-v1[1])) + v1[1]
+            point = (point_x, point_y)
+            
+            # print("intersection: " + str(v1) + "->" + str(v2) + "  " + str(v3) + "->" + str(v4) + "(" + str(u_a) + ',' + str(u_b) + ') ==> ' + str(point))
+            
+            return point
+    else:
+        # The line segments are parallel
+        # FIXME: check if n_a and n_b are both 0, if so: the line segments are coincident! -> but we need to know where the start/end
+        return None
+    
+    return None
+    
+    
 def determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info):
 
-    for face in projected_faces:
-        # if face['orig_index'] == 3:  # Bottom floor triangle
-            
-        if (False and DEBUG_SORTING):
-            if face['orig_index'] == 11:  # Front wall of building
-                if ('in_front_of' not in face):
-                    face['in_front_of'] = {}
-                face['in_front_of'][3] = True
+    pv = projected_vertices
+    for i, face1 in enumerate(projected_faces):
+        for j, face2 in enumerate(projected_faces):
+        
+            # FIXME: CHECK: is it really better if we do not try to find intersection of faces that are part of the *SAME* object?
+            #         What if an object is not convex? Like the trees? Will sum_of_z be good enough?
+
+            if j > i and face1['obj_name'] != face2['obj_name']:
+                f1_v = face1['vertex_indices']
+                f2_v = face2['vertex_indices']
+                pt = None
+                if pt is None: pt = intersection_point(f1_v[0],f1_v[1], f2_v[0],f2_v[1], pv)
+                if pt is None: pt = intersection_point(f1_v[0],f1_v[1], f2_v[0],f2_v[2], pv)
+                if pt is None: pt = intersection_point(f1_v[0],f1_v[1], f2_v[1],f2_v[2], pv)
+                
+                if pt is None: pt = intersection_point(f1_v[0],f1_v[2], f2_v[0],f2_v[1], pv)
+                if pt is None: pt = intersection_point(f1_v[0],f1_v[2], f2_v[0],f2_v[2], pv)
+                if pt is None: pt = intersection_point(f1_v[0],f1_v[2], f2_v[1],f2_v[2], pv)
+
+                if pt is None: pt = intersection_point(f1_v[1],f1_v[2], f2_v[0],f2_v[1], pv)
+                if pt is None: pt = intersection_point(f1_v[1],f1_v[2], f2_v[0],f2_v[2], pv)
+                if pt is None: pt = intersection_point(f1_v[1],f1_v[2], f2_v[1],f2_v[2], pv)
+                
+                if (pt is not None):
+                    print(face1['obj_name'] + '(' + str(i) + ') > ' + face2['obj_name'] + '(' + str(j) +  '):' + str(pt))
+
+#    for face in projected_faces:
+#        # if face['orig_index'] == 3:  # Bottom floor triangle
+#            
+#        if (False and DEBUG_SORTING):
+#            if face['orig_index'] == 11:  # Front wall of building
+#                if ('in_front_of' not in face):
+#                    face['in_front_of'] = {}
+#                face['in_front_of'][3] = True
 
 # FIXME: we are NOT SPLITTING YET!
 # FIXME: we are NOT SPLITTING YET!
@@ -1222,6 +1282,8 @@ while running:
             object_face['vertex_indices'][0] += start_vertex_index
             object_face['vertex_indices'][1] += start_vertex_index
             object_face['vertex_indices'][2] += start_vertex_index
+            
+            object_face['obj_name'] = current_object_name
             
             lit_view_faces.append(object_face)
 
