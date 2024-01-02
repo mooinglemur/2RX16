@@ -10,6 +10,10 @@ from shapely.geometry import Polygon, GeometryCollection
 import numpy as np
 import json
 
+DRAW_PALETTE = True
+
+scale = 3
+
 # Initialize Pygame
 pygame.init()
 
@@ -58,7 +62,7 @@ clock=pygame.time.Clock()
 
 # Set up the display
 screen_width, screen_height = 320, 200
-screen = pygame.display.set_mode((screen_width*3, screen_height*3))
+screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 pygame.display.set_caption("3D Scene")
 
 DEBUG_COLORS = False
@@ -498,7 +502,13 @@ def apply_light_to_faces_of_objects(view_objects, camera_light):
             normal = view_object['normals'][normal_index]
             
 # FIXME!
-            light_dot = np.dot(np.array(camera_light), np.array(normal)) + 1.0
+            light_dot = np.dot(np.array(camera_light), np.array(normal))
+            if light_dot < 0:
+               light_dot = 0 
+            print(light_dot)
+            
+# FIXME!
+            light_dot = light_dot * 0.5
             
             face['color_index'] = int((light_dot) * face['nr_of_shades']) + face['color_index']
         
@@ -509,8 +519,8 @@ def apply_light_to_faces_of_objects(view_objects, camera_light):
     return lit_view_objects
 
 
-# FIXME: calculate the scale differently!
-scale = 37
+# FIXME: calculate the camera_scale differently!
+camera_scale = 37
 
 center_offset = (screen_width // 2, screen_height // 2)
 
@@ -564,9 +574,9 @@ def project_objects(view_objects, camera_info):
             new_x *= (z_ratio*6)
             new_y *= (z_ratio*6)
             
-            x_proj = new_x * scale + center_offset[0]
-            y_proj = new_y * scale + center_offset[1]
-            z_proj = new_z * scale
+            x_proj = new_x * camera_scale + center_offset[0]
+            y_proj = new_y * camera_scale + center_offset[1]
+            z_proj = new_z * camera_scale
 
             # Note: we also flip the y here!
             projected_vertices.append((round(x_proj), screen_height - round(y_proj)))
@@ -790,8 +800,8 @@ def sort_light_draw_and_export(projected_vertices, faces):
     scaled_up_vertices = []
     for projected_vertex in projected_vertices:
         scaled_up_vertex = [
-            projected_vertex[0]*3,
-            projected_vertex[1]*3,
+            projected_vertex[0]*scale,
+            projected_vertex[1]*scale,
         ]
         scaled_up_vertices.append(scaled_up_vertex)
         
@@ -1124,7 +1134,11 @@ while running:
 # FIXME: change this!
 # FIXME: change this!
 # FIXME: change this!
-    camera_light = [0,0,-1]
+    # camera_light = [0,0,1]
+    # camera_light = [0.707107,0,0.707107]
+    # camera_light = [0.666667, -0.333333, 0.666667]
+    camera_light = [0.408248, -0.408248, 0.816497]
+    
     lit_view_objects = apply_light_to_faces_of_objects(z_clipped_view_objects, camera_light)
     
     print("Project")
@@ -1181,6 +1195,30 @@ while running:
     tris_seen = sort_light_draw_and_export(projected_vertices, faces)
     if tris_seen:
         f.write(b'\xff') # end of frame
+
+
+    if (DRAW_PALETTE):
+        # screen.fill(background_color)
+        
+        x = 0
+        y = 0
+        
+        for clr_idx in range(256):
+        
+            if clr_idx >= len(colors):
+                continue
+        
+            pixel_color = colors[clr_idx]
+            
+            pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 8*scale, 8*scale))
+            
+            # if (byte_index % 16 == 0 and byte_index != 0):
+            if (clr_idx % 16 == 15):
+                y += 8
+                x = 0
+            else:
+                x += 8
+
 
     pygame.display.flip()
     
