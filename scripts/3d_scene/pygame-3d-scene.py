@@ -9,15 +9,20 @@ import time
 from shapely.geometry import Polygon, GeometryCollection
 import numpy as np
 import json
+import random
 
-DRAW_PALETTE = False
+random.seed(10)
+
+DRAW_PALETTE = True
+DEBUG_SORTING = True
+DEBUG_COLORS = True
+DEBUG_CLIP_COLORS = False
 
 scale = 3
 
 # Initialize Pygame
 pygame.init()
 
-'''
 # FIXME: quick and dirty colors here (somewhat akin to VERA's first 16 colors0
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -37,7 +42,7 @@ LIME = (224, 255, 224)
 SKYBLUE = (224, 224, 255)
 LIGHTGRAY = (192, 192, 192)
 
-colors = [
+debug_colors = [
     BLACK,
     WHITE,
     RED,
@@ -56,7 +61,14 @@ colors = [
     SKYBLUE,
     LIGHTGRAY,
 ]
-'''
+
+# Adding 48 more random colors
+for i in range(48):
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+    random_color = (r, g, b)
+    debug_colors.append(random_color)
 
 clock=pygame.time.Clock()
 
@@ -64,8 +76,6 @@ clock=pygame.time.Clock()
 screen_width, screen_height = 320, 200
 screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 pygame.display.set_caption("3D Scene")
-
-DEBUG_COLORS = False
 
 '''
 material_name_to_color_index = {
@@ -425,7 +435,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
-        if (DEBUG_COLORS):
+        if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 3
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 2):
@@ -440,7 +450,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
-        if (DEBUG_COLORS):
+        if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 2
         clipped_faces.append(clipped_face)
         
@@ -451,7 +461,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
-        if (DEBUG_COLORS):
+        if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 4
         clipped_faces.append(clipped_face)
 
@@ -671,7 +681,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
-        if (DEBUG_COLORS):
+        if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 8
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 2):
@@ -686,7 +696,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
-        if (DEBUG_COLORS):
+        if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 9
         clipped_faces.append(clipped_face)
         
@@ -697,7 +707,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
-        if (DEBUG_COLORS):
+        if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 10
         clipped_faces.append(clipped_face)
 
@@ -778,8 +788,8 @@ def sort_light_draw_and_export(projected_vertices, faces):
 # FIXME: do the light calculation earlier in the pipeline!
         color_idx = face['color_index']
         
-# FIXME! HACK!        
-        #color_idx = face_index % 16
+        if (DEBUG_COLORS and not DEBUG_CLIP_COLORS):
+            color_idx = face_index % 64
         
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
@@ -1037,14 +1047,16 @@ running = True
 f = open("trilist.bin", "wb")
 
 frame_nr = 1
-#increment_frame_by = 0
 increment_frame_by = 1
 max_frame_nr = 100
+
+if DEBUG_SORTING:
+    frame_nr = 60
+    increment_frame_by = 0
 
 material_info = load_material_info()
 mat_info = material_info['mat_info']
 palette_colors = material_info['palette_colors']
-
 colors = []
 
 for rgb64 in palette_colors:
@@ -1053,6 +1065,9 @@ for rgb64 in palette_colors:
     g = rgb64['g']*4
     b = rgb64['b']*4
     colors.append((r,g,b))
+
+if (DEBUG_COLORS):
+    colors = debug_colors
 
 mat_name_to_index_and_shades = {}
 for color_index in mat_info:
@@ -1137,6 +1152,10 @@ while running:
         
         if (current_object_name == 'CameraBox'):
             continue
+            
+        if (DEBUG_SORTING):
+            if (current_object_name != 'talojota' and current_object_name != '_laatta01'):
+                continue
         
         object_projected_vertices = lit_view_objects[current_object_name]['vertices']
         object_faces = lit_view_objects[current_object_name]['faces']
@@ -1154,18 +1173,7 @@ while running:
     # Project all vertices to screen-space
     (projected_faces, projected_vertices) = project_triangles(lit_view_faces, lit_view_vertices, camera_info)
     
-# ISSUE: for comparing triangles from *DIFFERENT* objects and store RELATIONSHIPS between these triangles, 
-#        we need to be able to *REFER* triangles of other objects! Its EASIER to have all triangles BUNDLED into one list here!
-    
-    #print("Determine 2D intersections and sort relationships")
-    #determine_triangle_2d_intersections_and_split(projected_objects, lit_view_objects)
-    
-    print("Camera clipping")
-    # Clip 4 sides of the camera -> creating NEW triangles!
-    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info)
-
-
-    # Background: Sorting triangles and splitting them (where they overlap): 
+    # Background: Splitting overlapping triangles: 
     # 
     # We want to split triangles when they overlap (in camera view) with another triangle. The one in the BACK will have to be split.
     # The tricky part is that knowing which triangle is in the BACK is hard to do when you are in 2D projected space.
@@ -1180,6 +1188,14 @@ while running:
     # Split 2D triangles on overlap: https://stackoverflow.com/questions/5654831/split-triangles-on-overlap
     # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
     # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
+
+    #print("Determine 2D intersections and sort relationships")
+    #determine_triangle_2d_intersections_and_split(projected_objects, lit_view_objects)
+    
+    print("Camera clipping")
+    # Clip 4 sides of the camera -> creating NEW triangles!
+    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info)
+
 
 
     '''
