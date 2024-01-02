@@ -1238,7 +1238,7 @@ while running:
     # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
     # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
 
-    print("Determine 2D intersections and sort relationships")
+    print("Determine 2D intersections and split")
     (split_projected_faces, split_projected_vertices) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
     print("Camera clipping")
