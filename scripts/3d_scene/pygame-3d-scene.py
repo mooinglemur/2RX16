@@ -16,8 +16,9 @@ random.seed(10)
 
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = False
-DEBUG_COLORS = False
+DEBUG_SORTING = True
+DEBUG_COLORS = True
+DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 
 scale = 3
@@ -593,7 +594,7 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
     for face in projected_faces:
         # if face['orig_index'] == 3:  # Bottom floor triangle
             
-        if (DEBUG_COLORS):
+        if (False and DEBUG_SORTING):
             if face['orig_index'] == 11:  # Front wall of building
                 if ('in_front_of' not in face):
                     face['in_front_of'] = {}
@@ -838,7 +839,10 @@ def sort_light_draw_and_export(projected_vertices, faces):
         color_idx = face['color_index']
         
         if (DEBUG_COLORS and not DEBUG_CLIP_COLORS):
-            color_idx = face['orig_index'] % 64
+            if DEBUG_COLOR_PER_ORIG_TRIANGLE:
+                color_idx = face['orig_index'] % 64
+            else:
+                color_idx = face_index % 64
         
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
@@ -1278,7 +1282,7 @@ while running:
         f.write(b'\xff') # end of frame
 
 
-    print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
+    # print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
 
     if (DRAW_PALETTE):
         # screen.fill(background_color)
