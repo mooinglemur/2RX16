@@ -584,6 +584,23 @@ def project_triangles(view_faces, view_vertices, camera_info):
         
     return (projected_faces, projected_vertices)
     
+    
+def determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info):
+
+    for face in projected_faces:
+        if face['orig_index'] == 3:  # Bottom floor triangle
+            face['orig_index'] = 4
+        if face['orig_index'] == 11:  # Front wall of building
+            face['orig_index'] = 3
+
+# FIXME: we are NOT SPLITTING YET!
+# FIXME: we are NOT SPLITTING YET!
+# FIXME: we are NOT SPLITTING YET!
+    split_projected_faces = projected_faces
+    split_projected_verticed = projected_vertices
+
+    return (split_projected_faces, split_projected_verticed)
+    
 LEFT_EDGE_X = 0
 RIGHT_EDGE_X = 320
 TOP_EDGE_Y = 0
@@ -780,7 +797,8 @@ def sort_light_draw_and_export(projected_vertices, faces):
             projected_vertex[1]*scale,
         ]
         scaled_up_vertices.append(scaled_up_vertex)
-        
+    
+    
     sorted_faces = sorted(faces, key=face_sorter, reverse=True)
 
     for face_index, face in enumerate(sorted_faces):
@@ -789,7 +807,7 @@ def sort_light_draw_and_export(projected_vertices, faces):
         color_idx = face['color_index']
         
         if (DEBUG_COLORS and not DEBUG_CLIP_COLORS):
-            color_idx = face_index % 64
+            color_idx = face['orig_index'] % 64
         
         color_idx_out = color_idx + 1
         color_idx_out += 16*color_idx_out
@@ -1169,6 +1187,10 @@ while running:
             
             lit_view_faces.append(object_face)
 
+    if (DEBUG_COLORS):
+        for orig_face_index, face in enumerate(lit_view_faces):
+            face['orig_index'] = orig_face_index
+    
     print("Project")
     # Project all vertices to screen-space
     (projected_faces, projected_vertices) = project_triangles(lit_view_faces, lit_view_vertices, camera_info)
@@ -1189,8 +1211,8 @@ while running:
     # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
     # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
 
-    #print("Determine 2D intersections and sort relationships")
-    #determine_triangle_2d_intersections_and_split(projected_objects, lit_view_objects)
+    print("Determine 2D intersections and sort relationships")
+    determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
     print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
