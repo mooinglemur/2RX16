@@ -10,7 +10,7 @@ from shapely.geometry import Polygon, GeometryCollection
 import numpy as np
 import json
 
-DRAW_PALETTE = True
+DRAW_PALETTE = False
 
 scale = 3
 
@@ -714,59 +714,41 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
     return clipped_faces
 
 
-def camera_clip_projected_objects(projected_objects, camera_info):
+def camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info):
 
-    camera_clipped_projected_objects = {}
+    camera_clipped_projected_faces = []
+    camera_clipped_projected_vertices = copy.deepcopy(projected_vertices)
     
     edge_names = ['LEFT', 'TOP', 'RIGHT', 'BOTTOM']
-    
-    for current_object_name in projected_objects:
-        projected_object = projected_objects[current_object_name]
+
+    # We KEEP the old vertices! (even though they are all not being used at the end!
+    combined_vertices = camera_clipped_projected_vertices
+
+    # We determine -for each face- whether it should be clipped against the edges of the screen
+    for non_clipped_face in projected_faces:
+
+        # We start with the non-clipped face we want to clip along all 4 edges
+        queue_faces = [ non_clipped_face ]
         
-        camera_clipped_projected_object = copy.deepcopy(projected_object)
-        camera_clipped_projected_object['faces'] = []
-        # We KEEP the old vertices! (even though they are all not being used at the end!
-        # camera_clipped_projected_object['vertices'] = []
-       
-        # For this object we keep track of all clipped vertices being created
-        combined_vertices = camera_clipped_projected_object['vertices']
+        for edge_name in edge_names:
 
-        #non_clipped_vertices = projected_object['vertices']
- 
-        # We determine -for each face in the object- whether it should be clipped against the edges of the screen
-        for non_clipped_face in projected_object['faces']:
-
-            # We start with the non-clipped face we want to clip along all 4 edges
-            queue_faces = [ non_clipped_face ]
-            
-            #print(queue_faces)
-            for edge_name in edge_names:
-
-                clipped_faces_against_this_edge = []
-                for queue_face in queue_faces:
-                    
-                    # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
-                    
-                    # The clipped_vertices is an OUPUT vertex-array that gets extended each time!
-                    # We *extend* clipped_faces_against_this_edge here
-                    clipped_faces_against_this_edge += clip_face_against_edge(queue_face, combined_vertices, edge_name)
-
-                # The output faces (left over after clipping) become the input faces for the next edge
-                queue_faces = clipped_faces_against_this_edge
+            clipped_faces_against_this_edge = []
+            for queue_face in queue_faces:
                 
-            
-            # After clipping against all 4 edges we are left with only clipped faces in the queue
-            camera_clipped_projected_object['faces'] += queue_faces
+                # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
                 
-        #print(projected_object['faces'])
-        #print(projected_object['vertices'])
-        #print()
-        #print(camera_clipped_projected_object['faces'])
-        #print(camera_clipped_projected_object['vertices'])
+                # The clipped_vertices is an OUPUT vertex-array that gets extended each time!
+                # We *extend* clipped_faces_against_this_edge here
+                clipped_faces_against_this_edge += clip_face_against_edge(queue_face, combined_vertices, edge_name)
+
+            # The output faces (left over after clipping) become the input faces for the next edge
+            queue_faces = clipped_faces_against_this_edge
+            
         
-        camera_clipped_projected_objects[current_object_name] = camera_clipped_projected_object
-    
-    return camera_clipped_projected_objects
+        # After clipping against all 4 edges we are left with only clipped faces in the queue
+        camera_clipped_projected_faces += queue_faces
+                
+    return (camera_clipped_projected_faces, camera_clipped_projected_vertices)
     
 
 def slope2bytes(slope):
@@ -1167,9 +1149,30 @@ while running:
     #print("Determine 2D intersections and sort relationships")
     #determine_triangle_2d_intersections_and_split(projected_objects, lit_view_objects)
     
+    print("Assemble all objects into one list of faces/vertices")
+    projected_vertices = []
+    projected_faces = []
+    for current_object_name in projected_objects:
+        # We assemble all objects but the camera(box) here
+        
+        if (current_object_name == 'CameraBox'):
+            continue
+        
+        object_projected_vertices = projected_objects[current_object_name]['vertices']
+        object_faces = projected_objects[current_object_name]['faces']
+        
+        start_vertex_index = len(projected_vertices)
+        projected_vertices += object_projected_vertices
+        for object_face in object_faces:
+            object_face['vertex_indices'][0] += start_vertex_index
+            object_face['vertex_indices'][1] += start_vertex_index
+            object_face['vertex_indices'][2] += start_vertex_index
+            
+            projected_faces.append(object_face)
+
     print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
-    camera_clipped_projected_objects = camera_clip_projected_objects(projected_objects, camera_info)
+    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info)
 
 
     # Background: Sorting triangles and splitting them (where they overlap): 
@@ -1209,30 +1212,9 @@ while running:
 # FIXME!
 #    exit()
 
-    print("Assemble all objects")
-    projected_vertices = []
-    faces = []
-    for current_object_name in camera_clipped_projected_objects:
-        # We assemble all objects but the camera(box) here
-        
-        if (current_object_name == 'CameraBox'):
-            continue
-        
-        object_projected_vertices = camera_clipped_projected_objects[current_object_name]['vertices']
-        object_faces = camera_clipped_projected_objects[current_object_name]['faces']
-        
-        start_vertex_index = len(projected_vertices)
-        projected_vertices += object_projected_vertices
-        for object_face in object_faces:
-            object_face['vertex_indices'][0] += start_vertex_index
-            object_face['vertex_indices'][1] += start_vertex_index
-            object_face['vertex_indices'][2] += start_vertex_index
-            
-            faces.append(object_face)
-
     print("Sort, draw and export")
     screen.fill((0,0,0))
-    tris_seen = sort_light_draw_and_export(projected_vertices, faces)
+    tris_seen = sort_light_draw_and_export(camera_clipped_projected_vertices, camera_clipped_projected_faces)
     if tris_seen:
         f.write(b'\xff') # end of frame
 
