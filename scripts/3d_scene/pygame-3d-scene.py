@@ -505,7 +505,7 @@ def apply_light_to_faces_of_objects(view_objects, camera_light):
             light_dot = np.dot(np.array(camera_light), np.array(normal))
             if light_dot < 0:
                light_dot = 0 
-            print(light_dot)
+            #print(light_dot)
             
 # FIXME!
             light_dot = light_dot * 0.5
@@ -567,10 +567,7 @@ def project_objects(view_objects, camera_info):
             # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
             z_ratio = 1 / -new_z
 
-            # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-            # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-            # FIXME: both SIDES of the CUBE dont look STRAIGHT (zoomed in)! There is something WRONG!
-
+# FIXME!
             new_x *= (z_ratio*6)
             new_y *= (z_ratio*6)
             
@@ -761,14 +758,11 @@ def camera_clip_projected_objects(projected_objects, camera_info):
             # After clipping against all 4 edges we are left with only clipped faces in the queue
             camera_clipped_projected_object['faces'] += queue_faces
                 
-        
         #print(projected_object['faces'])
         #print(projected_object['vertices'])
         #print()
         #print(camera_clipped_projected_object['faces'])
         #print(camera_clipped_projected_object['vertices'])
-        
-        # FIXME: iterate over all SCREEN EDGE and feed it the NEW list each time!
         
         camera_clipped_projected_objects[current_object_name] = camera_clipped_projected_object
     
@@ -1119,18 +1113,40 @@ while running:
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
+# TODO:
+# - bundle all objects into ONE list of vertices/faces
+#   - do the step-by-step, backwards
+# - after projection, implement a function that gets two lists: projected and unprojected triangles (aka faces)
+#   - for each pair of faces/triangles:
+#     - determine the 0-2 intersection points
+#     - given 1 point, calculate the x/y direction (using the camera focal length)
+#     - calculate the 3D intersection POINTS (2x) between this 3D-direction and the two PLANES of the two triangles
+#     - mark the relationship between the two triangles (one in front of the other)
+#     - MAYBE: already split the triangles?
+# - when sorting the triangles, use the relationship between triangles
+#   - ISSUE: what if there is NO relationship? See Wolf3D solution to this problem!
+# - maybe THINK about re-using vertices that are CREATED during z-clipping, splitting and camera-side-clipping!
+#   - One option is to determine if the (2D/3D) point already exists as a vertex
+#     - By comparing coordinates (with an EPSILON) of all known vertices, so can find the closely-matching one -- SLOW!
+#   - Another option is to semantically store new vertices: "v[1]->v[2]->CLIP_RIGHT", "v[4]->v[17]->CLIP_Z", "v[38]->v[97]->INTERSECTION->v[21]->v[53]"
+#     - ISSUE: how do you determine in which ORDER you have to create these identifiers? -> simply by vertex_index? 
+#                - And which EDGE of the INTERSECTION should go first? Simply the lowest vertex_index again?
+#     - ISSUE: how to deal with 2D vs 3D faces/vertices? OR are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
+
+# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
+# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
+# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
+
     print("Backface cull")
     # Backface cull where face/triangle-normal points away from camera
     culled_view_objects = cull_faces_of_objects(view_objects)
     
     print("Z clipping")
     # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
-# FIXME: implement this!
     z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
     
     print("Applying light")
     # Change color of faces/triangles according to the amount of light they get
-    
 # FIXME: change this!
 # FIXME: change this!
 # FIXME: change this!
@@ -1144,6 +1160,12 @@ while running:
     print("Project")
     # Project all vertices to screen-space
     projected_objects = project_objects(lit_view_objects, camera_info)
+    
+# ISSUE: for comparing triangles from *DIFFERENT* objects and store RELATIONSHIPS between these triangles, 
+#        we need to be able to *REFER* triangles of other objects! Its EASIER to have all triangles BUNDLED into one list here!
+    
+    #print("Determine 2D intersections and sort relationships")
+    #determine_triangle_2d_intersections_and_split(projected_objects, lit_view_objects)
     
     print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
