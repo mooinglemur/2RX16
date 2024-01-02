@@ -10,6 +10,7 @@ from shapely.geometry import Polygon, GeometryCollection
 import numpy as np
 import json
 import random
+from functools import cmp_to_key
 
 random.seed(10)
 
@@ -588,10 +589,12 @@ def project_triangles(view_faces, view_vertices, camera_info):
 def determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info):
 
     for face in projected_faces:
-        if face['orig_index'] == 3:  # Bottom floor triangle
-            face['orig_index'] = 4
+        # if face['orig_index'] == 3:  # Bottom floor triangle
+            
         if face['orig_index'] == 11:  # Front wall of building
-            face['orig_index'] = 3
+            if ('in_front_of' not in face):
+                face['in_front_of'] = {}
+            face['in_front_of'][3] = True
 
 # FIXME: we are NOT SPLITTING YET!
 # FIXME: we are NOT SPLITTING YET!
@@ -781,6 +784,29 @@ def slope2bytes(slope):
     b1[1] |= x32
     return b1
 
+
+
+ 
+def compare_faces(face_a, face_b):
+    
+    if ('in_front_of' in face_a):
+        if (face_b['orig_index'] in face_a['in_front_of']):
+            return -1
+            
+    if ('in_front_of' in face_b):
+        if (face_a['orig_index'] in face_b['in_front_of']):
+            return 1
+    
+    # TODO: this is our 'fallback' method: if triangles dont have a relationship (front/back) we use the sum_of_z for general sorting)
+    if face_a['sum_of_z'] == face_b['sum_of_z']:
+        return 0
+    if face_a['sum_of_z'] < face_b['sum_of_z']:
+        return 1
+    if face_a['sum_of_z'] > face_b['sum_of_z']:
+        return -1
+ 
+compare_key = cmp_to_key(compare_faces)
+
 def sort_light_draw_and_export(projected_vertices, faces):
 
     def face_sorter(item):
@@ -799,7 +825,8 @@ def sort_light_draw_and_export(projected_vertices, faces):
         scaled_up_vertices.append(scaled_up_vertex)
     
     
-    sorted_faces = sorted(faces, key=face_sorter, reverse=True)
+#    sorted_faces = sorted(faces, key=face_sorter, reverse=True)
+    sorted_faces = sorted(faces, key=compare_key, reverse=True)
 
     for face_index, face in enumerate(sorted_faces):
 
