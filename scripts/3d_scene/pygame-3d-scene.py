@@ -534,9 +534,6 @@ def apply_light_to_faces_of_objects(view_objects, camera_light):
     return lit_view_objects
 
 
-# FIXME: calculate the camera_scale differently!
-camera_scale = 37
-
 center_offset = (screen_width // 2, screen_height // 2)
 
 # FIXME: REMOVE or set to 0,0,0!
@@ -577,15 +574,19 @@ def project_triangles(view_faces, view_vertices, camera_info):
         z_ratio = 1 / -new_z
 
 # FIXME!
-        new_x *= (z_ratio*6)
-        new_y *= (z_ratio*6)
+        new_x *= z_ratio
+        new_y *= z_ratio
         
-        x_proj = new_x * camera_scale + center_offset[0]
-        y_proj = new_y * camera_scale + center_offset[1]
-        z_proj = new_z * camera_scale
+        x_proj = new_x
+        y_proj = new_y
+        
+        #x_proj = new_x * camera_scale + center_offset[0]
+        #y_proj = new_y * camera_scale + center_offset[1]
+        # z_proj = new_z * camera_scale
 
         # Note: we also flip the y here!
-        projected_vertices.append((round(x_proj), screen_height - round(y_proj)))
+        projected_vertices.append((x_proj, y_proj))
+        # projected_vertices.append((round(x_proj), screen_height - round(y_proj)))
         
     return (projected_faces, projected_vertices)
     
@@ -681,11 +682,20 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
 
     return (split_projected_faces, split_projected_verticed, debug_intersection_points)
     
-LEFT_EDGE_X = 0
-RIGHT_EDGE_X = 320
-TOP_EDGE_Y = 0
-BOTTOM_EDGE_Y = 200
-    
+# FIXME: we need to put an ASPECT RATIO IN HERE!
+# FIXME: we need to put an ASPECT RATIO IN HERE!
+# FIXME: we need to put an ASPECT RATIO IN HERE!
+tmp_zoom = 1.0
+LEFT_EDGE_X = -1 * tmp_zoom * (320/200)
+RIGHT_EDGE_X = +1 * tmp_zoom * (320/200)
+BOTTOM_EDGE_Y = -1 * tmp_zoom
+TOP_EDGE_Y = +1 * tmp_zoom
+
+# FIXME: calculate the camera_scale differently!
+camera_scale = 200
+#camera_scale = 37*6
+
+
 def is_2d_vertex_inside_edge(vertex, edge_name):
 
     x = vertex[0]
@@ -697,13 +707,13 @@ def is_2d_vertex_inside_edge(vertex, edge_name):
         if x < LEFT_EDGE_X:
             vertex_is_inside = False
     elif edge_name == 'RIGHT':
-        if x >= RIGHT_EDGE_X:
-            vertex_is_inside = False
-    elif edge_name == 'TOP':
-        if y < TOP_EDGE_Y:
+        if x > RIGHT_EDGE_X:
             vertex_is_inside = False
     elif edge_name == 'BOTTOM':
-        if y >= BOTTOM_EDGE_Y:
+        if y < BOTTOM_EDGE_Y:
+            vertex_is_inside = False
+    elif edge_name == 'TOP':
+        if y > TOP_EDGE_Y:
             vertex_is_inside = False
             
     return vertex_is_inside
@@ -716,19 +726,17 @@ def clip_2d_vertex_against_edge(inside_vertex, outside_vertex, edge_name):
         y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
         clipped_vertex = (LEFT_EDGE_X, y_clipped)
     elif edge_name == 'RIGHT':
-# FIXME: should we do -1 here too?
         percentage_to_keep = (RIGHT_EDGE_X - inside_vertex[0]) / (outside_vertex[0] - inside_vertex[0])
         y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-        clipped_vertex = (RIGHT_EDGE_X-1, y_clipped)
+        clipped_vertex = (RIGHT_EDGE_X, y_clipped)
+    elif edge_name == 'BOTTOM':
+        percentage_to_keep = (inside_vertex[1] - BOTTOM_EDGE_Y) / (inside_vertex[1] - outside_vertex[1])
+        x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
+        clipped_vertex = (x_clipped, BOTTOM_EDGE_Y)
     elif edge_name == 'TOP':
-        percentage_to_keep = (inside_vertex[1] - TOP_EDGE_Y) / (inside_vertex[1] - outside_vertex[1])
+        percentage_to_keep = (TOP_EDGE_Y - inside_vertex[1]) / (outside_vertex[1] - inside_vertex[1])
         x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
         clipped_vertex = (x_clipped, TOP_EDGE_Y)
-    elif edge_name == 'BOTTOM':
-# FIXME: should we do -1 here too?
-        percentage_to_keep = (BOTTOM_EDGE_Y - inside_vertex[1]) / (outside_vertex[1] - inside_vertex[1])
-        x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-        clipped_vertex = (x_clipped, BOTTOM_EDGE_Y-1)
     
     return clipped_vertex
     
@@ -885,20 +893,31 @@ def compare_faces(face_a, face_b):
  
 compare_key = cmp_to_key(compare_faces)
 
+def projected_to_screen(projected_x, projected_y):
+    screen_x = round(projected_x*camera_scale + center_offset[0])
+    screen_y = round(projected_y*camera_scale + center_offset[1])
+    # Note: we also flip the y here!
+    screen_y = screen_height - screen_y
+    return (screen_x, screen_y)
+    
+
 def sort_light_draw_and_export(projected_vertices, faces):
 
     #def face_sorter(item):
     #    return -item['sum_of_z']
-        
+
+# FIXME: this sorter is probably the wrong way around now, since y is not flipped anymore in the projected_vertices!
     def y_sorter(item):
         return projected_vertices[item][1]
 
-    # The vertices are scaled up for the pygame screen
+
+    # The vertices are scaled up for the (pygame) screen
     scaled_up_vertices = []
     for projected_vertex in projected_vertices:
+        (screen_x, screen_y) = projected_to_screen(projected_vertex[0], projected_vertex[1])
         scaled_up_vertex = [
-            projected_vertex[0]*scale,
-            projected_vertex[1]*scale,
+            screen_x*scale,
+            screen_y*scale,
         ]
         scaled_up_vertices.append(scaled_up_vertex)
     
@@ -1389,7 +1408,9 @@ while running:
     if (DRAW_INTERSECTION_POINTS):
         pixel_color = (255,0,0)
         for pt_idx, pt in enumerate(debug_intersection_points):
-            pygame.draw.rect(screen, pixel_color, pygame.Rect(pt[0]*scale, pt[1]*scale, 1*scale, 1*scale))
+            (screen_x, screen_y) = projected_to_screen(pt[0], pt[1])
+        
+            pygame.draw.rect(screen, pixel_color, pygame.Rect(screen_x*scale, screen_y*scale, 1*scale, 1*scale))
 
 
     pygame.display.flip()
