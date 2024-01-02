@@ -18,8 +18,9 @@ PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = True
 DEBUG_COLORS = True
-DEBUG_COLOR_PER_ORIG_TRIANGLE = False
+DEBUG_COLOR_PER_ORIG_TRIANGLE = True
 DEBUG_CLIP_COLORS = False
+DRAW_INTERSECTION_POINTS = True
 
 scale = 3
 
@@ -625,6 +626,7 @@ def intersection_point(vi1, vi2, vi3, vi4, pv):
     
 def determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info):
 
+    debug_intersection_points = []
     pv = projected_vertices
     for i, face1 in enumerate(projected_faces):
         for j, face2 in enumerate(projected_faces):
@@ -649,7 +651,18 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
                 if pt is None: pt = intersection_point(f1_v[1],f1_v[2], f2_v[1],f2_v[2], pv)
                 
                 if (pt is not None):
-                    print(face1['obj_name'] + '(' + str(i) + ') > ' + face2['obj_name'] + '(' + str(j) +  '):' + str(pt))
+                    #print(face1['obj_name'] + '(' + str(i) + ') > ' + face2['obj_name'] + '(' + str(j) +  '):' + str(pt))
+                    
+                    if (DRAW_INTERSECTION_POINTS):
+                        debug_intersection_points.append(pt)
+                    
+                    # Now that we know there is a 2D-point of intersection between the two faces, we need to calculate the corresponding TWO 3D-points
+                    
+                    # FIXME: implement this!
+                    # FIXME: implement this!
+                    # FIXME: implement this!
+
+
 
 #    for face in projected_faces:
 #        # if face['orig_index'] == 3:  # Bottom floor triangle
@@ -666,7 +679,7 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
     split_projected_faces = projected_faces
     split_projected_verticed = projected_vertices
 
-    return (split_projected_faces, split_projected_verticed)
+    return (split_projected_faces, split_projected_verticed, debug_intersection_points)
     
 LEFT_EDGE_X = 0
 RIGHT_EDGE_X = 320
@@ -1312,7 +1325,8 @@ while running:
     # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
 
     if PRINT_PROGRESS: print("Determine 2D intersections and split")
-    (split_projected_faces, split_projected_vertices) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
+# FIXME: remove debug_intersection_points?
+    (split_projected_faces, split_projected_vertices, debug_intersection_points) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
     if PRINT_PROGRESS: print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
@@ -1370,6 +1384,12 @@ while running:
                 x = 0
             else:
                 x += 8
+
+
+    if (DRAW_INTERSECTION_POINTS):
+        pixel_color = (255,0,0)
+        for pt_idx, pt in enumerate(debug_intersection_points):
+            pygame.draw.rect(screen, pixel_color, pygame.Rect(pt[0]*scale, pt[1]*scale, 1*scale, 1*scale))
 
 
     pygame.display.flip()
