@@ -14,9 +14,10 @@ from functools import cmp_to_key
 
 random.seed(10)
 
-DRAW_PALETTE = True
-DEBUG_SORTING = True
-DEBUG_COLORS = True
+PRINT_PROGRESS = False
+DRAW_PALETTE = False
+DEBUG_SORTING = False
+DEBUG_COLORS = False
 DEBUG_CLIP_COLORS = False
 
 scale = 3
@@ -186,7 +187,8 @@ def load_vertices_and_faces(frame_nr):
                 # FIXME: These materials should never be shown, so we set the to None for now, but this isnt really correct
                 color_index = None
                 nr_of_shades = None
-                print("Unknown material: " + current_material_name)
+                if (current_object_name != 'CameraBox'):
+                    print("Unknown material: " + current_material_name)
                 #exit()
                 
             # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
@@ -591,10 +593,11 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
     for face in projected_faces:
         # if face['orig_index'] == 3:  # Bottom floor triangle
             
-        if face['orig_index'] == 11:  # Front wall of building
-            if ('in_front_of' not in face):
-                face['in_front_of'] = {}
-            face['in_front_of'][3] = True
+        if (DEBUG_COLORS):
+            if face['orig_index'] == 11:  # Front wall of building
+                if ('in_front_of' not in face):
+                    face['in_front_of'] = {}
+                face['in_front_of'][3] = True
 
 # FIXME: we are NOT SPLITTING YET!
 # FIXME: we are NOT SPLITTING YET!
@@ -786,7 +789,8 @@ def slope2bytes(slope):
 
 
 
- 
+
+# FIXME: in the end we dont want to do ANY sorting! So this should evenually be REMOVED!
 def compare_faces(face_a, face_b):
     
     if ('in_front_of' in face_a):
@@ -1133,15 +1137,15 @@ while running:
             #if event.key == pygame.K_RIGHT:
             #    increment_frame_by = 1
 
-    print("Loading vertices and faces")
+    if PRINT_PROGRESS: print("Loading vertices and faces")
     world_objects = load_vertices_and_faces(frame_nr)
 
-    print("Getting camera info")
+    if PRINT_PROGRESS: print("Getting camera info")
     camera_box = world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
     del world_objects['CameraBox']
     
-    print("Transform into view space")
+    if PRINT_PROGRESS: print("Transform into view space")
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
@@ -1169,15 +1173,15 @@ while running:
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
 
-    print("Backface cull")
+    if PRINT_PROGRESS: print("Backface cull")
     # Backface cull where face/triangle-normal points away from camera
     culled_view_objects = cull_faces_of_objects(view_objects)
     
-    print("Z clipping")
+    if PRINT_PROGRESS: print("Z clipping")
     # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
     z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
     
-    print("Applying light")
+    if PRINT_PROGRESS: print("Applying light")
     # Change color of faces/triangles according to the amount of light they get
 # FIXME: change this!
 # FIXME: change this!
@@ -1189,7 +1193,7 @@ while running:
     
     lit_view_objects = apply_light_to_faces_of_objects(z_clipped_view_objects, camera_light)
     
-    print("Assemble all objects into one list of faces/vertices")
+    if PRINT_PROGRESS: print("Assemble all objects into one list of faces/vertices")
     lit_view_faces = []
     lit_view_vertices = []
     for current_object_name in lit_view_objects:
@@ -1218,7 +1222,7 @@ while running:
         for orig_face_index, face in enumerate(lit_view_faces):
             face['orig_index'] = orig_face_index
     
-    print("Project")
+    if PRINT_PROGRESS: print("Projection")
     # Project all vertices to screen-space
     (projected_faces, projected_vertices) = project_triangles(lit_view_faces, lit_view_vertices, camera_info)
     
@@ -1238,10 +1242,10 @@ while running:
     # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
     # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
 
-    print("Determine 2D intersections and split")
+    if PRINT_PROGRESS: print("Determine 2D intersections and split")
     (split_projected_faces, split_projected_vertices) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
-    print("Camera clipping")
+    if PRINT_PROGRESS: print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
     (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(split_projected_faces, split_projected_vertices, camera_info)
 
@@ -1267,12 +1271,14 @@ while running:
 # FIXME!
 #    exit()
 
-    print("Sort, draw and export")
+    if PRINT_PROGRESS: print("Sort, draw and export")
     screen.fill((0,0,0))
     tris_seen = sort_light_draw_and_export(camera_clipped_projected_vertices, camera_clipped_projected_faces)
     if tris_seen:
         f.write(b'\xff') # end of frame
 
+
+    print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
 
     if (DRAW_PALETTE):
         # screen.fill(background_color)
