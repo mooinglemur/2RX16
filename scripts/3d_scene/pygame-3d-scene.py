@@ -559,10 +559,10 @@ def apply_light_to_faces_of_objects(view_objects):
             #    light_dot = 1
             
             # FIXME! HACK to approximate
-            light_dot = light_dot * 0.7
+            light_dot = light_dot * 0.6
             
-            if (current_object_name == 'talojota'):
-                print( str(face['color_index']) + ':' + str(face['nr_of_shades']))
+            #if (current_object_name == 'talojota'):
+            #    print( str(face['color_index']) + ':' + str(face['nr_of_shades']))
             
             face['color_index'] = int((light_dot) * face['nr_of_shades']) + face['color_index']
         
