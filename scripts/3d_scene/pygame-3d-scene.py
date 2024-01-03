@@ -16,7 +16,7 @@ random.seed(10)
 
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_COLORS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = True
 DEBUG_CLIP_COLORS = False
@@ -1225,6 +1225,7 @@ while running:
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
 # TODO:
+# - remove non-visible objects (in Blender)
 # OK (almost done) - bundle all objects into ONE list of vertices/faces
 # OK (almost done)  - do the step-by-step, backwards
 # - after projection, implement a function that gets two lists: projected and unprojected triangles (aka faces)
@@ -1234,6 +1235,7 @@ while running:
 #     - calculate the 3D intersection POINTS (2x) between this 3D-direction and the two PLANES of the two triangles
 #     - mark the relationship between the two triangles (one in front of the other)
 #     - MAYBE: already split the triangles?
+# - DONT split triangles from: WINDOWS, SHIP and maybe TREES!
 # OK - when sorting the triangles, use the relationship between triangles
 # OK? (using sum_of_z)  - ISSUE: what if there is NO relationship? See Wolf3D solution to this problem!
 # - maybe THINK about re-using vertices that are CREATED during z-clipping, splitting and camera-side-clipping!
