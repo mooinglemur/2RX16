@@ -16,8 +16,9 @@ random.seed(10)
 
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = False
-DEBUG_COLORS = False
+DEBUG_SORTING = True
+DEBUG_COLORS = True
+DEBUG_SORTING_LIMIT_OBJECTS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DRAW_INTERSECTION_POINTS = False
@@ -1182,7 +1183,9 @@ increment_frame_by = 1
 max_frame_nr = 1800
 
 if DEBUG_SORTING:
-    frame_nr = 178
+    #frame_nr = 1000
+    #increment_frame_by = 1
+    frame_nr = 330
     increment_frame_by = 0
 
 #animation_info = load_animation_info()
@@ -1318,9 +1321,9 @@ while running:
         if (current_object_name == 'CameraBox'):
             continue
             
-        #if (DEBUG_SORTING):
-        #    if (current_object_name != 'talojota' and current_object_name != '_laatta01'):
-        #        continue
+        if (DEBUG_SORTING_LIMIT_OBJECTS):
+            if (current_object_name != 'b4' and current_object_name != 'BuildingC_1'):
+                continue
         
         object_vertices = lit_view_objects[current_object_name]['vertices']
         object_faces = lit_view_objects[current_object_name]['faces']
