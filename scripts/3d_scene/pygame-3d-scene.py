@@ -1182,7 +1182,7 @@ increment_frame_by = 1
 max_frame_nr = 1800
 
 if DEBUG_SORTING:
-    frame_nr = 60
+    frame_nr = 178
     increment_frame_by = 0
 
 #animation_info = load_animation_info()
@@ -1262,11 +1262,24 @@ while running:
         
         # FIXME: this is a HACK! We try to use the average z of all the vertices in an object to do sorting
         #         we should INSTEAD use the 'center vertex' (which is pl[0][1] in the original code: see 'ORD'-part in each object file)
-        avg_z_for_object = 0
-        for object_vertex in object_vertices:
-            avg_z_for_object += object_vertex[2]
         
-        avg_z_for_object = avg_z_for_object / len(object_vertices)
+        avg_z_for_object = 0
+        if (False):
+            for object_vertex in object_vertices:
+                avg_z_for_object += object_vertex[2]
+            
+            avg_z_for_object = avg_z_for_object / len(object_vertices)
+        else:
+            min_z = None
+            max_z = None
+            for object_vertex in object_vertices:
+                vertex_z = object_vertex[2]
+                if ((min_z is None) or vertex_z < min_z):
+                    min_z = vertex_z
+                if ((max_z is None) or vertex_z > max_z):
+                    max_z = vertex_z
+                
+            avg_z_for_object = (min_z + max_z) / 2
         
         # The original engine has a little trick: when an object starts with an underscore (usually the platforms on the ground) then consider it very far away (meaning: always draw first)
         #    See: VISU/C/U2E.C (lines 401-431)
@@ -1305,9 +1318,9 @@ while running:
         if (current_object_name == 'CameraBox'):
             continue
             
-        if (DEBUG_SORTING):
-            if (current_object_name != 'talojota' and current_object_name != '_laatta01'):
-                continue
+        #if (DEBUG_SORTING):
+        #    if (current_object_name != 'talojota' and current_object_name != '_laatta01'):
+        #        continue
         
         object_vertices = lit_view_objects[current_object_name]['vertices']
         object_faces = lit_view_objects[current_object_name]['faces']
