@@ -15,7 +15,7 @@ from functools import cmp_to_key
 random.seed(10)
 
 PRINT_PROGRESS = False
-DRAW_PALETTE = False
+DRAW_PALETTE = True
 DEBUG_SORTING = False
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
@@ -1221,6 +1221,14 @@ for rgb64 in palette_colors:
     r = rgb64['r']*4
     g = rgb64['g']*4
     b = rgb64['b']*4
+    
+# FIXME: make these 12bit colors!
+# FIXME: make these 12bit colors!
+# FIXME: make these 12bit colors!
+    r = r & 0xF0
+    g = g & 0xF0
+    b = b & 0xF0
+    
     colors.append((r,g,b))
 
 if (DEBUG_COLORS):
