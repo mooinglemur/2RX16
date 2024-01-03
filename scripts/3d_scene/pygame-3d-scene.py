@@ -17,10 +17,10 @@ random.seed(10)
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
-DEBUG_COLORS = True
-DEBUG_COLOR_PER_ORIG_TRIANGLE = True
+DEBUG_COLORS = False
+DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
-DRAW_INTERSECTION_POINTS = True
+DRAW_INTERSECTION_POINTS = False
 
 scale = 3
 
@@ -101,6 +101,13 @@ def load_material_info():
     material_file.close()
     return material_info
 
+def load_animation_info():
+    animation_file_to_import = "U2E_animation.json"
+    animation_file = open('assets/3d_scene/' + animation_file_to_import, 'r')
+    animation_info = json.loads(animation_file.read())
+    animation_file.close()
+    return animation_info
+
 def load_vertices_and_faces(frame_nr):
 
     # In Blender do:
@@ -109,7 +116,7 @@ def load_vertices_and_faces(frame_nr):
     #  - Upward Axis: Z
     #  - Select: Normals, Triangulated Mesh, Materials->Export
     #  - Select: Animation->Export, 1-100 (or 1-1800)
-    #  - Filename: U2E_anim.obj
+    #  - Filename: U2E_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
     
     # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
@@ -554,7 +561,6 @@ def project_triangles(view_faces, view_vertices, camera_info):
         vertex3 = view_vertices[face_vertex_indices[2]]
         
         sum_of_z = vertex1[2] + vertex2[2] + vertex3[2]
-        
         face['sum_of_z'] = sum_of_z
     
     # Projection of the vertices of the visible faces
@@ -855,21 +861,33 @@ def slope2bytes(slope):
 # FIXME: in the end we dont want to do ANY sorting! So this should evenually be REMOVED!
 def compare_faces(face_a, face_b):
     
-    if ('in_front_of' in face_a):
-        if (face_b['orig_index'] in face_a['in_front_of']):
-            return -1
+    #if ('in_front_of' in face_a):
+    #    if (face_b['orig_index'] in face_a['in_front_of']):
+    #        return -1
             
-    if ('in_front_of' in face_b):
-        if (face_a['orig_index'] in face_b['in_front_of']):
+    #if ('in_front_of' in face_b):
+    #    if (face_a['orig_index'] in face_b['in_front_of']):
+    #        return 1
+
+    obj_name_a = face_a['obj_name']
+    obj_name_b = face_b['obj_name']
+    if (obj_name_a != obj_name_b):
+        avg_z_a = avg_z_per_object[obj_name_a]
+        avg_z_b = avg_z_per_object[obj_name_b]        
+        if avg_z_a == avg_z_b:
+            return 0
+        if avg_z_a < avg_z_b:
             return 1
-    
-    # TODO: this is our 'fallback' method: if triangles dont have a relationship (front/back) we use the sum_of_z for general sorting)
-    if face_a['sum_of_z'] == face_b['sum_of_z']:
-        return 0
-    if face_a['sum_of_z'] < face_b['sum_of_z']:
-        return 1
-    if face_a['sum_of_z'] > face_b['sum_of_z']:
-        return -1
+        if avg_z_a > avg_z_b:
+            return -1
+    else:
+        # TODO: this is our 'fallback' method: within an object we look at the sum_of_z of each face (better to use the original (ordered) polygon lists
+        if face_a['sum_of_z'] == face_b['sum_of_z']:
+            return 0
+        if face_a['sum_of_z'] < face_b['sum_of_z']:
+            return 1
+        if face_a['sum_of_z'] > face_b['sum_of_z']:
+            return -1
  
 compare_key = cmp_to_key(compare_faces)
 
@@ -1173,16 +1191,23 @@ f = open("trilist.bin", "wb")
 
 frame_nr = 1
 increment_frame_by = 1
-max_frame_nr = 100
+max_frame_nr = 1800
 
 if DEBUG_SORTING:
     frame_nr = 60
     increment_frame_by = 0
 
+#animation_info = load_animation_info()
+#print(json.dumps(animation_info, indent=4))
+
 material_info = load_material_info()
 mat_info = material_info['mat_info']
 palette_colors = material_info['palette_colors']
 colors = []
+
+# HACK: see comment below
+avg_z_per_object = {}
+
 
 for rgb64 in palette_colors:
     # FIXME: 63 * 4 isnt exactly 255!
@@ -1254,6 +1279,29 @@ while running:
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
 
+    for current_object_name in view_objects:
+        
+        if (current_object_name == 'CameraBox'):
+            continue
+
+        object_vertices = view_objects[current_object_name]['vertices']
+        
+        # FIXME: this is a HACK! We try to use the average z of all the vertices in an object to do sorting
+        #         we should INSTEAD use the 'center vertex' (which is pl[0][1] in the original code: see 'ORD'-part in each object file)
+        avg_z_for_object = 0
+        for object_vertex in object_vertices:
+            avg_z_for_object += object_vertex[2]
+        
+        avg_z_for_object = avg_z_for_object / len(object_vertices)
+        
+        # The original engine has a little trick: when an object starts with an underscore (usually the platforms on the ground) then consider it very far away (meaning: always draw first)
+        #    See: VISU/C/U2E.C (lines 401-431)
+        if current_object_name.startswith('_'):
+            avg_z_for_object -= 1000000
+        
+        avg_z_per_object[current_object_name] = avg_z_for_object
+
+
     if PRINT_PROGRESS: print("Backface cull")
     # Backface cull where face/triangle-normal points away from camera
     culled_view_objects = cull_faces_of_objects(view_objects)
@@ -1287,11 +1335,11 @@ while running:
             if (current_object_name != 'talojota' and current_object_name != '_laatta01'):
                 continue
         
-        object_projected_vertices = lit_view_objects[current_object_name]['vertices']
+        object_vertices = lit_view_objects[current_object_name]['vertices']
         object_faces = lit_view_objects[current_object_name]['faces']
         
         start_vertex_index = len(lit_view_vertices)
-        lit_view_vertices += object_projected_vertices
+        lit_view_vertices += object_vertices
         for object_face in object_faces:
             object_face['vertex_indices'][0] += start_vertex_index
             object_face['vertex_indices'][1] += start_vertex_index
@@ -1300,7 +1348,7 @@ while running:
             object_face['obj_name'] = current_object_name
             
             lit_view_faces.append(object_face)
-
+        
     if (DEBUG_COLORS):
         for orig_face_index, face in enumerate(lit_view_faces):
             face['orig_index'] = orig_face_index
@@ -1327,11 +1375,13 @@ while running:
 
     if PRINT_PROGRESS: print("Determine 2D intersections and split")
 # FIXME: remove debug_intersection_points?
-    (split_projected_faces, split_projected_vertices, debug_intersection_points) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
+# WHAT WHOULD WE DO WITH THIS?
+#    (split_projected_faces, split_projected_vertices, debug_intersection_points) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
     if PRINT_PROGRESS: print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
-    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(split_projected_faces, split_projected_vertices, camera_info)
+    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info)
+#    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(split_projected_faces, split_projected_vertices, camera_info)
 
 
 
