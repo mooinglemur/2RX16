@@ -545,7 +545,6 @@ def project_triangles(view_faces, view_vertices, camera_info):
     projected_vertices = []
     
     # We calculate the sum of z for every face
-# FIXME: REMOVE THIS WHEN NOT USED ANYMORE!
     for face in projected_faces:
         face_vertex_indices = face['vertex_indices']
         
@@ -563,30 +562,16 @@ def project_triangles(view_faces, view_vertices, camera_info):
         y = vertex[1]
         z = vertex[2]
         
-        new_x = x
-        new_y = y
-        new_z = z
-
         # FIXME: we should use a ~42? degree FOV!
         # --> use camera_info for this!
         
         # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
-        z_ratio = 1 / -new_z
+        z_ratio = 1 / -z
 
-# FIXME!
-        new_x *= z_ratio
-        new_y *= z_ratio
+        x_proj = x * z_ratio
+        y_proj = y * z_ratio
         
-        x_proj = new_x
-        y_proj = new_y
-        
-        #x_proj = new_x * camera_scale + center_offset[0]
-        #y_proj = new_y * camera_scale + center_offset[1]
-        # z_proj = new_z * camera_scale
-
-        # Note: we also flip the y here!
         projected_vertices.append((x_proj, y_proj))
-        # projected_vertices.append((round(x_proj), screen_height - round(y_proj)))
         
     return (projected_faces, projected_vertices)
     
