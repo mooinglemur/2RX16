@@ -344,7 +344,7 @@ def transform_objects_into_view_space(world_objects, camera_info):
         [ new_forward[0], new_forward[1], new_forward[2]],
     ])
 
-    # We transform all vertices by the view_matrix
+    # We transform all vertices and normals by the view_matrix
     view_objects = {}
     for current_object_name in world_objects:
         world_object = world_objects[current_object_name]
@@ -522,7 +522,7 @@ def z_clip_faces_of_objects (view_objects):
     return z_clipped_view_objects
 
 
-def apply_light_to_faces_of_objects(view_objects, camera_light):
+def apply_light_to_faces_of_objects(view_objects):
 
     lit_view_objects = {}
     
@@ -535,14 +535,32 @@ def apply_light_to_faces_of_objects(view_objects, camera_light):
             normal_index = face['normal_index']
             normal = view_object['normals'][normal_index]
             
-# FIXME!
+            # Note: in ADRAW.ASM there is a routine called 'calclight' which in turn calls 'normallight'. This uses the following data:
+            #
+            #   newlight dw	12118,10603,3030
+            #
+            # This seems to be the x,y and z direction (as a vector) of the light source, relative to the *camera*!
+            #
+            # Assuming these are signed 16-bit fixed point numbers, this is (roughly): 0.37, 0.32, 0.09
+            # We also asumme that Y is flipped in the original engine. Since it is not here, we have to negate it.
+
+# FIXME: some colors still seem complete off (like the purple)!
+#        FOR EXAMPLE: look at 'Building20'!
+            
+            #camera_light = [0.408248, -0.408248, 0.816497]
+            camera_light = [0.37, -0.32, 0.09]
+            
             light_dot = np.dot(np.array(camera_light), np.array(normal))
-            if light_dot < 0:
-               light_dot = 0 
+            
+            # CHECK: Is this equivalent to the "add	ax,128" in the orginal?
+            light_dot += 1.0
             #print(light_dot)
             
-# FIXME!
-            light_dot = light_dot * 0.5
+            # FIXME! HACK to approximate
+            light_dot = light_dot * 0.3
+            
+            if (current_object_name == 'talojota'):
+                print( str(face['color_index']) + ':' + str(face['nr_of_shades']))
             
             face['color_index'] = int((light_dot) * face['nr_of_shades']) + face['color_index']
         
@@ -914,7 +932,6 @@ def sort_light_draw_and_export(projected_vertices, faces):
 
     for face_index, face in enumerate(sorted_faces):
 
-# FIXME: do the light calculation earlier in the pipeline!
         color_idx = face['color_index']
         
         if (DEBUG_COLORS and not DEBUG_CLIP_COLORS):
@@ -923,9 +940,6 @@ def sort_light_draw_and_export(projected_vertices, faces):
             else:
                 color_idx = face_index % 64
         
-        color_idx_out = color_idx + 1
-        color_idx_out += 16*color_idx_out
-
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         
@@ -1307,15 +1321,7 @@ while running:
     
     if PRINT_PROGRESS: print("Applying light")
     # Change color of faces/triangles according to the amount of light they get
-# FIXME: change this!
-# FIXME: change this!
-# FIXME: change this!
-    # camera_light = [0,0,1]
-    # camera_light = [0.707107,0,0.707107]
-    # camera_light = [0.666667, -0.333333, 0.666667]
-    camera_light = [0.408248, -0.408248, 0.816497]
-    
-    lit_view_objects = apply_light_to_faces_of_objects(z_clipped_view_objects, camera_light)
+    lit_view_objects = apply_light_to_faces_of_objects(z_clipped_view_objects)
     
     if PRINT_PROGRESS: print("Assemble all objects into one list of faces/vertices")
     lit_view_faces = []
