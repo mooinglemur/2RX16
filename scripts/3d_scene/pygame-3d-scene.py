@@ -36,7 +36,7 @@ RIGHT_EDGE_X = +1
 BOTTOM_EDGE_Y = -1 * (200/320)
 TOP_EDGE_Y = +1 * (200/320)
 
-Z_EDGE = -1.0
+Z_EDGE = -1.0   # this is the near plane
 
 projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
 center_offset = (screen_width // 2, screen_height // 2)
@@ -48,6 +48,7 @@ pygame.init()
 # Set up the display
 screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 pygame.display.set_caption("3D Scene")
+clock = pygame.time.Clock()
 
 # Quick and dirty (debug) colors here (somewhat akin to VERA's first 16 colors0
 BLACK = (0, 0, 0)
@@ -95,8 +96,6 @@ for i in range(48):
     b = random.randint(0, 255)
     random_color = (r, g, b)
     debug_colors.append(random_color)
-
-clock=pygame.time.Clock()
 
 '''
 material_name_to_color_index = {
