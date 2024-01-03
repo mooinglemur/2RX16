@@ -553,11 +553,13 @@ def apply_light_to_faces_of_objects(view_objects):
             light_dot = np.dot(np.array(camera_light), np.array(normal))
             
             # CHECK: Is this equivalent to the "add	ax,128" in the orginal?
-            light_dot += 1.0
+            light_dot += 0.5
             #print(light_dot)
+            #if light_dot > 1:
+            #    light_dot = 1
             
             # FIXME! HACK to approximate
-            light_dot = light_dot * 0.3
+            light_dot = light_dot * 0.7
             
             if (current_object_name == 'talojota'):
                 print( str(face['color_index']) + ':' + str(face['nr_of_shades']))
