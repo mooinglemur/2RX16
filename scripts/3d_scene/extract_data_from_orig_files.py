@@ -67,7 +67,7 @@ def parse_animation_file(u2_bin, nr_of_objects):
         objects_xyz_and_matrix_per_frame[frame_nr] = {}
         objects_xyz_and_matrix = objects_xyz_and_matrix_per_frame[frame_nr]
         
-        if (False):
+        if (True):
             # For frame 1 we set all objects to invisible
             if (frame_nr == 1):
                 # Note: +1 because of the camera at index 0

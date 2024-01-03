@@ -108,7 +108,8 @@ def load_vertices_and_faces(frame_nr):
     #  - Forward Axis: Y
     #  - Upward Axis: Z
     #  - Select: Normals, Triangulated Mesh, Materials->Export
-    #  - TODO: also export Animation
+    #  - Select: Animation->Export, 1-100 (or 1-1800)
+    #  - Filename: U2E_anim.obj
     
     # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
     # obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
@@ -1361,7 +1362,7 @@ while running:
         f.write(b'\xff') # end of frame
 
 
-    # print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
+    print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
 
     if (DRAW_PALETTE):
         # screen.fill(background_color)
