@@ -24,7 +24,7 @@ DRAW_INTERSECTION_POINTS = False
 
 screen_width = 320
 screen_height = 200
-scale = 3  # only used to scale up the screen in pygame
+scale = 3            # this is only used to scale up the screen in pygame
 
 # FIXME: we took the FOV from U2E.INF (which might not be completely accurate, since its converted to a 16bit number first)
 # FIXME: For U2A this will be different!
@@ -36,8 +36,11 @@ RIGHT_EDGE_X = +1
 BOTTOM_EDGE_Y = -1 * (200/320)
 TOP_EDGE_Y = +1 * (200/320)
 
+Z_EDGE = -1.0
+
 projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
 center_offset = (screen_width // 2, screen_height // 2)
+
 
 # Initialize Pygame
 pygame.init()
@@ -132,11 +135,7 @@ def load_vertices_and_faces(frame_nr):
     #  - Select: Animation->Export, 1-100 (or 1-1800)
     #  - Filename: U2E_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
     
-    # obj_file = open('assets/3d_scene/test_cube.obj', 'r')
-    # obj_file = open('assets/3d_scene/test_cube_straight.obj', 'r')
     obj_file = open('assets/3d_scene/U2E_anim/U2E_anim' + str(frame_nr) + '.obj', 'r')
-    # obj_file = open('assets/3d_scene/test_cube1.obj', 'r')
-    # obj_file = open('assets/3d_scene/test_cube50.obj', 'r')
     lines = obj_file.readlines()
     
     objects = {}
@@ -396,8 +395,6 @@ def cull_faces_of_objects(view_objects):
     
     return culled_view_objects
 
-Z_EDGE = -1.0
-
 def is_vertex_inside_z_edge(vertex):
 
     z = vertex[2]
@@ -587,17 +584,16 @@ def project_triangles(view_faces, view_vertices):
         projected_vertices.append((x_proj, y_proj))
         
     return (projected_faces, projected_vertices)
-    
-    
+
+'''    
 def intersection_point(vi1, vi2, vi3, vi4, pv):
     v1 = pv[vi1]
     v2 = pv[vi2]
     v3 = pv[vi3]
     v4 = pv[vi4]
     
-    '''
-    judge if line (v1,v2) intersects with line(v3,v4)
-    '''
+    # judge if line (v1,v2) intersects with line(v3,v4)
+    
     d = (v4[1]-v3[1])*(v2[0]-v1[0])-(v4[0]-v3[0])*(v2[1]-v1[1])
     n_a = (v4[0]-v3[0])*(v1[1]-v3[1])-(v4[1]-v3[1])*(v1[0]-v3[0])
     n_b = (v2[0]-v1[0])*(v1[1]-v3[1])-(v2[1]-v1[1])*(v1[0]-v3[0])
@@ -622,7 +618,6 @@ def intersection_point(vi1, vi2, vi3, vi4, pv):
     
     return None
     
-'''
 def determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info):
 
     debug_intersection_points = []
@@ -658,23 +653,24 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
                     # Now that we know there is a 2D-point of intersection between the two faces, we need to calculate the corresponding TWO 3D-points
                     
                     # FIXME: implement this!
-                    # FIXME: implement this!
-                    # FIXME: implement this!
+
+                    #     - calculate the 3D intersection POINTS (2x) between this 3D-direction and the two PLANES of the two triangles
+                    #     - mark the relationship between the two triangles (one in front of the other)
+                    #     - MAYBE: already split the triangles?
 
 
+                    #    for face in projected_faces:
+                    #        # if face['orig_index'] == 3:  # Bottom floor triangle
+                    #            
+                    #        if (False and DEBUG_SORTING):
+                    #            if face['orig_index'] == 11:  # Front wall of building
+                    #                if ('in_front_of' not in face):
+                    #                    face['in_front_of'] = {}
+                    #                face['in_front_of'][3] = True
 
-#    for face in projected_faces:
-#        # if face['orig_index'] == 3:  # Bottom floor triangle
-#            
-#        if (False and DEBUG_SORTING):
-#            if face['orig_index'] == 11:  # Front wall of building
-#                if ('in_front_of' not in face):
-#                    face['in_front_of'] = {}
-#                face['in_front_of'][3] = True
-
-# FIXME: we are NOT SPLITTING YET!
-# FIXME: we are NOT SPLITTING YET!
-# FIXME: we are NOT SPLITTING YET!
+    # FIXME: we are NOT SPLITTING YET!
+    # - DONT split triangles from: WINDOWS, SHIP and maybe TREES!
+    
     split_projected_faces = projected_faces
     split_projected_verticed = projected_vertices
 
@@ -1242,29 +1238,17 @@ while running:
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
-# TODO:
-# OK (almost done) - bundle all objects into ONE list of vertices/faces
-# OK (almost done)  - do the step-by-step, backwards
-# - after projection, implement a function that gets two lists: projected and unprojected triangles (aka faces)
-#   - for each pair of faces/triangles:
-#     - determine the 0-2 intersection points
-#     - given 1 point, calculate the x/y direction (using the camera focal length)
-#     - calculate the 3D intersection POINTS (2x) between this 3D-direction and the two PLANES of the two triangles
-#     - mark the relationship between the two triangles (one in front of the other)
-#     - MAYBE: already split the triangles?
-# - DONT split triangles from: WINDOWS, SHIP and maybe TREES!
-# OK - when sorting the triangles, use the relationship between triangles
-# OK? (using sum_of_z)  - ISSUE: what if there is NO relationship? See Wolf3D solution to this problem!
-# - maybe THINK about re-using vertices that are CREATED during z-clipping, splitting and camera-side-clipping!
-#   - One option is to determine if the (2D/3D) point already exists as a vertex
-#     - By comparing coordinates (with an EPSILON) of all known vertices, so can find the closely-matching one -- SLOW!
-#   - Another option is to semantically store new vertices: "v[1]->v[2]->CLIP_RIGHT", "v[4]->v[17]->CLIP_Z", "v[38]->v[97]->INTERSECTION->v[21]->v[53]"
-#     - ISSUE: how do you determine in which ORDER you have to create these identifiers? 
-#          SOLUTION: -> simply by vertex_index? 
-#             - And which EDGE of the INTERSECTION should go first?
-#               SOLUTION:  -> Simply the lowest vertex_index again?
-#     - ISSUE: how to deal with 2D vs 3D faces/vertices? 
-#         SOLUTION:  are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
+    # TODO:
+    # - maybe THINK about re-using vertices that are CREATED during z-clipping, splitting and camera-side-clipping!
+    #   - One option is to determine if the (2D/3D) point already exists as a vertex
+    #     - By comparing coordinates (with an EPSILON) of all known vertices, so can find the closely-matching one -- SLOW!
+    #   - Another option is to semantically store new vertices: "v[1]->v[2]->CLIP_RIGHT", "v[4]->v[17]->CLIP_Z", "v[38]->v[97]->INTERSECTION->v[21]->v[53]"
+    #     - ISSUE: how do you determine in which ORDER you have to create these identifiers? 
+    #          SOLUTION: -> simply by vertex_index? 
+    #             - And which EDGE of the INTERSECTION should go first?
+    #               SOLUTION:  -> Simply the lowest vertex_index again?
+    #     - ISSUE: how to deal with 2D vs 3D faces/vertices? 
+    #         SOLUTION:  are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
 
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
 # FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
