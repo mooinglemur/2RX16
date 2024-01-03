@@ -22,12 +22,31 @@ DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DRAW_INTERSECTION_POINTS = False
 
-scale = 3
+screen_width = 320
+screen_height = 200
+scale = 3  # only used to scale up the screen in pygame
+
+# FIXME: we took the FOV from U2E.INF (which might not be completely accurate, since its converted to a 16bit number first)
+# FIXME: For U2A this will be different!
+fov_degrees = 40
+
+# We put the ASPECT RATIO in here for clipping against the camera sides
+LEFT_EDGE_X = -1
+RIGHT_EDGE_X = +1
+BOTTOM_EDGE_Y = -1 * (200/320)
+TOP_EDGE_Y = +1 * (200/320)
+
+projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
+center_offset = (screen_width // 2, screen_height // 2)
 
 # Initialize Pygame
 pygame.init()
 
-# FIXME: quick and dirty colors here (somewhat akin to VERA's first 16 colors0
+# Set up the display
+screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
+pygame.display.set_caption("3D Scene")
+
+# Quick and dirty (debug) colors here (somewhat akin to VERA's first 16 colors0
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED  = (255, 64, 64)
@@ -75,11 +94,6 @@ for i in range(48):
     debug_colors.append(random_color)
 
 clock=pygame.time.Clock()
-
-# Set up the display
-screen_width, screen_height = 320, 200
-screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
-pygame.display.set_caption("3D Scene")
 
 '''
 material_name_to_color_index = {
@@ -194,15 +208,15 @@ def load_vertices_and_faces(frame_nr):
                 color_index = color_index_and_shades['color_index']
                 nr_of_shades = color_index_and_shades['nr_of_shades']
             else:
-                # FIXME: These materials should never be shown, so we set the to None for now, but this isnt really correct
+                # TODO: These materials should never be shown, so we set the to None for now, but this isnt really correct
                 color_index = None
                 nr_of_shades = None
                 if (current_object_name != 'CameraBox'):
                     print("Unknown material: " + current_material_name)
                 #exit()
                 
-            # FIXME: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
-            # FIXME?: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
+            # TODO: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
+            # TODO?: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
             objects[current_object_name]['faces'].append({
                 'vertex_indices' : [ 
                     vertex_indices[0] - object_start_vertex_index,
@@ -215,7 +229,7 @@ def load_vertices_and_faces(frame_nr):
                 'material_name' : current_material_name
             })
             
-    # FIXME: we should do another pass and add the *bounding boxes* of these objects! (to SPEED UP the clipping!)
+    # TODO: we should do another pass and add the *bounding boxes* of these objects! (to SPEED UP the clipping!)
             
     return objects
 
@@ -542,12 +556,7 @@ def apply_light_to_faces_of_objects(view_objects, camera_light):
     return lit_view_objects
 
 
-center_offset = (screen_width // 2, screen_height // 2)
-
-# FIXME: REMOVE or set to 0,0,0!
-camera = (0, 0, 6)
-
-def project_triangles(view_faces, view_vertices, camera_info):
+def project_triangles(view_faces, view_vertices):
 
     projected_faces = copy.deepcopy(view_faces)
     projected_vertices = []
@@ -569,7 +578,6 @@ def project_triangles(view_faces, view_vertices, camera_info):
         y_view = vertex[1]
         z_view = vertex[2]
         
-        # FIXME: use camera_info for getting fov_degrees!
         fov_mult = math.tan(fov_degrees/2 * math.pi/180)
         
         # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
@@ -614,7 +622,7 @@ def intersection_point(vi1, vi2, vi3, vi4, pv):
     
     return None
     
-    
+'''
 def determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info):
 
     debug_intersection_points = []
@@ -671,20 +679,7 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
     split_projected_verticed = projected_vertices
 
     return (split_projected_faces, split_projected_verticed, debug_intersection_points)
-
-# FIXME: we took the FOV from U2E.INF (which might not be completely accurate, since its converted to a 16bit number first)
-# FIXME: For U2A this will be different!
-fov_degrees = 40
-
-# We put the ASPECT RATIO in here for clipping against the camera sides
-LEFT_EDGE_X = -1
-RIGHT_EDGE_X = +1
-BOTTOM_EDGE_Y = -1 * (200/320)
-TOP_EDGE_Y = +1 * (200/320)
-
-# FIXME: calculate the camera_scale differently!
-camera_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
-
+'''
 
 def is_2d_vertex_inside_edge(vertex, edge_name):
 
@@ -809,7 +804,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
     return clipped_faces
 
 
-def camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info):
+def camera_clip_projected_triangles(projected_faces, projected_vertices):
 
     camera_clipped_projected_faces = []
     camera_clipped_projected_vertices = copy.deepcopy(projected_vertices)
@@ -860,7 +855,7 @@ def slope2bytes(slope):
     return b1
 
 
-# FIXME: in the end we dont want to do ANY sorting! So this should evenually be REMOVED!
+# TODO: in the end we (ideally) dont want to do ANY sorting! So this should evenually be removed!
 def compare_faces(face_a, face_b):
     
     #if ('in_front_of' in face_a):
@@ -894,8 +889,8 @@ def compare_faces(face_a, face_b):
 compare_key = cmp_to_key(compare_faces)
 
 def projected_to_screen(projected_x, projected_y):
-    screen_x = round(projected_x*camera_scale + center_offset[0])
-    screen_y = round(projected_y*camera_scale + center_offset[1])
+    screen_x = round(projected_x*projection_to_screen_scale + center_offset[0])
+    screen_y = round(projected_y*projection_to_screen_scale + center_offset[1])
     # Note: we also flip the y here!
     screen_y = screen_height - screen_y
     return (screen_x, screen_y)
@@ -1225,7 +1220,6 @@ for color_index in mat_info:
             'color_index' : int(color_index),
             'nr_of_shades' : int(nr_of_shades)
         }
-#print(mat_name_to_index_and_shades)
 
 while running:
     for event in pygame.event.get():
@@ -1249,7 +1243,6 @@ while running:
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
 # TODO:
-# - remove non-visible objects (in Blender)
 # OK (almost done) - bundle all objects into ONE list of vertices/faces
 # OK (almost done)  - do the step-by-step, backwards
 # - after projection, implement a function that gets two lists: projected and unprojected triangles (aka faces)
@@ -1353,7 +1346,7 @@ while running:
     
     if PRINT_PROGRESS: print("Projection")
     # Project all vertices to screen-space
-    (projected_faces, projected_vertices) = project_triangles(lit_view_faces, lit_view_vertices, camera_info)
+    (projected_faces, projected_vertices) = project_triangles(lit_view_faces, lit_view_vertices)
     
     # Background: Splitting overlapping triangles: 
     # 
@@ -1371,16 +1364,13 @@ while running:
     # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
     # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
 
-    if PRINT_PROGRESS: print("Determine 2D intersections and split")
-# FIXME: remove debug_intersection_points?
-# WHAT WHOULD WE DO WITH THIS?
-#    (split_projected_faces, split_projected_vertices, debug_intersection_points) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
+    # TODO: should we remove debug_intersection_points?
+    # if PRINT_PROGRESS: print("Determine 2D intersections and split")
+    #    (split_projected_faces, split_projected_vertices, debug_intersection_points) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
     if PRINT_PROGRESS: print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
-    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices, camera_info)
-#    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(split_projected_faces, split_projected_vertices, camera_info)
-
+    (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices)
 
 
     '''
@@ -1399,9 +1389,6 @@ while running:
     export_projected_triangles(minimized_projected_triangles)
     '''
     
-    #print(world_objects)
-# FIXME!
-#    exit()
 
     if PRINT_PROGRESS: print("Sort, draw and export")
     screen.fill((0,0,0))
@@ -1413,7 +1400,6 @@ while running:
     print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
 
     if (DRAW_PALETTE):
-        # screen.fill(background_color)
         
         x = 0
         y = 0
