@@ -558,16 +558,16 @@ def project_triangles(view_faces, view_vertices, camera_info):
     
     # Projection of the vertices of the visible faces
     for vertex in view_vertices:
-        x = vertex[0]
-        y = vertex[1]
-        z = vertex[2]
+        x_view = vertex[0]
+        y_view = vertex[1]
+        z_view = vertex[2]
         
         # FIXME: we should use a ~42? degree FOV!
         # --> use camera_info for this!
         
         # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
-        x_proj = x / -z
-        y_proj = y / -z
+        x_proj = x_view / -z_view
+        y_proj = y_view / -z_view
         
         projected_vertices.append((x_proj, y_proj))
         
