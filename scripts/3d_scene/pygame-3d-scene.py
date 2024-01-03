@@ -566,10 +566,8 @@ def project_triangles(view_faces, view_vertices, camera_info):
         # --> use camera_info for this!
         
         # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
-        z_ratio = 1 / -z
-
-        x_proj = x * z_ratio
-        y_proj = y * z_ratio
+        x_proj = x / -z
+        y_proj = y / -z
         
         projected_vertices.append((x_proj, y_proj))
         
