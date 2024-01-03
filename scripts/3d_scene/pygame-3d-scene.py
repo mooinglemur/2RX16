@@ -665,18 +665,14 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
 
     return (split_projected_faces, split_projected_verticed, debug_intersection_points)
     
-# FIXME: we need to put an ASPECT RATIO IN HERE!
-# FIXME: we need to put an ASPECT RATIO IN HERE!
-# FIXME: we need to put an ASPECT RATIO IN HERE!
-tmp_zoom = 1.0
-LEFT_EDGE_X = -1 * tmp_zoom * (320/200)
-RIGHT_EDGE_X = +1 * tmp_zoom * (320/200)
-BOTTOM_EDGE_Y = -1 * tmp_zoom
-TOP_EDGE_Y = +1 * tmp_zoom
+# We put the ASPECT RATIO in here for clipping against the camera sides
+LEFT_EDGE_X = -1
+RIGHT_EDGE_X = +1
+BOTTOM_EDGE_Y = -1 * (200/320)
+TOP_EDGE_Y = +1 * (200/320)
 
 # FIXME: calculate the camera_scale differently!
-camera_scale = 200
-#camera_scale = 37*6
+camera_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
 
 
 def is_2d_vertex_inside_edge(vertex, edge_name):
