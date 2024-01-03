@@ -1275,7 +1275,12 @@ while running:
         else:
             min_z = None
             max_z = None
-            for object_vertex in object_vertices:
+            for v_idx, object_vertex in enumerate(object_vertices):
+            
+                # HACK: the last 8 vertices of the 'b4' building are completely somewhere different (its a separate building). As a workaround, we ignore those 8.
+                if (current_object_name == 'b4') and (v_idx >= len(object_vertices) - 8):
+                    continue
+            
                 vertex_z = object_vertex[2]
                 if ((min_z is None) or vertex_z < min_z):
                     min_z = vertex_z
