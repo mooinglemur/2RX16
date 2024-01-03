@@ -569,12 +569,12 @@ def project_triangles(view_faces, view_vertices, camera_info):
         y_view = vertex[1]
         z_view = vertex[2]
         
-        # FIXME: we should use a ~42? degree FOV!
-        # --> use camera_info for this!
+        # FIXME: use camera_info for getting fov_degrees!
+        fov_mult = math.tan(fov_degrees/2 * math.pi/180)
         
         # Note: since 'forward' is negative Z -for the object in front of the camera- we want to divide by negative z 
-        x_proj = x_view / -z_view
-        y_proj = y_view / -z_view
+        x_proj = x_view / (-z_view*fov_mult)
+        y_proj = y_view / (-z_view*fov_mult)
         
         projected_vertices.append((x_proj, y_proj))
         
@@ -671,7 +671,11 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
     split_projected_verticed = projected_vertices
 
     return (split_projected_faces, split_projected_verticed, debug_intersection_points)
-    
+
+# FIXME: we took the FOV from U2E.INF (which might not be completely accurate, since its converted to a 16bit number first)
+# FIXME: For U2A this will be different!
+fov_degrees = 40
+
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1
 RIGHT_EDGE_X = +1
@@ -856,8 +860,6 @@ def slope2bytes(slope):
     return b1
 
 
-
-
 # FIXME: in the end we dont want to do ANY sorting! So this should evenually be REMOVED!
 def compare_faces(face_a, face_b):
     
@@ -901,9 +903,6 @@ def projected_to_screen(projected_x, projected_y):
 
 def sort_light_draw_and_export(projected_vertices, faces):
 
-    #def face_sorter(item):
-    #    return -item['sum_of_z']
-
 # FIXME: this sorter is probably the wrong way around now, since y is not flipped anymore in the projected_vertices!
     def y_sorter(item):
         return projected_vertices[item][1]
@@ -920,7 +919,6 @@ def sort_light_draw_and_export(projected_vertices, faces):
         scaled_up_vertices.append(scaled_up_vertex)
     
     
-#    sorted_faces = sorted(faces, key=face_sorter, reverse=True)
     sorted_faces = sorted(faces, key=compare_key, reverse=True)
 
     for face_index, face in enumerate(sorted_faces):

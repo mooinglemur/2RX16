@@ -88,8 +88,8 @@ def parse_animation_file(u2_bin, nr_of_objects):
                 if(a <= 0x7F):
 # FIXME: this value does seem right! 0-65538 = 0-360?
                     fov = a << 8
-                    # fov = (a << 8) / 360
-                    # print('fov: ' + str(fov))
+                    fov = (a << 8) / 360
+                    print('fov: ' + str(fov))
                     #print('frame done')
                     break
                 elif(a == 0xFF):
