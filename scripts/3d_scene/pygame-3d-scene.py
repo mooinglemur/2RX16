@@ -14,6 +14,7 @@ from functools import cmp_to_key
 
 random.seed(10)
 
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # FIXME: Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
@@ -1039,6 +1040,8 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
         
 # FIXME!
     '''
+    
+        if (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
         
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
@@ -1283,9 +1286,10 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
 # Main game loop
 running = True
 
-
-# FIXME: rename this using the scene name!
-f = open("trilist.bin", "wb")
+f = None
+if (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
+    # FIXME: rename this using the scene name!
+    f = open("trilist.bin", "wb")
 
 frame_nr = 1
 increment_frame_by = 1
@@ -1432,9 +1436,14 @@ while running:
         if event.type == QUIT:
             running = False
 
-        #if event.type == pygame.KEYDOWN:
-        #    if event.key == pygame.K_RIGHT:
-        #        increment_frame_by = 1
+        if event.type == pygame.KEYDOWN:
+            if ALLOW_PAUSING_AND_REVERSE_PLAYBACK:
+                if event.key == pygame.K_RIGHT:
+                    increment_frame_by = 1
+                if event.key == pygame.K_LEFT:
+                    increment_frame_by = -1
+                if event.key == pygame.K_SPACE:
+                    increment_frame_by = 0
 
         '''
         if event.type == pygame.MOUSEBUTTONUP:
@@ -1608,7 +1617,7 @@ while running:
     tris_seen = draw_and_export(screen_vertices, sorted_faces, visible_face_indexes)
     # FIXME: enable this again!
     '''
-    if tris_seen:
+    if tris_seen and (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
         f.write(b'\xff') # end of frame
     '''
 
