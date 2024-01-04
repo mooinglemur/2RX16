@@ -14,7 +14,7 @@ from functools import cmp_to_key
 
 random.seed(10)
 
-PRINT_FRAME_TRIANGLES = False
+PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
@@ -22,6 +22,7 @@ DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
+DEBUG_RESERSE_SORTING = False
 DRAW_INTERSECTION_POINTS = False
 CONVERT_COLORS_TO_12BITS = True
 FOCUS_ON_COLOR_TONE = False   # This didnt give a good result
@@ -56,6 +57,14 @@ pygame.init()
 screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 pygame.display.set_caption("3D Scene")
 clock = pygame.time.Clock()
+
+# This buffer is used to 
+check_triangle_visibility_buffer = pygame.Surface((screen_width, screen_height), depth = 16)
+
+frame_buffer = pygame.Surface((screen_width, screen_height))
+# FIXME: we want to use a frame_buffer that has indexed colors. We can blit that to the pygame screen (enlarged).
+# frame_buffer = pygame.Surface((screen_width, screen_height), depth = 8)
+
 
 # Quick and dirty (debug) colors here (somewhat akin to VERA's first 16 colors0
 BLACK = (0, 0, 0)
@@ -882,6 +891,8 @@ def slope2bytes(slope):
 # TODO: in the end we (ideally) dont want to do ANY sorting! So this should evenually be removed!
 def compare_faces(face_a, face_b):
     
+    result = None
+
     #if ('in_front_of' in face_a):
     #    if (face_b['orig_index'] in face_a['in_front_of']):
     #        return -1
@@ -896,19 +907,24 @@ def compare_faces(face_a, face_b):
         avg_z_a = avg_z_per_object[obj_name_a]
         avg_z_b = avg_z_per_object[obj_name_b]        
         if avg_z_a == avg_z_b:
-            return 0
+            result = 0
         if avg_z_a < avg_z_b:
-            return 1
+            result = 1
         if avg_z_a > avg_z_b:
-            return -1
+            result = -1
     else:
         # TODO: this is our 'fallback' method: within an object we look at the sum_of_z of each face (better to use the original (ordered) polygon lists
         if face_a['sum_of_z'] == face_b['sum_of_z']:
-            return 0
+            result = 0
         if face_a['sum_of_z'] < face_b['sum_of_z']:
-            return 1
+            result = 1
         if face_a['sum_of_z'] > face_b['sum_of_z']:
-            return -1
+            result = -1
+            
+    if (DEBUG_RESERSE_SORTING):
+        result = -result
+            
+    return result
  
 compare_key = cmp_to_key(compare_faces)
 
@@ -920,28 +936,77 @@ def projected_to_screen(projected_x, projected_y):
     return (screen_x, screen_y)
     
 
-def sort_light_draw_and_export(projected_vertices, faces):
+def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
+
+    # The vertices are scaled up for the (pygame) screen
+    scaled_up_vertices = []
+    screen_vertices = []
+    for projected_vertex in projected_vertices:
+        (screen_x, screen_y) = projected_to_screen(projected_vertex[0], projected_vertex[1])
+        screen_vertex = [
+            screen_x,
+            screen_y,
+        ]
+        screen_vertices.append(screen_vertex)
+    
+    sorted_faces = sorted(faces, key=compare_key, reverse=True)
+
+# FIXME: CHECK: is this the correct way of clearing an indexed color buffer?
+    check_triangle_visibility_buffer.fill((0xFF,0,0))
+    for face_index, face in enumerate(sorted_faces):
+
+        # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
+        face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
+        
+        # We use the face_index as 'color'. So we can later on check whether a triangle has effectively changed any pixels (aka is visible)
+        pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i] for i in face_vertex_indices], 0)
+
+        
+    # Checking all pixels in the check_triangle_visibility_buffer and see which face_indexes are still in there. We should ONLY draw these!
+    visible_face_indexes = {}
+    
+    check_pxarray = pygame.PixelArray(check_triangle_visibility_buffer)
+    
+    for y in range(screen_height):
+        for x in range(screen_width):
+            visible_face_index = check_pxarray[x,y]
+            visible_face_indexes[visible_face_index] = True
+    
+    check_pxarray.close()
+    
+    return (screen_vertices, sorted_faces, visible_face_indexes)
+
+
+def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
 
 # FIXME: this sorter is probably the wrong way around now, since y is not flipped anymore in the projected_vertices!
     def y_sorter(item):
         return projected_vertices[item][1]
 
-
+    # check_buffer_on_screen_x = 0
+    # check_buffer_on_screen_y = 0
+    # screen.blit(pygame.transform.scale(check_triangle_visibility_buffer, (screen_width*scale, screen_height*scale)), (check_buffer_on_screen_x, check_buffer_on_screen_y))
+    
+    '''
     # The vertices are scaled up for the (pygame) screen
     scaled_up_vertices = []
-    for projected_vertex in projected_vertices:
-        (screen_x, screen_y) = projected_to_screen(projected_vertex[0], projected_vertex[1])
+    for screen_vertex in screen_vertices:
+        screen_x = screen_vertex[0]
+        screen_y = screen_vertex[1]
         scaled_up_vertex = [
             screen_x*scale,
             screen_y*scale,
         ]
         scaled_up_vertices.append(scaled_up_vertex)
-    
-    
-    sorted_faces = sorted(faces, key=compare_key, reverse=True)
-
+    '''
+        
+    frame_buffer.fill((0,0,0))
     for face_index, face in enumerate(sorted_faces):
-
+        
+        if (face_index not in visible_face_indexes):    
+            # We skip faces that are not visible (aka that are overdrawn completely)
+            continue
+        
         color_idx = face['color_index']
         
         if (DEBUG_COLORS and not DEBUG_CLIP_COLORS):
@@ -952,11 +1017,17 @@ def sort_light_draw_and_export(projected_vertices, faces):
         
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
+    
+        # We draw the polygon to the screen
+        pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
         
-        pygame.draw.polygon(screen, colors[color_idx], [scaled_up_vertices[i] for i in face_vertex_indices], 0)
+    frame_buffer_on_screen_x = 0
+    frame_buffer_on_screen_y = 0
+    screen.fill((0,0,0))
+    screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (frame_buffer_on_screen_x, frame_buffer_on_screen_y))
         
 # FIXME!
-        continue
+    '''
         
         # Triangle type (bit 0 is X high bit)
         #  $00 - two part, change X1
@@ -1191,6 +1262,7 @@ def sort_light_draw_and_export(projected_vertices, faces):
                 f.write(rowcount1.to_bytes(1, 'little')) # 08 row count 1
                 f.write(slope2bytes(slope_x1_new)) # 09-0a - new X1 inc
                 f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
+        '''
 
 # FIXME: what should we do here?
     tris_seen = True
@@ -1521,16 +1593,17 @@ while running:
     export_projected_triangles(minimized_projected_triangles)
     '''
     
-
-    if PRINT_PROGRESS: print("Sort, draw and export")
-    screen.fill((0,0,0))
-    tris_seen = sort_light_draw_and_export(camera_clipped_projected_vertices, camera_clipped_projected_faces)
+    if PRINT_PROGRESS: print("Sort, scale to screen and check visibility")
+    (screen_vertices, sorted_faces, visible_face_indexes) = sort_faces_scale_to_screen_and_check_visibility(camera_clipped_projected_vertices, camera_clipped_projected_faces)
+    
+    if PRINT_PROGRESS: print("Draw and export")
+    tris_seen = draw_and_export(screen_vertices, sorted_faces, visible_face_indexes)
     if tris_seen:
         f.write(b'\xff') # end of frame
 
-
     if (PRINT_FRAME_TRIANGLES):
-        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
+        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_face_indexes.keys())))
+
 
     if (DRAW_PALETTE):
         
