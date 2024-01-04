@@ -384,35 +384,27 @@ def transform_objects_into_view_space(world_objects, camera_info):
     return view_objects
     
     
-def cull_faces_of_objects(view_objects):
+def cull_faces_of_objects(view_faces, view_vertices, view_normals):
 
-    culled_view_objects = {}
+    culled_view_faces = []
+    culled_view_vertices = view_vertices
     
-    for current_object_name in view_objects:
+    for face in view_faces:
+       
+        # We need to check whether a face is facing away from the camera. If it is, we should remove it.
+        # We do this check by doing the dot-product with the normal of the face and the direction of any vertex of that face (from the camera, which is at 0,0,0)
+        face_normal = np.array(view_normals[face['normal_index']])
+        first_vertex = np.array(view_vertices[face['vertex_indices'][0]])
+        normalized_vector_towards_first_vertex = first_vertex / np.linalg.norm(first_vertex)
+        dot_product = np.dot(normalized_vector_towards_first_vertex, face_normal)
+        
+        # When it is facing away form the camera, we cull it
+        if dot_product > 0:
+            continue
     
-        view_object = view_objects[current_object_name]
-        culled_view_object = copy.deepcopy(view_object)
+        culled_view_faces.append(face)
         
-        culled_view_object['faces'] = []
-        
-        for face in view_object['faces']:
-           
-            # We need to check whether a face of an object is facing away from the camera. If it is, we should remove it.
-            # We do this check by doing the dot-product with the normal of the face and the direction of any vertex of that face (from the camera, which is at 0,0,0)
-            face_normal = np.array(view_object['normals'][face['normal_index']])
-            first_vertex = np.array(view_object['vertices'][face['vertex_indices'][0]])
-            normalized_vector_towards_first_vertex = first_vertex / np.linalg.norm(first_vertex)
-            dot_product = np.dot(normalized_vector_towards_first_vertex, face_normal)
-            
-            # When it is facing away form the camera, we cull it
-            if dot_product > 0:
-                continue
-        
-            culled_view_object['faces'].append(face)
-        
-        culled_view_objects[current_object_name] = culled_view_object
-    
-    return culled_view_objects
+    return (culled_view_faces, culled_view_vertices)
 
 def is_vertex_inside_z_edge(vertex):
 
@@ -1473,6 +1465,7 @@ while running:
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
+# FIXME: put this in a function!
     if PRINT_PROGRESS: print("Calculating average z of objects")
     for current_object_name in view_objects:
         
@@ -1514,23 +1507,12 @@ while running:
         
         avg_z_per_object[current_object_name] = avg_z_for_object
 
-# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
-# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
-# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
-
-
-    if PRINT_PROGRESS: print("Backface cull")
-    # Backface cull where face/triangle-normal points away from camera
-    culled_view_objects = cull_faces_of_objects(view_objects)
-    
-    
-    
-    
+# FIXME: put this in a function!
     if PRINT_PROGRESS: print("Assemble all objects into one list of faces/vertices/normals")
-    culled_view_faces = []
-    culled_view_vertices = []
+    view_faces = []
+    view_vertices = []
     view_normals = []
-    for current_object_name in culled_view_objects:
+    for current_object_name in view_objects:
         # We assemble all objects but the camera(box) here
         
         if (current_object_name == 'CameraBox'):
@@ -1540,13 +1522,13 @@ while running:
             if (current_object_name != 'b4' and current_object_name != 'BuildingC_1'):
                 continue
         
-        object_vertices = culled_view_objects[current_object_name]['vertices']
-        object_faces = culled_view_objects[current_object_name]['faces']
-        object_normals = culled_view_objects[current_object_name]['normals']
+        object_vertices = view_objects[current_object_name]['vertices']
+        object_faces = view_objects[current_object_name]['faces']
+        object_normals = view_objects[current_object_name]['normals']
         
-        start_vertex_index = len(culled_view_vertices)
+        start_vertex_index = len(view_vertices)
         start_normal_index = len(view_normals)
-        culled_view_vertices += object_vertices
+        view_vertices += object_vertices
         view_normals += object_normals
         for object_face in object_faces:
             object_face['vertex_indices'][0] += start_vertex_index
@@ -1557,12 +1539,16 @@ while running:
             
             object_face['obj_name'] = current_object_name
             
-            culled_view_faces.append(object_face)
+            view_faces.append(object_face)
         
     if (DEBUG_COLORS):
-        for orig_face_index, face in enumerate(culled_view_faces):
+        for orig_face_index, face in enumerate(view_faces):
             face['orig_index'] = orig_face_index
             
+    
+    if PRINT_PROGRESS: print("Backface cull")
+    # Backface cull where face/triangle-normal points away from camera
+    (culled_view_faces, culled_view_vertices) = cull_faces_of_objects(view_faces, view_vertices, view_normals)
     
     # TODO:
     # - maybe THINK about re-using vertices that are CREATED during z-clipping and camera-side-clipping! (and maybe when splitting triangles, if we were to do that)
