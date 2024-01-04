@@ -20,6 +20,7 @@ PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
+DEBUG_SHOW_MERGED_FACES = True
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
@@ -1041,16 +1042,17 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
                 continue
             if (face_a['color_index'] != face_b['color_index']):
                 continue
-            if (face_a['normal_index'] != face_b['normal_index']):
-                continue
+            # FIXME: ISSUE: the *orginal* SHIP ('s01') contains many QUADS. But these are triangulated by Blender.
+            #      The PROBLEM is that Blender calculates the NORMALs AFTER triangulation, not before. So the normals
+            #      of each triangle-pair have (slightly) DIFFERENT normals!
+            
+# FIXME: for now ignoring the normal_index!
+#            if (face_a['normal_index'] != face_b['normal_index']):
+#                continue
             
             if (not faces_share_edge(face_a, face_b)):
                 continue
             
-            
-            # FIXME: ISSUE: the *orginal* SHIP ('s01') contains many QUADS. But these are triangulated by Blender.
-            #      The PROBLEM is that Blender calculates the NORMALs AFTER triangulation, not before. So the normals
-            #      of each triangle-pair have (slightly) DIFFERENT normals!
             
             # print("Found mergable faces!")
 
@@ -1096,6 +1098,10 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
                 color_idx = face['orig_index'] % 64
             else:
                 color_idx = face_index % 64
+        
+        if (DEBUG_SHOW_MERGED_FACES):
+            if ('_TMP_marked_as_merged' in face):
+                color_idx = 250
         
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
@@ -1698,7 +1704,16 @@ while running:
     '''
 
     if (PRINT_FRAME_TRIANGLES):
-        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_face_indexes.keys())))
+        nr_of_potentially_removed_faces_by_merging = 0
+        for face in camera_clipped_projected_faces:
+            if ('_TMP_marked_as_merged' in face):
+                nr_of_potentially_removed_faces_by_merging += 0.5
+                
+        nr_of_visible_faces = len(visible_face_indexes.keys())
+        
+        nr_of_potentially_visible_faces = nr_of_visible_faces - int(nr_of_potentially_removed_faces_by_merging)
+    
+        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(nr_of_visible_faces)+':'+str(nr_of_potentially_visible_faces))
 
 
     if (DRAW_PALETTE):
