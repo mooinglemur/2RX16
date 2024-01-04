@@ -1037,7 +1037,7 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
             if ('is_clipped' in face_b):
                 continue
             # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
-            if ('_TMP_marked_as_merged' in face_a):
+            if ('_TMP_marked_as_merged' in face_b):
                 continue
             if (face_a['color_index'] != face_b['color_index']):
                 continue
