@@ -511,34 +511,26 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
     return clipped_faces
 
 
-def z_clip_faces_of_objects (view_objects):
+def z_clip_faces (view_faces, view_vertices):
 
-    z_clipped_view_objects = {}
+    z_clipped_view_faces = []
+    z_clipped_view_vertices = copy.deepcopy(view_vertices)
     
-    for current_object_name in view_objects:
-        view_object = view_objects[current_object_name]
-        z_clipped_view_object = copy.deepcopy(view_object)
+    # We keep track of all clipped vertices being created
+    combined_vertices = z_clipped_view_vertices
+
+    # We determine -for each face- whether it should be clipped against the edges of the screen
+    for non_clipped_face in view_faces:
+
+        # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
         
-        z_clipped_view_object['faces'] = []
-       
-        # For this object we keep track of all clipped vertices being created
-        combined_vertices = z_clipped_view_object['vertices']
+        # The clipped_vertices is an OUPUT vertex-array!
+        clipped_faces_against_z_edge = clip_face_against_z_edge(non_clipped_face, combined_vertices)
 
-        # We determine -for each face in the object- whether it should be clipped against the edges of the screen
-        for non_clipped_face in view_object['faces']:
+        # After clipping against the Z-edge we are left with only clipped faces
+        z_clipped_view_faces += clipped_faces_against_z_edge
 
-            # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
-            
-            # The clipped_vertices is an OUPUT vertex-array!
-            clipped_faces_against_z_edge = clip_face_against_z_edge(non_clipped_face, combined_vertices)
-
-            # After clipping against the Z-edge we are left with only clipped faces
-            z_clipped_view_object['faces'] += clipped_faces_against_z_edge
-        
-        
-        z_clipped_view_objects[current_object_name] = z_clipped_view_object
-
-    return z_clipped_view_objects
+    return (z_clipped_view_faces, z_clipped_view_vertices)
 
 
 def apply_light_to_faces(view_faces, view_vertices, view_normals):
@@ -1531,6 +1523,47 @@ while running:
     # Backface cull where face/triangle-normal points away from camera
     culled_view_objects = cull_faces_of_objects(view_objects)
     
+    
+    
+    
+    if PRINT_PROGRESS: print("Assemble all objects into one list of faces/vertices/normals")
+    culled_view_faces = []
+    culled_view_vertices = []
+    view_normals = []
+    for current_object_name in culled_view_objects:
+        # We assemble all objects but the camera(box) here
+        
+        if (current_object_name == 'CameraBox'):
+            continue
+            
+        if (DEBUG_SORTING_LIMIT_OBJECTS):
+            if (current_object_name != 'b4' and current_object_name != 'BuildingC_1'):
+                continue
+        
+        object_vertices = culled_view_objects[current_object_name]['vertices']
+        object_faces = culled_view_objects[current_object_name]['faces']
+        object_normals = culled_view_objects[current_object_name]['normals']
+        
+        start_vertex_index = len(culled_view_vertices)
+        start_normal_index = len(view_normals)
+        culled_view_vertices += object_vertices
+        view_normals += object_normals
+        for object_face in object_faces:
+            object_face['vertex_indices'][0] += start_vertex_index
+            object_face['vertex_indices'][1] += start_vertex_index
+            object_face['vertex_indices'][2] += start_vertex_index
+            
+            object_face['normal_index'] += start_normal_index
+            
+            object_face['obj_name'] = current_object_name
+            
+            culled_view_faces.append(object_face)
+        
+    if (DEBUG_COLORS):
+        for orig_face_index, face in enumerate(culled_view_faces):
+            face['orig_index'] = orig_face_index
+            
+    
     # TODO:
     # - maybe THINK about re-using vertices that are CREATED during z-clipping and camera-side-clipping! (and maybe when splitting triangles, if we were to do that)
     #   - One option is to determine if the (2D/3D) point already exists as a vertex
@@ -1545,51 +1578,12 @@ while running:
 
     if PRINT_PROGRESS: print("Z clipping")
     # Clip/remove where Z > -1 (behind or very close to camera)
-    z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
-
-
-    if PRINT_PROGRESS: print("Assemble all objects into one list of faces/vertices")
-    z_clipped_view_faces = []
-    z_clipped_view_vertices = []
-    z_clipped_view_normals = []
-    for current_object_name in z_clipped_view_objects:
-        # We assemble all objects but the camera(box) here
-        
-        if (current_object_name == 'CameraBox'):
-            continue
-            
-        if (DEBUG_SORTING_LIMIT_OBJECTS):
-            if (current_object_name != 'b4' and current_object_name != 'BuildingC_1'):
-                continue
-        
-        object_vertices = z_clipped_view_objects[current_object_name]['vertices']
-        object_faces = z_clipped_view_objects[current_object_name]['faces']
-        object_normals = z_clipped_view_objects[current_object_name]['normals']
-        
-        start_vertex_index = len(z_clipped_view_vertices)
-        start_normal_index = len(z_clipped_view_normals)
-        z_clipped_view_vertices += object_vertices
-        z_clipped_view_normals += object_normals
-        for object_face in object_faces:
-            object_face['vertex_indices'][0] += start_vertex_index
-            object_face['vertex_indices'][1] += start_vertex_index
-            object_face['vertex_indices'][2] += start_vertex_index
-            
-            object_face['normal_index'] += start_normal_index
-            
-            object_face['obj_name'] = current_object_name
-            
-            z_clipped_view_faces.append(object_face)
-        
-    if (DEBUG_COLORS):
-        for orig_face_index, face in enumerate(z_clipped_view_faces):
-            face['orig_index'] = orig_face_index
-            
+# FIXME: dont we need the normals for this? To CORRECT the ORDERING after clipping?
+    (z_clipped_view_faces, z_clipped_view_vertices) = z_clip_faces(culled_view_faces, culled_view_vertices)
     
     if PRINT_PROGRESS: print("Applying light")
     # Change color of faces/triangles according to the amount of light they get
-    (lit_view_faces, lit_view_vertices) = apply_light_to_faces(z_clipped_view_faces, z_clipped_view_vertices, z_clipped_view_normals)
-    
+    (lit_view_faces, lit_view_vertices) = apply_light_to_faces(z_clipped_view_faces, z_clipped_view_vertices, view_normals)   
     
     if PRINT_PROGRESS: print("Projection")
     # Project all vertices to screen-space
