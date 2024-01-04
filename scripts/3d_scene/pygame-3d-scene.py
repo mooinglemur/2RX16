@@ -14,14 +14,20 @@ from functools import cmp_to_key
 
 random.seed(10)
 
+PRINT_FRAME_TRIANGLES = False
 PRINT_PROGRESS = False
-DRAW_PALETTE = True
+DRAW_PALETTE = False
 DEBUG_SORTING = False
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DRAW_INTERSECTION_POINTS = False
+CONVERT_COLORS_TO_12BITS = True
+FOCUS_ON_COLOR_TONE = False   # This didnt give a good result
+PATCH_COLORS_MANUALLY = True
+
+SCENE = 'U2E'
 
 screen_width = 320
 screen_height = 200
@@ -555,11 +561,13 @@ def apply_light_to_faces_of_objects(view_objects):
             # CHECK: Is this equivalent to the "add	ax,128" in the orginal?
             light_dot += 0.5
             #print(light_dot)
-            #if light_dot > 1:
-            #    light_dot = 1
+            if light_dot > 1:
+                light_dot = 1
+            if light_dot < 0:
+                light_dot = 0
             
-            # FIXME! HACK to approximate
-            light_dot = light_dot * 0.6
+            # FIXME! HACK to approximate: note that if we raise this above 0.5 the '45degree-ceiling-of-the-tunnel' becomes grey. We probably dont want that!
+            light_dot = light_dot * 0.50
             
             #if (current_object_name == 'talojota'):
             #    print( str(face['color_index']) + ':' + str(face['nr_of_shades']))
@@ -1201,7 +1209,7 @@ max_frame_nr = 1800
 if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
-    frame_nr = 330
+    frame_nr = 40
     increment_frame_by = 0
 
 #animation_info = load_animation_info()
@@ -1216,20 +1224,107 @@ colors = []
 avg_z_per_object = {}
 
 
-for rgb64 in palette_colors:
-    # FIXME: 63 * 4 isnt exactly 255!
-    r = rgb64['r']*4
-    g = rgb64['g']*4
-    b = rgb64['b']*4
+for clr_idx, rgb64 in enumerate(palette_colors):
+
+    # Color depth conversion: https://threadlocalmutex.com/?p=48
     
-# FIXME: make these 12bit colors!
-# FIXME: make these 12bit colors!
-# FIXME: make these 12bit colors!
-    r = r & 0xF0
-    g = g & 0xF0
-    b = b & 0xF0
+    r = rgb64['r']
+    g = rgb64['g']
+    b = rgb64['b']
     
-    colors.append((r,g,b))
+    new_8bit_color = (None,None,None)
+    
+    if (CONVERT_COLORS_TO_12BITS):
+    
+        if(FOCUS_ON_COLOR_TONE):
+            
+            if (r == 0 and g == 0 and b == 0):
+                # Black is black anyway, we dont want to divide by 0
+                best_4bit_color = (0,0,0)
+                pass
+            else:
+                orig_color = (r,g,b)
+                orig_color_brightness = np.linalg.norm(orig_color)
+                orig_color_normalized = orig_color / np.linalg.norm(orig_color)
+                
+                best_score = None
+                best_4bit_color = (None,None,None)
+                
+                for new_r in range(16):
+                    for new_g in range(16):
+                        for new_b in range(16):
+                            if (new_r == 0 and new_g == 0 and new_b == 0):
+                                # FIXME: we do not conside black as a valid option (due to dividing by zero). But sometimes we might want it as the color, maybe?
+                                continue
+                        
+                            new_4bit_color = (new_r, new_g, new_b)
+                            new_4bit_color_brightness = np.linalg.norm(new_4bit_color) * 4
+                            new_4bit_color_normalized = new_4bit_color / np.linalg.norm(new_4bit_color)
+                            
+                            color_similarity = np.dot(np.array(orig_color_normalized), np.array(new_4bit_color_normalized))
+                            
+                            brightness_similarity = None
+                            if (orig_color_brightness > new_4bit_color_brightness):
+                                brightness_similarity = new_4bit_color_brightness / orig_color_brightness
+                            else:
+                                brightness_similarity = orig_color_brightness / new_4bit_color_brightness
+                            
+                            score = color_similarity**5 * brightness_similarity
+                            
+                            if (best_score is None) or (score > best_score):
+                                best_score = score
+                                best_4bit_color = new_4bit_color
+        
+            # 4 bit to 8 bit
+            r = best_4bit_color[0] * 17
+            g = best_4bit_color[1] * 17
+            b = best_4bit_color[2] * 17
+            
+            new_8bit_color = (r,g,b)
+        
+        else:
+            # 6 bit to 4 bit conversion
+            r = (r * 61 + 128) >> 8
+            g = (g * 61 + 128) >> 8
+            b = (b * 61 + 128) >> 8
+            
+            if (PATCH_COLORS_MANUALLY):
+                if (SCENE == 'U2E'):
+                    if (clr_idx == 7):
+                        r += 1
+                    if (clr_idx == 12):
+                        r += 1
+                    if (clr_idx == 14):
+                        r += 1
+                    if (clr_idx == 15):
+                        g -= 1
+                        b -= 1
+                        
+# FIXME: add more manual patches! Especially for the SHIP!
+# FIXME: add more manual patches! Especially for the SHIP!
+# FIXME: add more manual patches! Especially for the SHIP!
+
+                else:
+                    # TODO: are there any colors to patch for the U2A scene?
+                    pass
+            
+
+            # 4 bit to 8 bit
+            r = r * 17
+            g = g * 17
+            b = b * 17
+            
+            new_8bit_color = (r,g,b)
+    else:
+        # 6 bit to 8 bit conversion
+        r = (r * 259 + 33) >> 6
+        g = (g * 259 + 33) >> 6
+        b = (b * 259 + 33) >> 6
+        
+        new_8bit_color = (r,g,b)
+        
+    
+    colors.append(new_8bit_color)
 
 if (DEBUG_COLORS):
     colors = debug_colors
@@ -1251,6 +1346,23 @@ while running:
         #if event.type == pygame.KEYDOWN:
             #if event.key == pygame.K_RIGHT:
             #    increment_frame_by = 1
+
+        '''
+        if event.type == pygame.MOUSEBUTTONUP:
+            pos = pygame.mouse.get_pos()
+            source_x = pos[0] // scale
+            source_y = pos[1] // scale
+            
+            screen_pxarray = pygame.PixelArray(screen)
+            pick_color = screen_pxarray[source_x,source_y]
+            screen_pxarray.close()
+            
+            # clr_idx = pixels[source_x + source_y * 320]
+            # pick_color = colors_12bit[clr_idx]
+            
+            print((source_x,source_y))
+            print(pick_color)
+        '''
 
     if PRINT_PROGRESS: print("Loading vertices and faces")
     world_objects = load_vertices_and_faces(frame_nr)
@@ -1417,7 +1529,8 @@ while running:
         f.write(b'\xff') # end of frame
 
 
-    print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
+    if (PRINT_FRAME_TRIANGLES):
+        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces)))
 
     if (DRAW_PALETTE):
         
