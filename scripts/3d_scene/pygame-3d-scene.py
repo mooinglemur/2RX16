@@ -40,7 +40,7 @@ if SCENE == 'U2E':
     fov_degrees = 40
 else:
     fov_degrees = 48
-
+    
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1
 RIGHT_EDGE_X = +1
@@ -916,13 +916,28 @@ def compare_faces(face_a, face_b):
         if avg_z_a > avg_z_b:
             result = -1
     else:
-        # TODO: this is our 'fallback' method: within an object we look at the sum_of_z of each face (better to use the original (ordered) polygon lists
-        if face_a['sum_of_z'] == face_b['sum_of_z']:
-            result = 0
-        if face_a['sum_of_z'] < face_b['sum_of_z']:
-            result = 1
-        if face_a['sum_of_z'] > face_b['sum_of_z']:
-            result = -1
+        # FIXME: HACK! This is a workaround for sorting the underside of the large ship ('Sippi'). We first look at the material name to sort (POHJA always trumps COLOR00).
+        if (obj_name_a == 'Sippi'):
+        
+            if (face_a['material_name'] == 'POHJA') and (face_b['material_name'] == 'COLOR00'):
+                return -1
+            elif (face_a['material_name'] == 'COLOR00') and (face_b['material_name'] == 'POHJA'):
+                return 1
+            else:
+                if face_a['sum_of_z'] == face_b['sum_of_z']:
+                    result = 0
+                if face_a['sum_of_z'] < face_b['sum_of_z']:
+                    result = 1
+                if face_a['sum_of_z'] > face_b['sum_of_z']:
+                    result = -1
+        else:
+            # TODO: this is our 'fallback' method: within an object we look at the sum_of_z of each face (better to use the original (ordered) polygon lists
+            if face_a['sum_of_z'] == face_b['sum_of_z']:
+                result = 0
+            if face_a['sum_of_z'] < face_b['sum_of_z']:
+                result = 1
+            if face_a['sum_of_z'] > face_b['sum_of_z']:
+                result = -1
             
     if (DEBUG_RESERSE_SORTING):
         result = -result
@@ -1424,8 +1439,8 @@ while running:
             running = False
 
         #if event.type == pygame.KEYDOWN:
-            #if event.key == pygame.K_RIGHT:
-            #    increment_frame_by = 1
+        #    if event.key == pygame.K_RIGHT:
+        #        increment_frame_by = 1
 
         '''
         if event.type == pygame.MOUSEBUTTONUP:
