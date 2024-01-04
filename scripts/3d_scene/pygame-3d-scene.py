@@ -457,9 +457,9 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         pass
     elif (len(inside_vertices) == 3):
         # The triangle is completely inside the edge, we add it as-is
-        combined_vertices += inside_vertices
+#        combined_vertices += inside_vertices
         clipped_face = copy.deepcopy(non_clipped_face)
-        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+#        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 1):
         # Out triangle gets shorter, so we return one smaller triangle
@@ -471,6 +471,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 3
         clipped_faces.append(clipped_face)
@@ -486,6 +487,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 2
         clipped_faces.append(clipped_face)
@@ -497,6 +499,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
+        clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 4
         clipped_faces.append(clipped_face)
@@ -786,9 +789,9 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         pass
     elif (len(inside_vertices) == 3):
         # The triangle is completely inside the edge, we add it as-is
-        combined_vertices += inside_vertices
+#        combined_vertices += inside_vertices
         clipped_face = copy.deepcopy(non_clipped_face)
-        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+#        clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
         clipped_faces.append(clipped_face)
     elif (len(inside_vertices) == 1):
         # Out triangle gets shorter, so we return one smaller triangle
@@ -800,6 +803,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 8
         clipped_faces.append(clipped_face)
@@ -815,6 +819,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,1+svi,2+svi]
+        clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 9
         clipped_faces.append(clipped_face)
@@ -826,6 +831,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_face = copy.deepcopy(non_clipped_face)
 # FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [0+svi,3+svi,1+svi]
+        clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 10
         clipped_faces.append(clipped_face)
@@ -985,6 +991,72 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
     check_pxarray.close()
     
     return (screen_vertices, sorted_faces, visible_face_indexes)
+
+def faces_share_edge(face_a, face_b):
+
+    vertex_indices_a = face_a['vertex_indices']
+    vertex_indices_b = face_b['vertex_indices']
+    
+    if (vertex_indices_a[0] in vertex_indices_b and vertex_indices_a[1] in vertex_indices_b):
+        return True
+    if (vertex_indices_a[0] in vertex_indices_b and vertex_indices_a[2] in vertex_indices_b):
+        return True
+    if (vertex_indices_a[1] in vertex_indices_b and vertex_indices_a[2] in vertex_indices_b):
+        return True
+
+    return False
+
+def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes):
+
+    # For each face we try to find another face (for now only triangles) to see if shares an edge with another face
+    # Both faces have to be:
+    #   - is visible
+    #   - Not been marked as merged already
+    #   - Have not been clipped
+    #   - Are not the same face
+    #   - Have the same color_index
+    #   - Have the same normal_index
+    #   - Share an edge (two vertices are the same)
+    
+    for face_a_index, face_a in enumerate(sorted_faces):
+        
+        if (face_a_index not in visible_face_indexes):    
+            continue
+        if ('is_clipped' in face_a):
+            continue
+        # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
+        if ('_TMP_marked_as_merged' in face_a):
+            continue
+            
+        # FIXME: this can be done much FASTER! (for example by keeping a map/dict per vertex_index of all triangles that use that vertex)
+        for face_b_index, face_b in enumerate(sorted_faces):
+            if face_a_index >= face_b_index:
+                continue
+            if (face_b_index not in visible_face_indexes):    
+                continue
+            if ('is_clipped' in face_b):
+                continue
+            # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
+            if ('_TMP_marked_as_merged' in face_a):
+                continue
+            if (face_a['color_index'] != face_b['color_index']):
+                continue
+            if (face_a['normal_index'] != face_b['normal_index']):
+                continue
+            
+            if (not faces_share_edge(face_a, face_b)):
+                continue
+            
+            
+            # FIXME: ISSUE: the *orginal* SHIP ('s01') contains many QUADS. But these are triangulated by Blender.
+            #      The PROBLEM is that Blender calculates the NORMALs AFTER triangulation, not before. So the normals
+            #      of each triangle-pair have (slightly) DIFFERENT normals!
+            
+            # print("Found mergable faces!")
+
+            face_a['_TMP_marked_as_merged'] = True
+            face_b['_TMP_marked_as_merged'] = True
+    
 
 
 def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
@@ -1611,6 +1683,10 @@ while running:
     
     if PRINT_PROGRESS: print("Sort, scale to screen and check visibility")
     (screen_vertices, sorted_faces, visible_face_indexes) = sort_faces_scale_to_screen_and_check_visibility(camera_clipped_projected_vertices, camera_clipped_projected_faces)
+    
+    if PRINT_PROGRESS: print("Checking to combine faces")
+# FIXME: if/when we ACTUALLY combine faces, we should RETURN something here!
+    check_to_combine_faces(screen_vertices, sorted_faces, visible_face_indexes)
     
     if PRINT_PROGRESS: print("Draw and export")
     
