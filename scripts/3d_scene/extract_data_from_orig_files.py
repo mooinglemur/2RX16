@@ -286,6 +286,10 @@ def parse_object_file(u2_bin):
                 # RESERVED not retrieved
                 pos += 2
                 
+                # FIXME: HACK! For some reason the large ship in U2A ('Sippi') is about twice as wide as in the object files. So we just widen it here.
+                if (u2_object['name'] == 'Sippi'):
+                    x = x * 2
+                
                 vertex = { 'x' : x, 'y': y, 'z': z, 'normal_index': normal_index }
                 vertices.append(vertex)
             
@@ -310,6 +314,8 @@ def parse_object_file(u2_bin):
                 pos += 2
                 # RESERVED not retrieved
                 pos += 2
+                
+                # FIXME: We widen the ship 'Sippi' (see HACK above) but we dont adjust its normals...
                 
                 normal = { 'x' : x, 'y': y, 'z': z }
                 normals.append(normal)
