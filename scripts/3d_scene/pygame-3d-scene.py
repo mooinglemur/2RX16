@@ -18,7 +18,7 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
-DEBUG_DRAW_TRIANGLE_BOUNDARIES = False  # Very informative!
+DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
@@ -541,57 +541,48 @@ def z_clip_faces_of_objects (view_objects):
     return z_clipped_view_objects
 
 
-def apply_light_to_faces_of_objects(view_objects):
+def apply_light_to_faces(view_faces, view_vertices, view_normals):
 
-    lit_view_objects = {}
-    
-    for current_object_name in view_objects:
-        view_object = view_objects[current_object_name]
-        #lit_view_object = copy.deepcopy(view_object)
-
-        # for each face we change the dot-product with the camera light
-        for face in view_object['faces']:
-            normal_index = face['normal_index']
-            normal = view_object['normals'][normal_index]
-            
-            # Note: in ADRAW.ASM there is a routine called 'calclight' which in turn calls 'normallight'. This uses the following data:
-            #
-            #   newlight dw	12118,10603,3030
-            #
-            # This seems to be the x,y and z direction (as a vector) of the light source, relative to the *camera*!
-            #
-            # Assuming these are signed 16-bit fixed point numbers, this is (roughly): 0.37, 0.32, 0.09
-            # We also asumme that Y is flipped in the original engine. Since it is not here, we have to negate it.
+    # for each face we change the dot-product with the camera light
+    for face in view_faces:
+        normal_index = face['normal_index']
+        normal = view_normals[normal_index]
+        
+        # Note: in ADRAW.ASM there is a routine called 'calclight' which in turn calls 'normallight'. This uses the following data:
+        #
+        #   newlight dw	12118,10603,3030
+        #
+        # This seems to be the x,y and z direction (as a vector) of the light source, relative to the *camera*!
+        #
+        # Assuming these are signed 16-bit fixed point numbers, this is (roughly): 0.37, 0.32, 0.09
+        # We also asumme that Y is flipped in the original engine. Since it is not here, we have to negate it.
 
 # FIXME: some colors still seem complete off (like the purple)!
 #        FOR EXAMPLE: look at 'Building20'!
-            
-            #camera_light = [0.408248, -0.408248, 0.816497]
-            camera_light = [0.37, -0.32, 0.09]
-            
-            light_dot = np.dot(np.array(camera_light), np.array(normal))
-            
-            # CHECK: Is this equivalent to the "add	ax,128" in the orginal?
-            light_dot += 0.5
-            #print(light_dot)
-            if light_dot > 1:
-                light_dot = 1
-            if light_dot < 0:
-                light_dot = 0
-            
-            # FIXME! HACK to approximate: note that if we raise this above 0.5 the '45degree-ceiling-of-the-tunnel' becomes grey. We probably dont want that!
-            light_dot = light_dot * 0.50
-            
-            #if (current_object_name == 'talojota'):
-            #    print( str(face['color_index']) + ':' + str(face['nr_of_shades']))
-            
-            face['color_index'] = int((light_dot) * face['nr_of_shades']) + face['color_index']
         
+        #camera_light = [0.408248, -0.408248, 0.816497]
+        camera_light = [0.37, -0.32, 0.09]
+        
+        light_dot = np.dot(np.array(camera_light), np.array(normal))
+        
+        # CHECK: Is this equivalent to the "add	ax,128" in the orginal?
+        light_dot += 0.5
+        #print(light_dot)
+        if light_dot > 1:
+            light_dot = 1
+        if light_dot < 0:
+            light_dot = 0
+        
+        # FIXME! HACK to approximate: note that if we raise this above 0.5 the '45degree-ceiling-of-the-tunnel' becomes grey. We probably dont want that!
+        light_dot = light_dot * 0.50
+        
+        #if (current_object_name == 'talojota'):
+        #    print( str(face['color_index']) + ':' + str(face['nr_of_shades']))
+        
+        face['color_index'] = int((light_dot) * face['nr_of_shades']) + face['color_index']
     
-        lit_view_objects[current_object_name] = view_object
-    
-    #exit()
-    return lit_view_objects
+    return (view_faces, view_vertices)
+
 
 
 def project_triangles(view_faces, view_vertices):
@@ -660,6 +651,22 @@ def intersection_point(vi1, vi2, vi3, vi4, pv):
     return None
     
 def determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info):
+
+    # Background: Splitting overlapping triangles: 
+    # 
+    # We want to split triangles when they overlap (in camera view) with another triangle. The one in the BACK will have to be split.
+    # The tricky part is that knowing which triangle is in the BACK is hard to do when you are in 2D projected space.
+    # We need to know (for each pair of triangles) if there are overlapping points, and if there are, which point is closer.
+    #
+    # We can choose any overlapping point really (IMPORTANT: we are ASSUMING the triangles DONT intersect in 3D space!).
+    # In projected space, its easier to know the *intersection points* of the two triangles. But we somehow need to calculate the
+    # world coordinates of these intersection points. We know at which (x/y) *ANGLE* of the camera-view these intersection points lie.
+    # We can determine a 3D vector/DIRECTION (given the camera focal length) for each intersection point.
+    # If we regard the two triangles as *3D planes* we can calculate the intersection point in 3D for both trianles/planes.
+    
+    # Split 2D triangles on overlap: https://stackoverflow.com/questions/5654831/split-triangles-on-overlap
+    # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
+    # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
 
     debug_intersection_points = []
     pv = projected_vertices
@@ -1474,22 +1481,7 @@ while running:
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
     view_objects = transform_objects_into_view_space(world_objects, camera_info)
 
-    # TODO:
-    # - maybe THINK about re-using vertices that are CREATED during z-clipping, splitting and camera-side-clipping!
-    #   - One option is to determine if the (2D/3D) point already exists as a vertex
-    #     - By comparing coordinates (with an EPSILON) of all known vertices, so can find the closely-matching one -- SLOW!
-    #   - Another option is to semantically store new vertices: "v[1]->v[2]->CLIP_RIGHT", "v[4]->v[17]->CLIP_Z", "v[38]->v[97]->INTERSECTION->v[21]->v[53]"
-    #     - ISSUE: how do you determine in which ORDER you have to create these identifiers? 
-    #          SOLUTION: -> simply by vertex_index? 
-    #             - And which EDGE of the INTERSECTION should go first?
-    #               SOLUTION:  -> Simply the lowest vertex_index again?
-    #     - ISSUE: how to deal with 2D vs 3D faces/vertices? 
-    #         SOLUTION:  are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
-
-# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
-# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
-# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
-
+    if PRINT_PROGRESS: print("Calculating average z of objects")
     for current_object_name in view_objects:
         
         if (current_object_name == 'CameraBox'):
@@ -1530,23 +1522,37 @@ while running:
         
         avg_z_per_object[current_object_name] = avg_z_for_object
 
+# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
+# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
+# FIXME: maybe BUNDLE all triangles into *ONE LIST* here?!
+
 
     if PRINT_PROGRESS: print("Backface cull")
     # Backface cull where face/triangle-normal points away from camera
     culled_view_objects = cull_faces_of_objects(view_objects)
     
+    # TODO:
+    # - maybe THINK about re-using vertices that are CREATED during z-clipping and camera-side-clipping! (and maybe when splitting triangles, if we were to do that)
+    #   - One option is to determine if the (2D/3D) point already exists as a vertex
+    #     - By comparing coordinates (with an EPSILON) of all known vertices, so can find the closely-matching one -- SLOW!
+    #   - Another option is to semantically store new vertices: "v[1]->v[2]->CLIP_RIGHT", "v[4]->v[17]->CLIP_Z", "v[38]->v[97]->INTERSECTION->v[21]->v[53]"
+    #     - ISSUE: how do you determine in which ORDER you have to create these identifiers? 
+    #          SOLUTION: -> simply by vertex_index? 
+    #             - And which EDGE of the INTERSECTION should go first?
+    #               SOLUTION:  -> Simply the lowest vertex_index again?
+    #     - ISSUE: how to deal with 2D vs 3D faces/vertices? 
+    #         SOLUTION:  are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
+
     if PRINT_PROGRESS: print("Z clipping")
-    # Clip/remove where Z < 0 (behind camera)  (we may assume faces are NOT partially visiable AND behind the camera)
+    # Clip/remove where Z > -1 (behind or very close to camera)
     z_clipped_view_objects = z_clip_faces_of_objects(culled_view_objects)
-    
-    if PRINT_PROGRESS: print("Applying light")
-    # Change color of faces/triangles according to the amount of light they get
-    lit_view_objects = apply_light_to_faces_of_objects(z_clipped_view_objects)
-    
+
+
     if PRINT_PROGRESS: print("Assemble all objects into one list of faces/vertices")
-    lit_view_faces = []
-    lit_view_vertices = []
-    for current_object_name in lit_view_objects:
+    z_clipped_view_faces = []
+    z_clipped_view_vertices = []
+    z_clipped_view_normals = []
+    for current_object_name in z_clipped_view_objects:
         # We assemble all objects but the camera(box) here
         
         if (current_object_name == 'CameraBox'):
@@ -1556,45 +1562,40 @@ while running:
             if (current_object_name != 'b4' and current_object_name != 'BuildingC_1'):
                 continue
         
-        object_vertices = lit_view_objects[current_object_name]['vertices']
-        object_faces = lit_view_objects[current_object_name]['faces']
+        object_vertices = z_clipped_view_objects[current_object_name]['vertices']
+        object_faces = z_clipped_view_objects[current_object_name]['faces']
+        object_normals = z_clipped_view_objects[current_object_name]['normals']
         
-        start_vertex_index = len(lit_view_vertices)
-        lit_view_vertices += object_vertices
+        start_vertex_index = len(z_clipped_view_vertices)
+        start_normal_index = len(z_clipped_view_normals)
+        z_clipped_view_vertices += object_vertices
+        z_clipped_view_normals += object_normals
         for object_face in object_faces:
             object_face['vertex_indices'][0] += start_vertex_index
             object_face['vertex_indices'][1] += start_vertex_index
             object_face['vertex_indices'][2] += start_vertex_index
             
+            object_face['normal_index'] += start_normal_index
+            
             object_face['obj_name'] = current_object_name
             
-            lit_view_faces.append(object_face)
+            z_clipped_view_faces.append(object_face)
         
     if (DEBUG_COLORS):
-        for orig_face_index, face in enumerate(lit_view_faces):
+        for orig_face_index, face in enumerate(z_clipped_view_faces):
             face['orig_index'] = orig_face_index
+            
+    
+    if PRINT_PROGRESS: print("Applying light")
+    # Change color of faces/triangles according to the amount of light they get
+    (lit_view_faces, lit_view_vertices) = apply_light_to_faces(z_clipped_view_faces, z_clipped_view_vertices, z_clipped_view_normals)
+    
     
     if PRINT_PROGRESS: print("Projection")
     # Project all vertices to screen-space
     (projected_faces, projected_vertices) = project_triangles(lit_view_faces, lit_view_vertices)
     
-    # Background: Splitting overlapping triangles: 
-    # 
-    # We want to split triangles when they overlap (in camera view) with another triangle. The one in the BACK will have to be split.
-    # The tricky part is that knowing which triangle is in the BACK is hard to do when you are in 2D projected space.
-    # We need to know (for each pair of triangles) if there are overlapping points, and if there are, which point is closer.
-    #
-    # We can choose any overlapping point really (IMPORTANT: we are ASSUMING the triangles DONT intersect in 3D space!).
-    # In projected space, its easier to know the *intersection points* of the two triangles. But we somehow need to calculate the
-    # world coordinates of these intersection points. We know at which (x/y) *ANGLE* of the camera-view these intersection points lie.
-    # We can determine a 3D vector/DIRECTION (given the camera focal length) for each intersection point.
-    # If we regard the two triangles as *3D planes* we can calculate the intersection point in 3D for both trianles/planes.
-    
-    # Split 2D triangles on overlap: https://stackoverflow.com/questions/5654831/split-triangles-on-overlap
-    # Detect triangle-trianle intersections: https://stackoverflow.com/questions/1585459/whats-the-most-efficient-way-to-detect-triangle-triangle-intersections
-    # Point between line and polygon in 3D: https://stackoverflow.com/questions/47359985/shapely-intersection-point-between-line-and-polygon-in-3d
-
-    # TODO: should we remove debug_intersection_points?
+    # TODO: should we remove this?
     # if PRINT_PROGRESS: print("Determine 2D intersections and split")
     #    (split_projected_faces, split_projected_vertices, debug_intersection_points) = determine_triangle_2d_intersections_and_split(projected_faces, projected_vertices, lit_view_faces, lit_view_vertices, camera_info)
     
