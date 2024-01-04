@@ -28,15 +28,18 @@ CONVERT_COLORS_TO_12BITS = True
 FOCUS_ON_COLOR_TONE = False   # This didnt give a good result
 PATCH_COLORS_MANUALLY = True
 
-SCENE = 'U2E'
+#SCENE = 'U2E'
+SCENE = 'U2A'
 
 screen_width = 320
 screen_height = 200
 scale = 3            # this is only used to scale up the screen in pygame
 
 # FIXME: we took the FOV from U2E.INF (which might not be completely accurate, since its converted to a 16bit number first)
-# FIXME: For U2A this will be different!
-fov_degrees = 40
+if SCENE == 'U2E':
+    fov_degrees = 40
+else:
+    fov_degrees = 48
 
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1
@@ -127,14 +130,14 @@ material_name_to_color_index = {
 '''
 
 def load_material_info():
-    material_file_to_import = "U2E_material.json"
+    material_file_to_import = SCENE + "_material.json"
     material_file = open('assets/3d_scene/' + material_file_to_import, 'r')
     material_info = json.loads(material_file.read())
     material_file.close()
     return material_info
 
 def load_animation_info():
-    animation_file_to_import = "U2E_animation.json"
+    animation_file_to_import = SCENE + "_animation.json"
     animation_file = open('assets/3d_scene/' + animation_file_to_import, 'r')
     animation_info = json.loads(animation_file.read())
     animation_file.close()
@@ -147,10 +150,10 @@ def load_vertices_and_faces(frame_nr):
     #  - Forward Axis: Y
     #  - Upward Axis: Z
     #  - Select: Normals, Triangulated Mesh, Materials->Export
-    #  - Select: Animation->Export, 1-100 (or 1-1800)
-    #  - Filename: U2E_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
+    #  - Select: Animation->Export, 1-100 (or 1-1802 for U2E or 1-522 for U2A)
+    #  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
     
-    obj_file = open('assets/3d_scene/U2E_anim/U2E_anim' + str(frame_nr) + '.obj', 'r')
+    obj_file = open('assets/3d_scene/'+SCENE+'_anim/'+SCENE+'_anim' + str(frame_nr) + '.obj', 'r')
     lines = obj_file.readlines()
     
     objects = {}
@@ -939,7 +942,6 @@ def projected_to_screen(projected_x, projected_y):
 def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
 
     # The vertices are scaled up for the (pygame) screen
-    scaled_up_vertices = []
     screen_vertices = []
     for projected_vertex in projected_vertices:
         (screen_x, screen_y) = projected_to_screen(projected_vertex[0], projected_vertex[1])
@@ -1272,11 +1274,17 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
 # Main game loop
 running = True
 
+
+# FIXME: rename this using the scene name!
 f = open("trilist.bin", "wb")
 
 frame_nr = 1
 increment_frame_by = 1
-max_frame_nr = 1800
+
+if SCENE == 'U2E':
+    max_frame_nr = 1802
+else:
+    max_frame_nr = 522
 
 if DEBUG_SORTING:
     #frame_nr = 1000
@@ -1597,9 +1605,13 @@ while running:
     (screen_vertices, sorted_faces, visible_face_indexes) = sort_faces_scale_to_screen_and_check_visibility(camera_clipped_projected_vertices, camera_clipped_projected_faces)
     
     if PRINT_PROGRESS: print("Draw and export")
+    
     tris_seen = draw_and_export(screen_vertices, sorted_faces, visible_face_indexes)
+    # FIXME: enable this again!
+    '''
     if tris_seen:
         f.write(b'\xff') # end of frame
+    '''
 
     if (PRINT_FRAME_TRIANGLES):
         print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_face_indexes.keys())))

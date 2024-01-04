@@ -5,7 +5,8 @@ import copy
 import json
 
 scene_dir = 'assets/3d_scene/SCENE'
-scene_name = 'U2E'
+#scene_name = 'U2E'
+scene_name = 'U2A'
 
 def lsget (f, u2_bin, pos):
     value = None
@@ -87,9 +88,9 @@ def parse_animation_file(u2_bin, nr_of_objects):
                 
                 if(a <= 0x7F):
 # FIXME: this value does seem right! 0-65538 = 0-360?
-                    fov = a << 8
-                    fov = (a << 8) / 360
-                    print('fov: ' + str(fov))
+                    half_fov = a << 8
+                    half_fov = (a << 8) / 360
+                    #print('half_fov: ' + str(half_fov))
                     #print('frame done')
                     break
                 elif(a == 0xFF):
