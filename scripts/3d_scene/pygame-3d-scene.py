@@ -18,6 +18,7 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
+DEBUG_DRAW_TRIANGLE_BOUNDARIES = False  # Very informative!
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
@@ -28,8 +29,8 @@ CONVERT_COLORS_TO_12BITS = True
 FOCUS_ON_COLOR_TONE = False   # This didnt give a good result
 PATCH_COLORS_MANUALLY = True
 
-#SCENE = 'U2E'
-SCENE = 'U2A'
+SCENE = 'U2E'
+#SCENE = 'U2A'
 
 screen_width = 320
 screen_height = 200
@@ -1037,6 +1038,8 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
     
         # We draw the polygon to the screen
         pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
+        if (DEBUG_DRAW_TRIANGLE_BOUNDARIES):
+            pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i] for i in face_vertex_indices], 1)
         
     frame_buffer_on_screen_x = 0
     frame_buffer_on_screen_y = 0
