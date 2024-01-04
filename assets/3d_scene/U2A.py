@@ -77,7 +77,7 @@ def create_camera():
         
 def load_city_object_file():
 
-    file_to_import = "U2E.obj"
+    file_to_import = "U2A.obj"
     print('- Importing the obj file: ' + file_to_import)
     bpy.ops.wm.obj_import(
         filepath=file_to_import, 
@@ -88,7 +88,7 @@ def load_city_object_file():
 
 
 def load_object_names_file():
-    object_names_file_to_import = "U2E_object_names.json"
+    object_names_file_to_import = "U2A_object_names.json"
     print('- Importing the objects names file: ' + object_names_file_to_import)
     obj_names_file_name = os.path.join(base_dir, object_names_file_to_import)
     obj_names_file = open(obj_names_file_name, mode='r')
@@ -98,7 +98,7 @@ def load_object_names_file():
     return object_nr_to_name
 
 def load_animation_file():
-    animation_file_to_import = "U2E_animation.json"
+    animation_file_to_import = "U2A_animation.json"
     print('- Importing the animation file: ' + animation_file_to_import)
     anim_file_name = os.path.join(base_dir, animation_file_to_import)
     anim_file = open(anim_file_name, mode='r')
@@ -108,7 +108,7 @@ def load_animation_file():
     return objects_xyz_and_matrix_per_frame
 
 def create_animation_frames():
-    nr_of_frames = 1802
+    nr_of_frames = 522
     bpy.context.scene.frame_end = nr_of_frames
 
     for frame_nr in range(1,nr_of_frames+1):
@@ -163,7 +163,7 @@ def create_animation_frames():
             
 
         # All other objects
-        for object_nr in range(1,58):
+        for object_nr in range(1,6):
 
             #dump(objects_xyz_and_matrix_per_frame[str(frame_nr)])
 
