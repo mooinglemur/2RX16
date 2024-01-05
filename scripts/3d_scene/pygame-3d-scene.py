@@ -38,7 +38,7 @@ PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
-DEBUG_SHOW_MERGED_FACES = True
+DEBUG_SHOW_MERGED_FACES = False
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
@@ -828,6 +828,13 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
             # We clip the 2d vertex against the edge
             outside_vertices.append(non_clipped_vertex)
     
+# FIXME: instead of creating two arrays of inside and outside vertices, just *mark* the (original) verices as inside and outside AND count inside and outside vertices
+#         then rearrange/sort the original vertice_indexes (sorted_vertex_indices) so it always starts with the inside vertices and then the outside vertices WHILE KEEPING THE ORDER!
+
+# FIXME: also: pass clip_2d_vertex_against_edge the INDEX (in the combined_vertices list) and also pass the combined_vertices-list itself. AND it should return an INDEX (and append to combined_vertices if need be)
+
+# FIXME: also passthough this function AND clip_2d_vertex_against_edge a dict that contains all created vertices by code/name!
+    
     
     if (len(inside_vertices) == 0):
         # The triangle is completely outside the edge, we dont add it
@@ -1068,8 +1075,8 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
         
         if (face_a_index not in visible_face_indexes):    
             continue
-        if ('is_clipped' in face_a):
-            continue
+#        if ('is_clipped' in face_a):
+#            continue
         # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
         if ('_TMP_marked_as_merged' in face_a):
             continue
@@ -1080,8 +1087,8 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
                 continue
             if (face_b_index not in visible_face_indexes):    
                 continue
-            if ('is_clipped' in face_b):
-                continue
+#            if ('is_clipped' in face_b):
+#                continue
             # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
             if ('_TMP_marked_as_merged' in face_b):
                 continue
@@ -1093,8 +1100,10 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
             if (face_a['orig_face_index'] != face_b['orig_face_index']):
                 continue
                 
-            if (('was_quad_originally' not in face_a) or ('was_quad_originally' not in face_b)):
-                continue
+#            if (('was_quad_originally' not in face_a) or ('was_quad_originally' not in face_b)):
+#                continue
+                
+                
 # FIXME: when vertices are actually RE-USED this condition will pass more often!
 #            if (not faces_share_edge(face_a, face_b)):
 #                continue
@@ -1792,8 +1801,14 @@ while running:
     
     frame_nr += increment_frame_by
     
-    if frame_nr > max_frame_nr:
-        running = False
+    if ALLOW_PAUSING_AND_REVERSE_PLAYBACK:
+        if frame_nr > max_frame_nr:
+            frame_nr = max_frame_nr
+        if frame_nr < 1:
+            frame_nr = 1
+    else:
+        if frame_nr > max_frame_nr:
+            running = False
     
     clock.tick(60)
 
