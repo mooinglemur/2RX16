@@ -12,10 +12,6 @@ import json
 import random
 from functools import cmp_to_key
 
-# FIXME: do NOT do "Triangulated Mesh" anymore!
-# FIXME: do NOT do "Triangulated Mesh" anymore!
-# FIXME: do NOT do "Triangulated Mesh" anymore!
-
 # Before running this script first (in Blender 3.6) do:
 #  - Open U2A.blend/U2E.blend
 #  - Go to scripting tab, run script ("play"-button or Alt-P)
@@ -24,7 +20,7 @@ from functools import cmp_to_key
 #  - Go to File->Export->Wavefront (obj)
 #  - Forward Axis: Y
 #  - Upward Axis: Z
-#  - Select: Normals, Triangulated Mesh, Materials->Export
+#  - Select: Normals, Materials->Export  (do NOT triangulate mesh!)
 #  - Select: Animation->Export, 1-100 (or 1-1802 for U2E or 1-522 for U2A)
 #  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
 # Before actually running this script: 
@@ -223,7 +219,7 @@ def load_vertices_and_faces(frame_nr):
                 # There are in fact two indexes: one for the vertex and one for the normal.
                 vertex_index = int(line_part.split('//')[0])-1   
                 vertex_indices.append(vertex_index)
-                # Note: we overwrite the normal index, since we assume this is a triangle and has ONE normal for each face
+                # Note: we overwrite the normal index, since we assume this is a polygon that has ONE normal for each face
                 normal_index = int(line_part.split('//')[1])-1   
                 
             
@@ -237,16 +233,14 @@ def load_vertices_and_faces(frame_nr):
                 nr_of_shades = None
                 if (current_object_name != 'CameraBox'):
                     print("Unknown material: " + current_material_name)
-                #exit()
+                    #exit()
                 
-            # TODO: this is ASSUMING there are EXACTLY 3 vertex indices! Make sure this is the case!
             # TODO?: right now, we convert a global vertex (and normal) index into an object-vertex (and normal) index. Is this actually a good idea?
+            for vertex_index in range(len(vertex_indices)):
+                vertex_indices[vertex_index] -= object_start_vertex_index
+
             objects[current_object_name]['faces'].append({
-                'vertex_indices' : [ 
-                    vertex_indices[0] - object_start_vertex_index,
-                    vertex_indices[1] - object_start_vertex_index,
-                    vertex_indices[2] - object_start_vertex_index 
-                ],
+                'vertex_indices' : vertex_indices,
                 'normal_index' : normal_index - object_start_normal_index,
                 'color_index' : color_index,
                 'nr_of_shades' : nr_of_shades,
@@ -257,6 +251,52 @@ def load_vertices_and_faces(frame_nr):
             
     return objects
 
+
+def triangulate_faces(world_objects):
+
+    triangulated_world_objects = world_objects
+    
+    orig_global_face_index = 0
+    
+    for current_object_name in world_objects:
+        
+        object_faces = world_objects[current_object_name]['faces']
+        
+        triangulated_object_faces = []
+        
+        for object_face in object_faces:
+        
+            # This template face will inheret the normals and the vertices of the original face
+            new_template_face = copy.deepcopy(object_face)
+            new_template_face['vertex_indices'] = []
+            
+            orig_vertex_indices = copy.deepcopy(object_face['vertex_indices'])
+        
+            # https://stackoverflow.com/questions/5247994/simple-2d-polygon-triangulation
+            # This is when you want to handle simple polygons like rectangles, pentagons, hexagons and so on. 
+            # Here you just take a starting point and connect it to all other vertices. 
+            for third_index_of_triangle in range(2, len(orig_vertex_indices)):
+            
+                new_object_face = copy.deepcopy(new_template_face)
+                
+                second_index_of_triangle = third_index_of_triangle - 1
+                
+                # We take the first three vertices as our new triangle face
+                new_object_face['vertex_indices'].append(orig_vertex_indices[0])
+                new_object_face['vertex_indices'].append(orig_vertex_indices[second_index_of_triangle])
+                new_object_face['vertex_indices'].append(orig_vertex_indices[third_index_of_triangle])
+                
+                new_object_face['orig_face_index'] = orig_global_face_index
+                if (len(orig_vertex_indices) == 4):
+                    new_object_face['was_quad_originally'] = True
+                triangulated_object_faces.append(new_object_face)
+        
+            orig_global_face_index += 1
+            
+        triangulated_world_objects[current_object_name]['faces'] = triangulated_object_faces
+    
+
+    return triangulated_world_objects
 
 def get_longest_edge_of_two_triangles(face, vertices):
     # We want the diagonal of the (triangle) face. So the longest edge.
@@ -701,10 +741,10 @@ def determine_triangle_2d_intersections_and_split(projected_faces, projected_ver
 
 
                     #    for face in projected_faces:
-                    #        # if face['orig_index'] == 3:  # Bottom floor triangle
+                    #        # if face['orig_face_index'] == 3:  # Bottom floor triangle
                     #            
                     #        if (False and DEBUG_SORTING):
-                    #            if face['orig_index'] == 11:  # Front wall of building
+                    #            if face['orig_face_index'] == 11:  # Front wall of building
                     #                if ('in_front_of' not in face):
                     #                    face['in_front_of'] = {}
                     #                face['in_front_of'][3] = True
@@ -901,11 +941,11 @@ def compare_faces(face_a, face_b):
     result = None
 
     #if ('in_front_of' in face_a):
-    #    if (face_b['orig_index'] in face_a['in_front_of']):
+    #    if (face_b['orig_face_index'] in face_a['in_front_of']):
     #        return -1
             
     #if ('in_front_of' in face_b):
-    #    if (face_a['orig_index'] in face_b['in_front_of']):
+    #    if (face_a['orig_face_index'] in face_b['in_front_of']):
     #        return 1
 
     obj_name_a = face_a['obj_name']
@@ -1020,7 +1060,8 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
     #   - Have not been clipped
     #   - Are not the same face
     #   - Have the same color_index
-    #   - Have the same normal_index
+    #   - Have the same orig_face_index (and therefore the same normal_index!)
+    #   - Was a quad originally
     #   - Share an edge (two vertices are the same)
     
     for face_a_index, face_a in enumerate(sorted_faces):
@@ -1046,16 +1087,17 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
                 continue
             if (face_a['color_index'] != face_b['color_index']):
                 continue
-            # FIXME: ISSUE: the *orginal* SHIP ('s01') contains many QUADS. But these are triangulated by Blender.
-            #      The PROBLEM is that Blender calculates the NORMALs AFTER triangulation, not before. So the normals
-            #      of each triangle-pair have (slightly) DIFFERENT normals!
-            
-# FIXME: for now ignoring the normal_index!
-#            if (face_a['normal_index'] != face_b['normal_index']):
-#                continue
-            
-            if (not faces_share_edge(face_a, face_b)):
+
+            # The orig_face_index indicates the original face we got from Blender/the original demo files. We want these to be the same. 
+            # We might not need this restriction, but its an easy way to know that two triangles "belong toghether".
+            if (face_a['orig_face_index'] != face_b['orig_face_index']):
                 continue
+                
+            if (('was_quad_originally' not in face_a) or ('was_quad_originally' not in face_b)):
+                continue
+# FIXME: when vertices are actually RE-USED this condition will pass more often!
+#            if (not faces_share_edge(face_a, face_b)):
+#                continue
             
             
             # print("Found mergable faces!")
@@ -1099,7 +1141,7 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
         
         if (DEBUG_COLORS and not DEBUG_CLIP_COLORS):
             if DEBUG_COLOR_PER_ORIG_TRIANGLE:
-                color_idx = face['orig_index'] % 64
+                color_idx = face['orig_face_index'] % 64
             else:
                 color_idx = face_index % 64
         
@@ -1544,14 +1586,17 @@ while running:
     if PRINT_PROGRESS: print("Loading vertices and faces")
     world_objects = load_vertices_and_faces(frame_nr)
 
+    if PRINT_PROGRESS: print("Triangulate faces")
+    triangulated_world_objects = triangulate_faces(world_objects)
+    
     if PRINT_PROGRESS: print("Getting camera info")
-    camera_box = world_objects['CameraBox']
+    camera_box = triangulated_world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
-    del world_objects['CameraBox']
+    del triangulated_world_objects['CameraBox']
     
     if PRINT_PROGRESS: print("Transform into view space")
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
-    view_objects = transform_objects_into_view_space(world_objects, camera_info)
+    view_objects = transform_objects_into_view_space(triangulated_world_objects, camera_info)
 
 # FIXME: put this in a function!
     if PRINT_PROGRESS: print("Calculating average z of objects")
@@ -1629,10 +1674,6 @@ while running:
             
             view_faces.append(object_face)
         
-    if (DEBUG_COLORS):
-        for orig_face_index, face in enumerate(view_faces):
-            face['orig_index'] = orig_face_index
-            
     
     if PRINT_PROGRESS: print("Backface cull")
     # Backface cull where face/triangle-normal points away from camera
