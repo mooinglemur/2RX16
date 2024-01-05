@@ -38,7 +38,7 @@ PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
-DEBUG_SHOW_MERGED_FACES = False
+DEBUG_SHOW_MERGED_FACES = True
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
@@ -1145,8 +1145,8 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
                 
                 
 # FIXME: when vertices are actually RE-USED this condition will pass more often!
-#            if (not faces_share_edge(face_a, face_b)):
-#                continue
+            if (not faces_share_edge(face_a, face_b)):
+                continue
             
             
             # print("Found mergable faces!")
@@ -1745,7 +1745,7 @@ while running:
 # FIXME: dont we need the normals for this? To CORRECT the ORDERING after clipping?
     (z_clipped_view_faces, z_clipped_view_vertices) = z_clip_faces(culled_view_faces, culled_view_vertices)
 
-    print(str(len(culled_view_vertices))+'->'+str(len(z_clipped_view_vertices)))
+    # print(str(len(culled_view_vertices))+'->'+str(len(z_clipped_view_vertices)))
     
     if PRINT_PROGRESS: print("Applying light")
     # Change color of faces/triangles according to the amount of light they get
