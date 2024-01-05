@@ -519,7 +519,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
     elif (len(inside_vertex_indices) == 1):
         # Out triangle gets shorter, so we return one smaller triangle
 
-        if (outside_vertex_nrs[0] == 2):
+        if (outside_vertex_nrs[0] == 0 and outside_vertex_nrs[1] == 2):
             # We need to switch the outside vertices to preserve the order
             outside_vertex_indices.reverse()
             outside_vertex_nrs.reverse()
@@ -536,7 +536,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
     elif (len(inside_vertex_indices) == 2):
         # We have a quad we have to split into two triangles
         
-        if (inside_vertex_nrs[0] == 1):
+        if (inside_vertex_nrs[0] == 1 and inside_vertex_nrs[1] == 2):
             # We need to switch the inside vertices to preserve the order
             inside_vertex_indices.reverse()
             inside_vertex_nrs.reverse()
@@ -864,7 +864,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
     elif (len(inside_vertex_indices) == 1):
         # Out triangle gets shorter, so we return one smaller triangle
         
-        if (outside_vertex_nrs[0] == 2):
+        if (outside_vertex_nrs[0] == 0 and outside_vertex_nrs[1] == 2):
             # We need to switch the outside vertices to preserve the order
             outside_vertex_indices.reverse()
             outside_vertex_nrs.reverse()
@@ -881,7 +881,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
     elif (len(inside_vertex_indices) == 2):
         # We have a quad we have to split into two triangles
         
-        if (inside_vertex_nrs[0] == 1):
+        if (inside_vertex_nrs[0] == 1 and inside_vertex_nrs[1] == 2):
             # We need to switch the inside vertices to preserve the order
             inside_vertex_indices.reverse()
             inside_vertex_nrs.reverse()
