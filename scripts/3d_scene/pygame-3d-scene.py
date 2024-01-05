@@ -158,13 +158,6 @@ def load_material_info():
     material_file.close()
     return material_info
 
-def load_animation_info():
-    animation_file_to_import = SCENE + "_animation.json"
-    animation_file = open('assets/3d_scene/' + animation_file_to_import, 'r')
-    animation_info = json.loads(animation_file.read())
-    animation_file.close()
-    return animation_info
-
 def load_vertices_and_faces(frame_nr):
 
     obj_file = open('assets/3d_scene/'+SCENE+'_anim/'+SCENE+'_anim' + str(frame_nr) + '.obj', 'r')
@@ -1393,9 +1386,6 @@ if DEBUG_SORTING:
     #increment_frame_by = 1
     frame_nr = 40
     increment_frame_by = 0
-
-#animation_info = load_animation_info()
-#print(json.dumps(animation_info, indent=4))
 
 material_info = load_material_info()
 mat_info = material_info['mat_info']
