@@ -1090,15 +1090,56 @@ def faces_share_edge(face_a, face_b):
     vertex_indices_b = face_b['vertex_indices']
     
     if (vertex_indices_a[0] in vertex_indices_b and vertex_indices_a[1] in vertex_indices_b):
-        return True
+        return [vertex_indices_a[0], vertex_indices_a[1]]
     if (vertex_indices_a[0] in vertex_indices_b and vertex_indices_a[2] in vertex_indices_b):
-        return True
+        return [vertex_indices_a[0], vertex_indices_a[2]]
     if (vertex_indices_a[1] in vertex_indices_b and vertex_indices_a[2] in vertex_indices_b):
-        return True
+        return [vertex_indices_a[1], vertex_indices_a[2]]
 
-    return False
+    return None
+
+
+def merge_two_faces(face, face_to_merge_with, vertex_indices_shared):
+
+    merged_face = face
+    
+# FIXME: for now assuming TRIANGLES!
+# FIXME: for now assuming TRIANGLES!
+# FIXME: for now assuming TRIANGLES!
+    #print(face, face_to_merge_with, vertex_indices_shared)
+
+
+    return merged_face
+
+def find_connected_faces_and_merge(face, sorted_faces):
+
+    # We mark this face as already merged so the called wont (indirectly) try to merge this face again
+    face['already_merged'] = True
+
+    # We start with our own face
+    merged_face = copy.deepcopy(face)
+    
+    merge_with_faces = face['merge_with_faces']
+    for merge_info in merge_with_faces:
+        face_index = merge_info['face_index']
+        vertex_indices_shared = merge_info['vertex_indices_shared']
+        
+        face_to_merge_with = sorted_faces[face_index]
+        
+        if ('already_merged' not in face_to_merge_with):
+# FIXME: enable recursive calls!
+#            merged_child_face = find_connected_faces_and_merge(face_to_merge_with, sorted_faces)
+#            merged_face = merge_two_faces(merged_face, merged_child_face)
+# FIXME: REMOVE: dont use this anymore!
+            merged_face = merge_two_faces(merged_face, face_to_merge_with, vertex_indices_shared)
+        
+
+    return merged_face
 
 def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes):
+
+
+# FIXME: what is somehow the SORTING of the to-be-combined faces is DIFFERENT?
 
     # For each face we try to find another face (for now only triangles) to see if shares an edge with another face
     # Both faces have to be:
@@ -1115,11 +1156,11 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
         
         if (face_a_index not in visible_face_indexes):    
             continue
-#        if ('is_clipped' in face_a):
-#            continue
+        #if ('is_clipped' in face_a):
+        #    continue
         # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
-        if ('_TMP_marked_as_merged' in face_a):
-            continue
+        #if ('_TMP_marked_as_merged' in face_a):
+        #    continue
             
         # FIXME: this can be done much FASTER! (for example by keeping a map/dict per vertex_index of all triangles that use that vertex)
         for face_b_index, face_b in enumerate(sorted_faces):
@@ -1127,11 +1168,11 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
                 continue
             if (face_b_index not in visible_face_indexes):    
                 continue
-#            if ('is_clipped' in face_b):
-#                continue
+            #if ('is_clipped' in face_b):
+            #    continue
             # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
-            if ('_TMP_marked_as_merged' in face_b):
-                continue
+            #if ('_TMP_marked_as_merged' in face_b):
+            #    continue
             if (face_a['color_index'] != face_b['color_index']):
                 continue
 
@@ -1143,16 +1184,41 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
 #            if (('was_quad_originally' not in face_a) or ('was_quad_originally' not in face_b)):
 #                continue
                 
-                
-# FIXME: when vertices are actually RE-USED this condition will pass more often!
-            if (not faces_share_edge(face_a, face_b)):
+            vertex_indices_shared = faces_share_edge(face_a, face_b)
+            if (vertex_indices_shared is None):
                 continue
             
             
             # print("Found mergable faces!")
 
-            face_a['_TMP_marked_as_merged'] = True
-            face_b['_TMP_marked_as_merged'] = True
+            # FIXME: REMOVE THIS! (just for debugging)
+            #face_a['_TMP_marked_as_merged'] = True
+            #face_b['_TMP_marked_as_merged'] = True
+
+            if ('merge_with_faces' not in face_a):
+                face_a['merge_with_faces'] = []
+                
+            if ('merge_with_faces' not in face_b):
+                face_b['merge_with_faces'] = []
+                
+                
+            merge_info = {
+                'face_index' : face_b_index,
+                'vertex_indices_shared' : vertex_indices_shared
+            }
+            face_a['merge_with_faces'].append(merge_info)
+            
+            
+            # FIXME: REMOVE: storing in ONE-direction (low index to high index) prevents recursive loops!
+            # face_b['merge_with_faces'].append(face_a_index)
+    
+    # Search for clusters of faces to be merged
+    merged_faces = []
+    for face in sorted_faces:
+        if (('merge_with_faces' in face) and ('already_merged' not in face)):
+            merged_face = find_connected_faces_and_merge(face, sorted_faces)
+     
+            merged_faces.append(merged_face)
     
 
 
@@ -1195,7 +1261,7 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
                 color_idx = face_index % 64
         
         if (DEBUG_SHOW_MERGED_FACES):
-            if ('_TMP_marked_as_merged' in face):
+            if ('merge_with_faces' in face):
                 color_idx = 250
         
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
@@ -1801,7 +1867,7 @@ while running:
     if (PRINT_FRAME_TRIANGLES):
         nr_of_potentially_removed_faces_by_merging = 0
         for face in camera_clipped_projected_faces:
-            if ('_TMP_marked_as_merged' in face):
+            if ('merge_with_faces' in face):
                 nr_of_potentially_removed_faces_by_merging += 0.5
                 
         nr_of_visible_faces = len(visible_face_indexes.keys())
