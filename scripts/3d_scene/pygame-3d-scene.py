@@ -12,6 +12,23 @@ import json
 import random
 from functools import cmp_to_key
 
+# FIXME: do NOT do "Triangulated Mesh" anymore!
+# FIXME: do NOT do "Triangulated Mesh" anymore!
+# FIXME: do NOT do "Triangulated Mesh" anymore!
+
+# Before running this script first (in Blender 3.6) do:
+#  - Open U2A.blend/U2E.blend
+#  - Go to scripting tab, run script ("play"-button or Alt-P)
+#  - Go to layout tab (not needed, but you can check if everything looks ok (you usually see the last frame, you can rewind and play animation if desired)
+# Export files (needed for this sctipt to run):
+#  - Go to File->Export->Wavefront (obj)
+#  - Forward Axis: Y
+#  - Upward Axis: Z
+#  - Select: Normals, Triangulated Mesh, Materials->Export
+#  - Select: Animation->Export, 1-100 (or 1-1802 for U2E or 1-522 for U2A)
+#  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
+
+
 random.seed(10)
 
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # FIXME: Important: This disables any output to files!
@@ -148,14 +165,6 @@ def load_animation_info():
 
 def load_vertices_and_faces(frame_nr):
 
-    # In Blender do:
-    #  - File->Export->Wavefront (obj)
-    #  - Forward Axis: Y
-    #  - Upward Axis: Z
-    #  - Select: Normals, Triangulated Mesh, Materials->Export
-    #  - Select: Animation->Export, 1-100 (or 1-1802 for U2E or 1-522 for U2A)
-    #  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
-    
     obj_file = open('assets/3d_scene/'+SCENE+'_anim/'+SCENE+'_anim' + str(frame_nr) + '.obj', 'r')
     lines = obj_file.readlines()
     
