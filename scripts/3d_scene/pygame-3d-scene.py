@@ -27,7 +27,12 @@ from functools import cmp_to_key
 #  - Select: Normals, Triangulated Mesh, Materials->Export
 #  - Select: Animation->Export, 1-100 (or 1-1802 for U2E or 1-522 for U2A)
 #  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
+# Before actually running this script: 
+#  - change the SCENE variable below
+#  - run from root repo directory: python .\scripts\3d_scene\pygame-3d-scene.py
 
+SCENE = 'U2E'
+#SCENE = 'U2A'
 
 random.seed(10)
 
@@ -47,9 +52,6 @@ DRAW_INTERSECTION_POINTS = False
 CONVERT_COLORS_TO_12BITS = True
 FOCUS_ON_COLOR_TONE = False   # This didnt give a good result
 PATCH_COLORS_MANUALLY = True
-
-SCENE = 'U2E'
-#SCENE = 'U2A'
 
 screen_width = 320
 screen_height = 200
