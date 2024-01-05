@@ -38,7 +38,8 @@ PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
-DEBUG_SHOW_MERGED_FACES = True
+DEBUG_SHOW_MERGED_FACES = False
+DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
@@ -79,8 +80,11 @@ screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 pygame.display.set_caption("3D Scene")
 clock = pygame.time.Clock()
 
-# This buffer is used to 
+# This buffer is used to see if a face(_index) gets (completely) overwritten)
 check_triangle_visibility_buffer = pygame.Surface((screen_width, screen_height), depth = 16)
+
+# This buffer is used to draw a face individually to count the number of redraws
+face_buffer = pygame.Surface((screen_width, screen_height), depth = 8)
 
 frame_buffer = pygame.Surface((screen_width, screen_height))
 # FIXME: we want to use a frame_buffer that has indexed colors. We can blit that to the pygame screen (enlarged).
@@ -1221,6 +1225,22 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
             merged_faces.append(merged_face)
     
 
+def add_face_with_frame_buffer(face_surface, frame_buffer):
+
+    face_pxarray = pygame.PixelArray(face_surface)
+    frame_pxarray = pygame.PixelArray(frame_buffer)
+    
+    for y in range(screen_height):
+        for x in range(screen_width):
+            face_pixel_idx = face_pxarray[x,y]
+            
+            frame_pixel_idx = frame_pxarray[x,y]
+            
+            frame_pxarray[x,y] = frame_pixel_idx + face_pixel_idx*64
+
+    frame_pxarray.close()
+    face_pxarray.close()
+
 
 def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
 
@@ -1267,8 +1287,14 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
     
-        # We draw the polygon to the screen
-        pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
+        if (DEBUG_COUNT_REDRAWS):
+            # We draw the polygon to the face_buffer
+            face_buffer.fill((0,0,0))
+            pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
+            add_face_with_frame_buffer(face_buffer, frame_buffer)
+        else:
+            # We draw the polygon to the screen
+            pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
         if (DEBUG_DRAW_TRIANGLE_BOUNDARIES):
             pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i] for i in face_vertex_indices], 1)
         
@@ -1680,6 +1706,9 @@ while running:
                     increment_frame_by = -1
                 if event.key == pygame.K_SPACE:
                     increment_frame_by = 0
+
+            if event.key == pygame.K_r:
+                DEBUG_COUNT_REDRAWS = not DEBUG_COUNT_REDRAWS
 
         '''
         if event.type == pygame.MOUSEBUTTONUP:
