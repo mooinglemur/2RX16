@@ -36,7 +36,7 @@ SCENE = 'U2E'
 
 random.seed(10)
 
-ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # FIXME: Important: This disables any output to files!
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
