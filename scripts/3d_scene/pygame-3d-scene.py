@@ -36,7 +36,7 @@ ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = False
+DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
@@ -1567,7 +1567,7 @@ else:
 if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
-    frame_nr = 40
+    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
     increment_frame_by = 0
 
 material_info = load_material_info()
