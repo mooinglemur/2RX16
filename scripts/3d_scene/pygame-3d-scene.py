@@ -466,28 +466,35 @@ def is_vertex_inside_z_edge(combined_vertices, vertex_index):
     return vertex_is_inside
     
 
-def clip_vertex_against_z_edge(combined_vertices, inside_vertex_index, outside_vertex_index):
+def clip_vertex_against_z_edge(combined_vertices, inside_vertex_index, outside_vertex_index, created_vertices_by_code):
 
-    inside_vertex = combined_vertices[inside_vertex_index]
-    outside_vertex = combined_vertices[outside_vertex_index]
-
-    percentage_to_keep = (inside_vertex[2] - Z_EDGE) / (inside_vertex[2] - outside_vertex[2])
-    x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-    y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-    clipped_vertex = (x_clipped, y_clipped, Z_EDGE)
+    lookup_code = str(inside_vertex_index) + '::' + str(outside_vertex_index)
     
-    clipped_vertex_index = len(combined_vertices)
-    combined_vertices.append(clipped_vertex)
+    clipped_vertex_index = None
+    if (lookup_code in created_vertices_by_code):
+        # We already clipped this vertex against the z-edge, so we re-use that vertex
+        clipped_vertex_index = created_vertices_by_code[lookup_code]
+    else:
+        # We have not yet clipped this vertex against the z-edge, so we create a new vertex
+        
+        inside_vertex = combined_vertices[inside_vertex_index]
+        outside_vertex = combined_vertices[outside_vertex_index]
+
+        percentage_to_keep = (inside_vertex[2] - Z_EDGE) / (inside_vertex[2] - outside_vertex[2])
+        x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
+        y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
+        clipped_vertex = (x_clipped, y_clipped, Z_EDGE)
+        
+        clipped_vertex_index = len(combined_vertices)
+        combined_vertices.append(clipped_vertex)
+        
+        created_vertices_by_code[lookup_code] = clipped_vertex_index
     
     return clipped_vertex_index
 
 
-def clip_face_against_z_edge(non_clipped_face, combined_vertices):
+def clip_face_against_z_edge(non_clipped_face, combined_vertices, created_vertices_by_code):
     clipped_faces = []
-
-# FIXME: we should try to REUSE vertices!
-    start_vertex_index = len(combined_vertices)
-    svi = start_vertex_index
 
     # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
     
@@ -524,8 +531,8 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
             outside_vertex_indices.reverse()
             outside_vertex_nrs.reverse()
             
-        clipped_vertex_index_0 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0])
-        clipped_vertex_index_1 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[1])
+        clipped_vertex_index_0 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], created_vertices_by_code)
+        clipped_vertex_index_1 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[1], created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
@@ -542,7 +549,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
             inside_vertex_nrs.reverse()
             
         # First triangle
-        clipped_vertex_index_1 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0])
+        clipped_vertex_index_1 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0], created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_1, inside_vertex_indices[1]]
@@ -552,7 +559,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_faces.append(clipped_face)
         
         # Second triangle
-        clipped_vertex_index_0 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0])
+        clipped_vertex_index_0 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
@@ -571,6 +578,10 @@ def z_clip_faces (view_faces, view_vertices):
     
     # We keep track of all clipped vertices being created
     combined_vertices = z_clipped_view_vertices
+    
+    # This is a dict where we record all vertices we created by a deterministic 'code': "<inside_vertex_index>::<outside_vertex_index>" which maps to the created_vertex_index
+    # That way we can find already created vertices and therefore re-use them
+    created_vertices_by_code = {}
 
     # We determine -for each face- whether it should be clipped against the edges of the screen
     for non_clipped_face in view_faces:
@@ -578,7 +589,7 @@ def z_clip_faces (view_faces, view_vertices):
         # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
         
         # The clipped_vertices is an OUPUT vertex-array!
-        clipped_faces_against_z_edge = clip_face_against_z_edge(non_clipped_face, combined_vertices)
+        clipped_faces_against_z_edge = clip_face_against_z_edge(non_clipped_face, combined_vertices, created_vertices_by_code)
 
         # After clipping against the Z-edge we are left with only clipped faces
         z_clipped_view_faces += clipped_faces_against_z_edge
@@ -795,35 +806,46 @@ def is_2d_vertex_inside_edge(combined_vertices, vertex_index, edge_name):
     return vertex_is_inside
     
 
-def clip_2d_vertex_against_edge(combined_vertices, inside_vertex_index, outside_vertex_index, edge_name):
+def clip_2d_vertex_against_edge(combined_vertices, inside_vertex_index, outside_vertex_index, edge_name, created_vertices_by_code):
 
-    inside_vertex = combined_vertices[inside_vertex_index]
-    outside_vertex = combined_vertices[outside_vertex_index]
+    lookup_code = str(inside_vertex_index) + '::' + str(outside_vertex_index) + '::' + edge_name
+    
+    clipped_vertex_index = None
+    if (lookup_code in created_vertices_by_code):
+        # We already clipped this vertex against this edge, so we re-use that vertex
+        clipped_vertex_index = created_vertices_by_code[lookup_code]
+    else:
+        # We have not yet clipped this vertex against this edge, so we create a new vertex
+        
+        inside_vertex = combined_vertices[inside_vertex_index]
+        outside_vertex = combined_vertices[outside_vertex_index]
 
-    if edge_name == 'LEFT':
-        percentage_to_keep = (inside_vertex[0] - LEFT_EDGE_X) / (inside_vertex[0] - outside_vertex[0])
-        y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-        clipped_vertex = (LEFT_EDGE_X, y_clipped)
-    elif edge_name == 'RIGHT':
-        percentage_to_keep = (RIGHT_EDGE_X - inside_vertex[0]) / (outside_vertex[0] - inside_vertex[0])
-        y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-        clipped_vertex = (RIGHT_EDGE_X, y_clipped)
-    elif edge_name == 'BOTTOM':
-        percentage_to_keep = (inside_vertex[1] - BOTTOM_EDGE_Y) / (inside_vertex[1] - outside_vertex[1])
-        x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-        clipped_vertex = (x_clipped, BOTTOM_EDGE_Y)
-    elif edge_name == 'TOP':
-        percentage_to_keep = (TOP_EDGE_Y - inside_vertex[1]) / (outside_vertex[1] - inside_vertex[1])
-        x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-        clipped_vertex = (x_clipped, TOP_EDGE_Y)
+        if edge_name == 'LEFT':
+            percentage_to_keep = (inside_vertex[0] - LEFT_EDGE_X) / (inside_vertex[0] - outside_vertex[0])
+            y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
+            clipped_vertex = (LEFT_EDGE_X, y_clipped)
+        elif edge_name == 'RIGHT':
+            percentage_to_keep = (RIGHT_EDGE_X - inside_vertex[0]) / (outside_vertex[0] - inside_vertex[0])
+            y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
+            clipped_vertex = (RIGHT_EDGE_X, y_clipped)
+        elif edge_name == 'BOTTOM':
+            percentage_to_keep = (inside_vertex[1] - BOTTOM_EDGE_Y) / (inside_vertex[1] - outside_vertex[1])
+            x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
+            clipped_vertex = (x_clipped, BOTTOM_EDGE_Y)
+        elif edge_name == 'TOP':
+            percentage_to_keep = (TOP_EDGE_Y - inside_vertex[1]) / (outside_vertex[1] - inside_vertex[1])
+            x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
+            clipped_vertex = (x_clipped, TOP_EDGE_Y)
+        
+        clipped_vertex_index = len(combined_vertices)
+        combined_vertices.append(clipped_vertex)
     
-    clipped_vertex_index = len(combined_vertices)
-    combined_vertices.append(clipped_vertex)
-    
+        created_vertices_by_code[lookup_code] = clipped_vertex_index
+        
     return clipped_vertex_index
     
     
-def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
+def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name, created_vertices_by_code):
     clipped_faces = []
 
 # FIXME: we should try to REUSE vertices!
@@ -848,11 +870,6 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
             outside_vertex_nrs.append(vertex_nr)
             outside_vertex_indices.append(non_clipped_vertex_index)
     
-# FIXME: instead of creating two arrays of inside and outside vertices, just *mark* the (original) verices as inside and outside AND count inside and outside vertices
-#         then rearrange/sort the original vertice_indexes (sorted_vertex_indices) so it always starts with the inside vertices and then the outside vertices WHILE KEEPING THE ORDER!
-
-# FIXME: also passthough this function AND clip_2d_vertex_against_edge a dict that contains all created vertices by code/name!
-    
     
     if (len(inside_vertex_indices) == 0):
         # The triangle is completely outside the edge, we dont add it
@@ -869,8 +886,8 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
             outside_vertex_indices.reverse()
             outside_vertex_nrs.reverse()
             
-        clipped_vertex_index_0 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], edge_name)
-        clipped_vertex_index_1 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[1], edge_name)
+        clipped_vertex_index_0 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], edge_name, created_vertices_by_code)
+        clipped_vertex_index_1 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[1], edge_name, created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
@@ -887,7 +904,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
             inside_vertex_nrs.reverse()
             
         # First triangle
-        clipped_vertex_index_1 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0], edge_name)
+        clipped_vertex_index_1 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0], edge_name, created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_1, inside_vertex_indices[1]]
@@ -897,7 +914,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_faces.append(clipped_face)
         
         # Second triangle
-        clipped_vertex_index_0 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], edge_name)
+        clipped_vertex_index_0 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], edge_name, created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
@@ -919,6 +936,11 @@ def camera_clip_projected_triangles(projected_faces, projected_vertices):
     # We KEEP the old vertices! (even though they are all not being used at the end!
     combined_vertices = camera_clipped_projected_vertices
 
+    # This is a dict where we record all vertices we created by a deterministic 'code':
+    #    "<inside_vertex_index>::<outside_vertex_index>::<EDGENAME>" which maps to the created_vertex_index
+    # That way we can find already created vertices and therefore re-use them
+    created_vertices_by_code = {}
+    
     # We determine -for each face- whether it should be clipped against the edges of the screen
     for non_clipped_face in projected_faces:
 
@@ -934,7 +956,7 @@ def camera_clip_projected_triangles(projected_faces, projected_vertices):
                 
                 # The clipped_vertices is an OUPUT vertex-array that gets extended each time!
                 # We *extend* clipped_faces_against_this_edge here
-                clipped_faces_against_this_edge += clip_face_against_edge(queue_face, combined_vertices, edge_name)
+                clipped_faces_against_this_edge += clip_face_against_edge(queue_face, combined_vertices, edge_name, created_vertices_by_code)
 
             # The output faces (left over after clipping) become the input faces for the next edge
             queue_faces = clipped_faces_against_this_edge
@@ -1722,6 +1744,8 @@ while running:
     # Clip/remove where Z > -1 (behind or very close to camera)
 # FIXME: dont we need the normals for this? To CORRECT the ORDERING after clipping?
     (z_clipped_view_faces, z_clipped_view_vertices) = z_clip_faces(culled_view_faces, culled_view_vertices)
+
+    print(str(len(culled_view_vertices))+'->'+str(len(z_clipped_view_vertices)))
     
     if PRINT_PROGRESS: print("Applying light")
     # Change color of faces/triangles according to the amount of light they get
@@ -1738,6 +1762,8 @@ while running:
     if PRINT_PROGRESS: print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
     (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices)
+    
+    # print(str(len(projected_vertices))+'=>'+str(len(camera_clipped_projected_vertices)))
 
 
     '''
