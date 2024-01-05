@@ -491,6 +491,8 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
 
     # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
     
+    inside_vertex_nrs = []
+    outside_vertex_nrs = []
     inside_vertex_indices = []
     outside_vertex_indices = []
     for vertex_nr in range(3):
@@ -500,9 +502,11 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         
         if vertex_is_inside:
             # Since this is an inside vertex, there is no need to clip it, so we just copy it
+            inside_vertex_nrs.append(vertex_nr)
             inside_vertex_indices.append(non_clipped_vertex_index)
         else:
             # We clip the vertex against the edge
+            outside_vertex_nrs.append(vertex_nr)
             outside_vertex_indices.append(non_clipped_vertex_index)
     
     if (len(inside_vertex_indices) == 0):
@@ -514,10 +518,16 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_faces.append(clipped_face)
     elif (len(inside_vertex_indices) == 1):
         # Out triangle gets shorter, so we return one smaller triangle
+
+        if (outside_vertex_nrs[0] == 2):
+            # We need to switch the outside vertices to preserve the order
+            outside_vertex_indices.reverse()
+            outside_vertex_nrs.reverse()
+            
         clipped_vertex_index_0 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0])
         clipped_vertex_index_1 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[1])
+        
         clipped_face = copy.deepcopy(non_clipped_face)
-# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
@@ -526,11 +536,15 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
     elif (len(inside_vertex_indices) == 2):
         # We have a quad we have to split into two triangles
         
+        if (inside_vertex_nrs[0] == 1):
+            # We need to switch the inside vertices to preserve the order
+            inside_vertex_indices.reverse()
+            inside_vertex_nrs.reverse()
+            
         # First triangle
         clipped_vertex_index_1 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0])
         
         clipped_face = copy.deepcopy(non_clipped_face)
-# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_1, inside_vertex_indices[1]]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
@@ -541,7 +555,6 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices):
         clipped_vertex_index_0 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0])
         
         clipped_face = copy.deepcopy(non_clipped_face)
-# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
@@ -817,6 +830,8 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
 
     # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
     
+    inside_vertex_nrs = []
+    outside_vertex_nrs = []
     inside_vertex_indices = []
     outside_vertex_indices = []
     for vertex_nr in range(3):
@@ -826,15 +841,15 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
 
         if vertex_is_inside:
             # Since this is an inside vertex, there is no need to clip it, so we just copy it
+            inside_vertex_nrs.append(vertex_nr)
             inside_vertex_indices.append(non_clipped_vertex_index)
         else:
             # We clip the 2d vertex against the edge
+            outside_vertex_nrs.append(vertex_nr)
             outside_vertex_indices.append(non_clipped_vertex_index)
     
 # FIXME: instead of creating two arrays of inside and outside vertices, just *mark* the (original) verices as inside and outside AND count inside and outside vertices
 #         then rearrange/sort the original vertice_indexes (sorted_vertex_indices) so it always starts with the inside vertices and then the outside vertices WHILE KEEPING THE ORDER!
-
-# FIXME: also: pass clip_2d_vertex_against_edge the INDEX (in the combined_vertices list) and also pass the combined_vertices-list itself. AND it should return an INDEX (and append to combined_vertices if need be)
 
 # FIXME: also passthough this function AND clip_2d_vertex_against_edge a dict that contains all created vertices by code/name!
     
@@ -848,10 +863,16 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_faces.append(clipped_face)
     elif (len(inside_vertex_indices) == 1):
         # Out triangle gets shorter, so we return one smaller triangle
+        
+        if (outside_vertex_nrs[0] == 2):
+            # We need to switch the outside vertices to preserve the order
+            outside_vertex_indices.reverse()
+            outside_vertex_nrs.reverse()
+            
         clipped_vertex_index_0 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], edge_name)
         clipped_vertex_index_1 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[1], edge_name)
+        
         clipped_face = copy.deepcopy(non_clipped_face)
-# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
@@ -860,11 +881,15 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
     elif (len(inside_vertex_indices) == 2):
         # We have a quad we have to split into two triangles
         
+        if (inside_vertex_nrs[0] == 1):
+            # We need to switch the inside vertices to preserve the order
+            inside_vertex_indices.reverse()
+            inside_vertex_nrs.reverse()
+            
         # First triangle
         clipped_vertex_index_1 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0], edge_name)
         
         clipped_face = copy.deepcopy(non_clipped_face)
-# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_1, inside_vertex_indices[1]]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
@@ -875,7 +900,6 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name):
         clipped_vertex_index_0 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], edge_name)
         
         clipped_face = copy.deepcopy(non_clipped_face)
-# FIXME: we are NOT keeping the CORRECT ORDER of the vertices here!
         clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
