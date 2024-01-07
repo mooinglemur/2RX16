@@ -36,7 +36,7 @@ ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
@@ -1103,42 +1103,24 @@ def faces_share_edge(face_a, face_b):
     return None
 
 
-def merge_two_faces(face, face_to_merge_with, vertex_indices_shared):
 
-    merged_face = face
-    
-# FIXME: for now assuming TRIANGLES!
-# FIXME: for now assuming TRIANGLES!
-# FIXME: for now assuming TRIANGLES!
-    #print(face, face_to_merge_with, vertex_indices_shared)
+def find_connected_faces_and_put_in_cluster(face, cluster_id, sorted_faces, visible_face_indexes):
 
+    # We mark this face as in this cluster
+    face['cluster_id'] = cluster_id
 
-    return merged_face
+    if ('merge_with_faces' in face):
+        for merge_info in face['merge_with_faces']:
+            face_index = merge_info['face_index']
+# FIXME: add this to the cluster here, or do this later?            vertex_indices_shared = merge_info['vertex_indices_shared']
+            
+            if (face_index not in visible_face_indexes):    
+                continue
 
-def find_connected_faces_and_merge(face, sorted_faces):
-
-    # We mark this face as already merged so the called wont (indirectly) try to merge this face again
-    face['already_merged'] = True
-
-    # We start with our own face
-    merged_face = copy.deepcopy(face)
-    
-    merge_with_faces = face['merge_with_faces']
-    for merge_info in merge_with_faces:
-        face_index = merge_info['face_index']
-        vertex_indices_shared = merge_info['vertex_indices_shared']
-        
-        face_to_merge_with = sorted_faces[face_index]
-        
-        if ('already_merged' not in face_to_merge_with):
-# FIXME: enable recursive calls!
-#            merged_child_face = find_connected_faces_and_merge(face_to_merge_with, sorted_faces)
-#            merged_face = merge_two_faces(merged_face, merged_child_face)
-# FIXME: REMOVE: dont use this anymore!
-            merged_face = merge_two_faces(merged_face, face_to_merge_with, vertex_indices_shared)
-        
-
-    return merged_face
+            face_to_merge_with = sorted_faces[face_index]
+            
+            if ('cluster_id' not in face_to_merge_with):
+                find_connected_faces_and_put_in_cluster(face_to_merge_with, cluster_id, sorted_faces, visible_face_indexes)
 
 def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes):
 
@@ -1202,8 +1184,8 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
             if ('merge_with_faces' not in face_a):
                 face_a['merge_with_faces'] = []
                 
-            if ('merge_with_faces' not in face_b):
-                face_b['merge_with_faces'] = []
+            #if ('merge_with_faces' not in face_b):
+            #    face_b['merge_with_faces'] = []
                 
                 
             merge_info = {
@@ -1217,12 +1199,23 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
             # face_b['merge_with_faces'].append(face_a_index)
     
     # Search for clusters of faces to be merged
-    merged_faces = []
-    for face in sorted_faces:
-        if (('merge_with_faces' in face) and ('already_merged' not in face)):
-            merged_face = find_connected_faces_and_merge(face, sorted_faces)
-     
-            merged_faces.append(merged_face)
+    #   All triangles that are directly or indirectly connected below to a 'cluster': they have to be joined to form a new (larger) polygon
+    cluster_id = 0   # The cluster_id is going to be the new (and combined) polygon id
+    for face_index, face in enumerate(sorted_faces):
+            
+        if (face_index not in visible_face_indexes):    
+            continue
+
+        if ('cluster_id' not in face):
+# IMPORTANT FIXME? OK?: if a triangle is not connected to anything it becomes its own cluster (of one triangle)
+            find_connected_faces_and_put_in_cluster(face, cluster_id, sorted_faces, visible_face_indexes)
+            cluster_id += 1
+    # print(str(len(sorted_faces))+'>>'+str(cluster_id))
+    
+    # The last cluster_id is considered to be the nr of clusters found
+    nr_of_clusters = cluster_id
+    
+    return nr_of_clusters
     
 
 def add_face_with_frame_buffer(face_surface, frame_buffer):
@@ -1880,9 +1873,9 @@ while running:
     if PRINT_PROGRESS: print("Sort, scale to screen and check visibility")
     (screen_vertices, sorted_faces, visible_face_indexes) = sort_faces_scale_to_screen_and_check_visibility(camera_clipped_projected_vertices, camera_clipped_projected_faces)
     
-    if PRINT_PROGRESS: print("Checking to combine faces")
+#    if PRINT_PROGRESS: print("Checking to combine faces")
 # FIXME: if/when we ACTUALLY combine faces, we should RETURN something here!
-    check_to_combine_faces(screen_vertices, sorted_faces, visible_face_indexes)
+    nr_of_clusters = check_to_combine_faces(screen_vertices, sorted_faces, visible_face_indexes)
     
     if PRINT_PROGRESS: print("Draw and export")
     
@@ -1894,16 +1887,17 @@ while running:
     '''
 
     if (PRINT_FRAME_TRIANGLES):
-        nr_of_potentially_removed_faces_by_merging = 0
-        for face in camera_clipped_projected_faces:
-            if ('merge_with_faces' in face):
-                nr_of_potentially_removed_faces_by_merging += 0.5
+#        nr_of_potentially_removed_faces_by_merging = 0
+#        for face in camera_clipped_projected_faces:
+#            if ('merge_with_faces' in face):
+# FIXME: this is WRONG is you combine more than 2 triangle into one polygon!
+#                nr_of_potentially_removed_faces_by_merging += 0.5
                 
         nr_of_visible_faces = len(visible_face_indexes.keys())
         
-        nr_of_potentially_visible_faces = nr_of_visible_faces - int(nr_of_potentially_removed_faces_by_merging)
+#        nr_of_potentially_visible_faces = nr_of_visible_faces - int(nr_of_potentially_removed_faces_by_merging)
     
-        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(nr_of_visible_faces)+':'+str(nr_of_potentially_visible_faces))
+        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(nr_of_visible_faces)+':'+str(nr_of_clusters))
 
 
     if (DRAW_PALETTE):
