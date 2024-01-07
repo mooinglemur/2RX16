@@ -36,7 +36,7 @@ ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = False
+DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
@@ -1104,15 +1104,15 @@ def faces_share_edge(face_a, face_b):
 
 
 
-def find_connected_faces_and_put_in_cluster(face, cluster_id, sorted_faces, visible_face_indexes):
+def find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces, visible_face_indexes):
 
-    # We mark this face as in this cluster
-    face['cluster_id'] = cluster_id
+    # We mark this face as in this cluster and it to the cluster
+    face['cluster_id'] = cluster['id']
+    cluster['faces'].append(face)
 
     if ('merge_with_faces' in face):
         for merge_info in face['merge_with_faces']:
             face_index = merge_info['face_index']
-# FIXME: add this to the cluster here, or do this later?            vertex_indices_shared = merge_info['vertex_indices_shared']
             
             if (face_index not in visible_face_indexes):    
                 continue
@@ -1120,7 +1120,23 @@ def find_connected_faces_and_put_in_cluster(face, cluster_id, sorted_faces, visi
             face_to_merge_with = sorted_faces[face_index]
             
             if ('cluster_id' not in face_to_merge_with):
-                find_connected_faces_and_put_in_cluster(face_to_merge_with, cluster_id, sorted_faces, visible_face_indexes)
+                find_connected_faces_and_put_in_cluster(face_to_merge_with, cluster, sorted_faces, visible_face_indexes)
+
+def create_edge(from_vertex_index, to_vertex_index):
+ 
+    edge_identifier = None
+    if (from_vertex_index < to_vertex_index):   
+        edge_identifier = str(from_vertex_index) + '::' + str(to_vertex_index)
+    else:
+        edge_identifier = str(to_vertex_index) + '::' + str(from_vertex_index)
+ 
+    edge = {
+        'identifier' : edge_identifier,
+        'from_vertex_index' : from_vertex_index,
+        'to_vertex_index' : to_vertex_index,
+    }
+    return edge
+
 
 def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes):
 
@@ -1131,11 +1147,11 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
     # Both faces have to be:
     #   - is visible
     #   - Not been marked as merged already
-    #   - Have not been clipped
+    # FIXME NOT CHECKING THIS ANYMORE: - Have not been clipped
     #   - Are not the same face
     #   - Have the same color_index
     #   - Have the same orig_face_index (and therefore the same normal_index!)
-    #   - Was a quad originally
+    # FIXME NOT CHECKING THIS ANYMORE:  - Was a quad originally
     #   - Share an edge (two vertices are the same)
     
     for face_a_index, face_a in enumerate(sorted_faces):
@@ -1170,6 +1186,7 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
 #            if (('was_quad_originally' not in face_a) or ('was_quad_originally' not in face_b)):
 #                continue
                 
+# FIXME: we dont need this to RETURN anything anymore! Just a boolean!
             vertex_indices_shared = faces_share_edge(face_a, face_b)
             if (vertex_indices_shared is None):
                 continue
@@ -1190,7 +1207,7 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
                 
             merge_info = {
                 'face_index' : face_b_index,
-                'vertex_indices_shared' : vertex_indices_shared
+# FIXME: REMOVE                'vertex_indices_shared' : vertex_indices_shared
             }
             face_a['merge_with_faces'].append(merge_info)
             
@@ -1201,21 +1218,95 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
     # Search for clusters of faces to be merged
     #   All triangles that are directly or indirectly connected below to a 'cluster': they have to be joined to form a new (larger) polygon
     cluster_id = 0   # The cluster_id is going to be the new (and combined) polygon id
+    clusters = []
     for face_index, face in enumerate(sorted_faces):
             
         if (face_index not in visible_face_indexes):    
             continue
 
         if ('cluster_id' not in face):
-# IMPORTANT FIXME? OK?: if a triangle is not connected to anything it becomes its own cluster (of one triangle)
-            find_connected_faces_and_put_in_cluster(face, cluster_id, sorted_faces, visible_face_indexes)
+            cluster = {
+                'id' : cluster_id,
+                'faces' : [],                
+                'edges' : {},
+            }
+            # IMPORTANT: if a triangle is not connected to anything it becomes its own cluster (of *one* triangle)
+            find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces, visible_face_indexes)
+            
+            clusters.append(cluster)
             cluster_id += 1
-    # print(str(len(sorted_faces))+'>>'+str(cluster_id))
+
+    new_faces = []
+    for cluster in clusters:
+        edges = cluster['edges']
+        for face in cluster['faces']:
+            vertex_indices = face['vertex_indices']
+            
+            from_vertex_index = vertex_indices[0]
+            to_vertex_index = vertex_indices[1]
+            edge = create_edge(from_vertex_index, to_vertex_index)
+            if (edge['identifier'] not in edges):
+                edges[edge['identifier']] = edge
+            else:
+                # If an edge is already in the cluster and we see it again, it means its an inner-edge and we should remove it
+                del edges[edge['identifier']]
+    
+            from_vertex_index = vertex_indices[1]
+            to_vertex_index = vertex_indices[2]
+            edge = create_edge(from_vertex_index, to_vertex_index)
+            if (edge['identifier'] not in edges):
+                edges[edge['identifier']] = edge
+            else:
+                # If an edge is already in the cluster and we see it again, it means its an inner-edge and we should remove it
+                del edges[edge['identifier']]
+            
+            from_vertex_index = vertex_indices[2]
+            to_vertex_index = vertex_indices[0]
+            edge = create_edge(from_vertex_index, to_vertex_index)
+            if (edge['identifier'] not in edges):
+                edges[edge['identifier']] = edge
+            else:
+                # If an edge is already in the cluster and we see it again, it means its an inner-edge and we should remove it
+                del edges[edge['identifier']]
+    
+#        print('>==========')
+            
+#        print(json.dumps(cluster['faces'], indent = 4))
+#        print(json.dumps(cluster['edges'], indent = 4))
+        
+        edges_by_from_vertex_index = {}
+        for edge_identifier in edges:
+            edge = edges[edge_identifier]
+            from_vertex_index = edge['from_vertex_index']
+            edges_by_from_vertex_index[from_vertex_index] = edge
+            
+#        print(json.dumps(edges_by_from_vertex_index, indent = 4))
+        
+#        print('<==========')
+            
+# FIXME: CHECK is it correct that we take the first face in the cluster (as our base for the new face)? What about sorting?
+        new_face = copy.deepcopy(cluster['faces'][0])
+        new_face['vertex_indices'] = []
+        
+        # We just take the first edge as our starting
+        starting_edge_identifier = list(edges.keys())[0]
+        starting_edge = edges[starting_edge_identifier]
+        current_edge = starting_edge
+        # We keep on adding vertices until we reach the start again
+        while(current_edge['to_vertex_index'] != starting_edge['from_vertex_index']):
+        
+            new_face['vertex_indices'].append(current_edge['from_vertex_index'])
+
+            # We go to the edge that starts with the vertex where the currect edge ends
+            current_edge = edges_by_from_vertex_index[current_edge['to_vertex_index']]
+        
+        
+        new_faces.append(new_face)
     
     # The last cluster_id is considered to be the nr of clusters found
-    nr_of_clusters = cluster_id
+#    nr_of_clusters = cluster_id
     
-    return nr_of_clusters
+    return new_faces
     
 
 def add_face_with_frame_buffer(face_surface, frame_buffer):
@@ -1260,10 +1351,13 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
         
     frame_buffer.fill((0,0,0))
     for face_index, face in enumerate(sorted_faces):
-        
-        if (face_index not in visible_face_indexes):    
+ 
+# FIXME! 
+# FIXME! 
+# FIXME! 
+#        if (face_index not in visible_face_indexes):    
             # We skip faces that are not visible (aka that are overdrawn completely)
-            continue
+#            continue
         
         color_idx = face['color_index']
         
@@ -1560,7 +1654,8 @@ else:
 if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
-    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
+#    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
+    frame_nr = 10
     increment_frame_by = 0
 
 material_info = load_material_info()
@@ -1875,11 +1970,20 @@ while running:
     
 #    if PRINT_PROGRESS: print("Checking to combine faces")
 # FIXME: if/when we ACTUALLY combine faces, we should RETURN something here!
-    nr_of_clusters = check_to_combine_faces(screen_vertices, sorted_faces, visible_face_indexes)
+    new_faces = check_to_combine_faces(screen_vertices, sorted_faces, visible_face_indexes)
+    
+# FIXME: naming!
+    nr_of_clusters = len(new_faces)
+    
+    print(json.dumps(new_faces, indent=4))
     
     if PRINT_PROGRESS: print("Draw and export")
     
-    tris_seen = draw_and_export(screen_vertices, sorted_faces, visible_face_indexes)
+# FIXME: remove visible_face_indexes!!
+# FIXME: remove visible_face_indexes!!
+# FIXME: remove visible_face_indexes!!
+    tris_seen = draw_and_export(screen_vertices, new_faces, visible_face_indexes)
+#    tris_seen = draw_and_export(screen_vertices, sorted_faces, visible_face_indexes)
     # FIXME: enable this again!
     '''
     if tris_seen and (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
