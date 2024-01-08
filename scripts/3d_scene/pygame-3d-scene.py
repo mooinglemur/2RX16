@@ -43,6 +43,7 @@ DRAW_PALETTE = False
 DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
+DEBUG_SHOW_VERTEX_NRS = True
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
 DEBUG_SORTING_LIMIT_OBJECTS = True
@@ -80,6 +81,7 @@ pygame.init()
 screen = pygame.display.set_mode((screen_width*scale, screen_height*scale))
 pygame.display.set_caption("3D Scene")
 clock = pygame.time.Clock()
+font = pygame.font.SysFont("monospace", 14)
 
 # This buffer is used to see if a face(_index) gets (completely) overwritten)
 check_triangle_visibility_buffer = pygame.Surface((screen_width, screen_height), depth = 16)
@@ -129,6 +131,27 @@ debug_colors = [
     LIME,
     SKYBLUE,
     LIGHTGRAY,
+]
+
+
+debug_vertex_colors = [
+    RED,
+    GREEN,
+    BLUE,
+    CYAN,
+    MAGENTA,
+    YELLOW,
+    ORANGE,
+    BROWN,
+    
+    PINK,
+    DARKGRAY,
+    GRAY,
+    LIME,
+    SKYBLUE,
+    LIGHTGRAY,
+    WHITE,
+    MAGENTA,  # duplicate!
 ]
 
 # Adding 48 more random colors
@@ -1349,7 +1372,8 @@ def draw_and_export(screen_vertices, sorted_faces):
         if (DEBUG_SHOW_MERGED_FACES):
             if ('merge_with_faces' in face):
                 color_idx = 250
-        
+                
+            
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
     
@@ -1364,6 +1388,35 @@ def draw_and_export(screen_vertices, sorted_faces):
         if (DEBUG_DRAW_TRIANGLE_BOUNDARIES):
             pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i] for i in face_vertex_indices], 1)
         
+                
+        
+        if (DEBUG_SHOW_VERTEX_NRS):
+            # FIXME: HACK: quick and dirty way of getting the 'center point' of a triangle/polygon
+            center_point_x = 0
+            center_point_y = 0
+            for vertex_index in face['vertex_indices']:
+                screen_vertex = screen_vertices[vertex_index]
+                
+                center_point_x += screen_vertex[0]
+                center_point_y += screen_vertex[1]
+                
+            center_point_x = center_point_x /  len(face['vertex_indices'])
+            center_point_y = center_point_y /  len(face['vertex_indices'])
+            
+            img = font.render(str(face_index), False, WHITE)
+            frame_buffer.blit(img, (center_point_x, center_point_y))
+            
+            for vertex_nr, vertex_index in enumerate(face['vertex_indices']):
+                screen_vertex = screen_vertices[vertex_index]
+                
+                vertex_color = debug_vertex_colors[vertex_nr]
+                
+                vertex_nr_point_x = (screen_vertex[0] - center_point_x) * 0.7 + center_point_x
+                vertex_nr_point_y = (screen_vertex[1] - center_point_y) * 0.7 + center_point_y
+                
+                pygame.draw.rect(frame_buffer, vertex_color, pygame.Rect(vertex_nr_point_x, vertex_nr_point_y, 2, 2))
+                
+                
     frame_buffer_on_screen_x = 0
     frame_buffer_on_screen_y = 0
     screen.fill((0,0,0))
@@ -1979,10 +2032,8 @@ while running:
             continue
         visible_sorted_faces.append(face)
     
-#    if PRINT_PROGRESS: print("Checking to combine faces")
-# FIXME: if/when we ACTUALLY combine faces, we should RETURN something here!
+    if PRINT_PROGRESS: print("Merging/joining faces")
     merged_faces = check_to_combine_faces(screen_vertices, visible_sorted_faces)
-    
     
     print(json.dumps(merged_faces, indent=4))
     
