@@ -544,8 +544,9 @@ def generate_obj_text_for_manual_object(u2_object, vertex_index_start):
     for vertex_raw in u2_object['vertices_raw']:
         vertex_x = vertex_raw[0] / 256
         vertex_y = vertex_raw[1] / 256
-# FIXME: make this a value per type?
-        vertex_z = 0
+        if (u2_object['type'] == 'ground'):
+# FIXME: make this a value per type? Is this the correct value?
+            vertex_z = 35 / 256
         
         obj_text += "v "
         obj_text += str(vertex_x)
@@ -681,16 +682,69 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
 # Adding manual objects (to fill in the sky- and ground- gaps)
 if (scene_name == 'U2E'):
     
-    object_to_add = {
-        'name' : '__road_1',
+    objects_to_add = [
+    {
+        'name' : '__3rd_south_road',
+        'type' : 'ground',
+        'vertices_raw' : [
+            (-13000, -15000),  # 0: NE
+            (-14000, -15000),  # 1: NW
+            (-14000, -26000),  # 2: SW
+            (-13000, -26000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__4th_south_road_1',
+        'type' : 'ground',
         'vertices_raw' : [
             (-7000, -15000),  # 0: NE
             (-8000, -15000),  # 1: NW
             (-8000, -26000),  # 2: SW
             (-7000, -26000),  # 3: SE
         ],
-    }
-    objects.append(object_to_add)
+    },
+    {
+        'name' : '__4th_south_road_2',
+        'type' : 'ground',
+        'vertices_raw' : [
+            (-7000, -27000),  # 0: NE
+            (-8000, -27000),  # 1: NW
+            (-8000, -29000),  # 2: SW
+            (-7000, -29000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__3rd_4th_east_road',
+        'type' : 'ground',
+        'vertices_raw' : [
+            ( -2000, -26000),  # 0: NE
+            (-14000, -26000),  # 1: NW
+            (-14000, -27000),  # 2: SW
+            ( -2000, -27000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__5th_south_road_1',
+        'type' : 'ground',
+        'vertices_raw' : [
+            (-1000, -15000),  # 0: NE
+            (-2000, -15000),  # 1: NW
+            (-2000, -22000),  # 2: SW
+            (-1000, -22000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__5th_south_road_2',
+        'type' : 'ground',
+        'vertices_raw' : [
+            (-1188, -25000),  # 0: NE
+            (-2000, -25000),  # 1: NW
+            (-2000, -30000),  # 2: SW
+            (-1188, -30000),  # 3: SE
+        ],
+    },
+    ]
+    objects += objects_to_add
 
     
 for u2_object in objects:

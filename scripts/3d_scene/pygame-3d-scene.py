@@ -1944,6 +1944,8 @@ while running:
         #    See: VISU/C/U2E.C (lines 401-431)
         if current_object_name.startswith('_'):
             avg_z_for_object -= 1000000
+        if current_object_name.startswith('__'):  # For our own SKY_BLACK an extra offset
+            avg_z_for_object -= 1000000
         
         avg_z_per_object[current_object_name] = avg_z_for_object
 
