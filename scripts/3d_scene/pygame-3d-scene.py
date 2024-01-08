@@ -32,7 +32,7 @@ SCENE = 'U2E'
 
 random.seed(10)
 
-MERGE_FACES = False
+MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
 
@@ -1159,7 +1159,7 @@ def create_edge(from_vertex_index, to_vertex_index):
     return edge
 
 
-def check_to_combine_faces (screen_vertices, sorted_faces):
+def combine_faces (screen_vertices, sorted_faces):
 
 
 # FIXME: what is somehow the SORTING of the to-be-combined faces is DIFFERENT?
@@ -1167,30 +1167,18 @@ def check_to_combine_faces (screen_vertices, sorted_faces):
     # For each face we try to find another face (for now only triangles) to see if shares an edge with another face
     # Both faces have to be:
     #   - Not been marked as merged already
-    # FIXME NOT CHECKING THIS ANYMORE: - Have not been clipped
     #   - Are not the same face
     #   - Have the same color_index
     #   - Have the same orig_face_index (and therefore the same normal_index!)
-    # FIXME NOT CHECKING THIS ANYMORE:  - Was a quad originally
     #   - Share an edge (two vertices are the same)
     
     for face_a_index, face_a in enumerate(sorted_faces):
         
-        #if ('is_clipped' in face_a):
-        #    continue
-        # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
-        #if ('_TMP_marked_as_merged' in face_a):
-        #    continue
-            
         # FIXME: this can be done much FASTER! (for example by keeping a map/dict per vertex_index of all triangles that use that vertex)
         for face_b_index, face_b in enumerate(sorted_faces):
             if face_a_index >= face_b_index:
                 continue
-            #if ('is_clipped' in face_b):
-            #    continue
-            # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
-            #if ('_TMP_marked_as_merged' in face_b):
-            #    continue
+                
             if (face_a['color_index'] != face_b['color_index']):
                 continue
 
@@ -1199,34 +1187,21 @@ def check_to_combine_faces (screen_vertices, sorted_faces):
             if (face_a['orig_face_index'] != face_b['orig_face_index']):
                 continue
                 
-#            if (('was_quad_originally' not in face_a) or ('was_quad_originally' not in face_b)):
-#                continue
-                
 # FIXME: we dont need this to RETURN anything anymore! Just a boolean!
             vertex_indices_shared = faces_share_edge(face_a, face_b)
             if (vertex_indices_shared is None):
                 continue
             
-            
             # print("Found mergable faces!")
-
-            # FIXME: REMOVE THIS! (just for debugging)
-            #face_a['_TMP_marked_as_merged'] = True
-            #face_b['_TMP_marked_as_merged'] = True
-
+            
             if ('merge_with_faces' not in face_a):
                 face_a['merge_with_faces'] = []
                 
-            #if ('merge_with_faces' not in face_b):
-            #    face_b['merge_with_faces'] = []
-                
-                
             merge_info = {
-                'face_index' : face_b_index,
-# FIXME: REMOVE                'vertex_indices_shared' : vertex_indices_shared
+# FIXME: we can simplify this to just the index (no dict)
+                'face_index' : face_b_index
             }
             face_a['merge_with_faces'].append(merge_info)
-            
             
             # FIXME: REMOVE: storing in ONE-direction (low index to high index) prevents recursive loops!
             # face_b['merge_with_faces'].append(face_a_index)
@@ -1236,6 +1211,11 @@ def check_to_combine_faces (screen_vertices, sorted_faces):
     cluster_id = 0   # The cluster_id is going to be the new (and combined) polygon id
     clusters = []
     for face_index, face in enumerate(sorted_faces):
+        
+# FIXME: this is just for DEBUGGING and will NOT BE VALID after clustering!
+# FIXME: this is just for DEBUGGING and will NOT BE VALID after clustering!
+# FIXME: this is just for DEBUGGING and will NOT BE VALID after clustering!
+        face['index'] = face_index
             
         if ('cluster_id' not in face):
             cluster = {
@@ -1248,6 +1228,7 @@ def check_to_combine_faces (screen_vertices, sorted_faces):
             
             clusters.append(cluster)
             cluster_id += 1
+            
 
     merged_faces = []
     for cluster in clusters:
@@ -1282,10 +1263,10 @@ def check_to_combine_faces (screen_vertices, sorted_faces):
                 # If an edge is already in the cluster and we see it again, it means its an inner-edge and we should remove it
                 del edges[edge['identifier']]
     
-#        print('>==========')
+        #print('>==========')
             
-#        print(json.dumps(cluster['faces'], indent = 4))
-#        print(json.dumps(cluster['edges'], indent = 4))
+        #print(json.dumps(cluster['faces'], indent = 4))
+        #print(json.dumps(cluster['edges'], indent = 4))
         
         edges_by_from_vertex_index = {}
         for edge_identifier in edges:
@@ -1293,10 +1274,8 @@ def check_to_combine_faces (screen_vertices, sorted_faces):
             from_vertex_index = edge['from_vertex_index']
             edges_by_from_vertex_index[from_vertex_index] = edge
             
-#        print(json.dumps(edges_by_from_vertex_index, indent = 4))
+        #print(json.dumps(edges_by_from_vertex_index, indent = 4))
         
-#        print('<==========')
-            
 # FIXME: CHECK is it correct that we take the first face in the cluster (as our base for the new face)? What about sorting?
         merged_face = copy.deepcopy(cluster['faces'][0])
         merged_face['vertex_indices'] = []
@@ -1305,15 +1284,25 @@ def check_to_combine_faces (screen_vertices, sorted_faces):
         starting_edge_identifier = list(edges.keys())[0]
         starting_edge = edges[starting_edge_identifier]
         current_edge = starting_edge
+        
         # We keep on adding vertices until we reach the start again
         while(current_edge['to_vertex_index'] != starting_edge['from_vertex_index']):
+            #print('current_edge' + str(current_edge))
         
             merged_face['vertex_indices'].append(current_edge['from_vertex_index'])
 
             # We go to the edge that starts with the vertex where the currect edge ends
             current_edge = edges_by_from_vertex_index[current_edge['to_vertex_index']]
+            
+        # We add the last vertex
+        merged_face['vertex_indices'].append(current_edge['from_vertex_index'])
+        
+        #print(merged_face['vertex_indices'])
         
         merged_faces.append(merged_face)
+        
+        print('<==========')
+            
     
     return merged_faces
     
@@ -1415,6 +1404,9 @@ def draw_and_export(screen_vertices, sorted_faces):
                 vertex_nr_point_y = (screen_vertex[1] - center_point_y) * 0.7 + center_point_y
                 
                 pygame.draw.rect(frame_buffer, vertex_color, pygame.Rect(vertex_nr_point_x, vertex_nr_point_y, 2, 2))
+                
+                img = font.render(str(vertex_index), False, WHITE)
+                frame_buffer.blit(img, (vertex_nr_point_x, vertex_nr_point_y))
                 
                 
     frame_buffer_on_screen_x = 0
@@ -2033,7 +2025,7 @@ while running:
         visible_sorted_faces.append(face)
     
     if PRINT_PROGRESS: print("Merging/joining faces")
-    merged_faces = check_to_combine_faces(screen_vertices, visible_sorted_faces)
+    merged_faces = combine_faces(screen_vertices, visible_sorted_faces)
     
     print(json.dumps(merged_faces, indent=4))
     
