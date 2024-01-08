@@ -1692,7 +1692,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 30
+    frame_nr = 190
     increment_frame_by = 0
 
 material_info = load_material_info()
