@@ -1102,7 +1102,8 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
     sorted_faces = sorted(faces, key=compare_key, reverse=True)
 
 # FIXME: CHECK: is this the correct way of clearing an indexed color buffer?
-    check_triangle_visibility_buffer.fill((0xFF,0,0))
+#    check_triangle_visibility_buffer.fill((0xFF,0,0))
+    check_triangle_visibility_buffer.fill(256)
     for face_index, face in enumerate(sorted_faces):
 
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
@@ -1117,11 +1118,17 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
     
     check_pxarray = pygame.PixelArray(check_triangle_visibility_buffer)
     
+    nr_of_black_pixels_found = 0
     for y in range(screen_height):
         for x in range(screen_width):
             visible_face_index = check_pxarray[x,y]
             visible_face_indexes[visible_face_index] = True
-    
+            if (visible_face_index == 256):
+                nr_of_black_pixels_found += 1
+                
+    if nr_of_black_pixels_found > 0:
+        print("WARNING: FOUND BLACK PIXELS: " + str(nr_of_black_pixels_found))
+        
     check_pxarray.close()
     
     return (screen_vertices, sorted_faces, visible_face_indexes)
