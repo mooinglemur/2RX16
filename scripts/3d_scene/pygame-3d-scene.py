@@ -32,7 +32,7 @@ SCENE = 'U2E'
 
 random.seed(10)
 
-MERGE_FACES = True
+MERGE_FACES = False
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
 
@@ -46,7 +46,7 @@ DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = True
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = False
+DEBUG_SORTING_LIMIT_OBJECTS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -1679,7 +1679,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 30
+    frame_nr = 13
     increment_frame_by = 0
 
 material_info = load_material_info()
@@ -2024,25 +2024,29 @@ while running:
             continue
         visible_sorted_faces.append(face)
     
-    if PRINT_PROGRESS: print("Merging/joining faces")
-    merged_faces = combine_faces(screen_vertices, visible_sorted_faces)
-    
-    print(json.dumps(merged_faces, indent=4))
-    
-    if PRINT_PROGRESS: print("Draw and export")
-    
     if (MERGE_FACES):
+        if PRINT_PROGRESS: print("Merging/joining faces")
+        merged_faces = combine_faces(screen_vertices, visible_sorted_faces)
+        
+        print(json.dumps(merged_faces, indent=4))
+        
+        if PRINT_PROGRESS: print("Draw and export")
         tris_seen = draw_and_export(screen_vertices, merged_faces)
+        
+        if (PRINT_FRAME_TRIANGLES):
+            print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(sorted_faces))+':'+str(len(merged_faces)))
     else:   
+        if PRINT_PROGRESS: print("Draw and export")
         tris_seen = draw_and_export(screen_vertices, sorted_faces)
+        
+        if (PRINT_FRAME_TRIANGLES):
+            print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(sorted_faces)))
     # FIXME: enable this again!
     '''
     if tris_seen and (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
         f.write(b'\xff') # end of frame
     '''
 
-    if (PRINT_FRAME_TRIANGLES):
-        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(sorted_faces))+':'+str(len(merged_faces)))
 
     if (DRAW_PALETTE):
         
