@@ -33,6 +33,8 @@ SCENE = 'U2E'
 random.seed(10)
 
 MERGE_FACES = False
+CONVERT_COLORS_TO_12BITS = True
+PATCH_COLORS_MANUALLY = True
 
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
@@ -48,9 +50,6 @@ DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
 DRAW_INTERSECTION_POINTS = False
-CONVERT_COLORS_TO_12BITS = True
-FOCUS_ON_COLOR_TONE = False   # This didnt give a good result
-PATCH_COLORS_MANUALLY = True
 
 screen_width = 320
 screen_height = 200
@@ -270,7 +269,7 @@ def triangulate_faces(world_objects):
         
         triangulated_object_faces = []
         
-        for object_face in object_faces:
+        for object_face_index, object_face in enumerate(object_faces):
         
             # This template face will inheret the normals and the vertices of the original face
             new_template_face = copy.deepcopy(object_face)
@@ -1659,7 +1658,8 @@ for clr_idx, rgb64 in enumerate(palette_colors):
     
     if (CONVERT_COLORS_TO_12BITS):
     
-        if(FOCUS_ON_COLOR_TONE):
+        #if(FOCUS_ON_COLOR_TONE):  # This didnt give a good result
+        if(False):
             
             if (r == 0 and g == 0 and b == 0):
                 # Black is black anyway, we dont want to divide by 0
@@ -1798,8 +1798,36 @@ while running:
     if PRINT_PROGRESS: print("Loading vertices and faces")
     world_objects = load_vertices_and_faces(frame_nr)
 
+    filtered_world_objects = None
+    if (DEBUG_SORTING_LIMIT_OBJECTS):
+        filtered_world_objects = {}
+        
+        # We always want the CameraBox
+        filtered_world_objects['CameraBox'] = world_objects['CameraBox']
+        
+        for current_object_name in world_objects:
+            if (current_object_name != 'kulmatalot'):
+                continue
+                
+            filtered_world_objects[current_object_name] = world_objects[current_object_name]
+        
+            object_faces = filtered_world_objects[current_object_name]['faces']
+            
+            filtered_object_faces = []
+            for object_face_index, object_face in enumerate(object_faces):
+            
+                if (object_face_index == 1):
+                    continue
+                    
+                filtered_object_faces.append(object_face)
+                
+            filtered_world_objects[current_object_name]['faces'] = filtered_object_faces
+            
+    else:
+        filtered_world_objects = world_objects
+
     if PRINT_PROGRESS: print("Triangulate faces")
-    triangulated_world_objects = triangulate_faces(world_objects)
+    triangulated_world_objects = triangulate_faces(filtered_world_objects)
     
     if PRINT_PROGRESS: print("Getting camera info")
     camera_box = triangulated_world_objects['CameraBox']
@@ -1863,10 +1891,6 @@ while running:
         if (current_object_name == 'CameraBox'):
             continue
             
-        if (DEBUG_SORTING_LIMIT_OBJECTS):
-            if (current_object_name != 'kulmatalot'):
-                continue
-        
         object_vertices = view_objects[current_object_name]['vertices']
         object_faces = view_objects[current_object_name]['faces']
         object_normals = view_objects[current_object_name]['normals']
