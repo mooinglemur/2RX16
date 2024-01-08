@@ -40,13 +40,13 @@ ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = True
+DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -70,8 +70,8 @@ TOP_EDGE_Y = +1 * (200/320)
 
 Z_EDGE = -1.0   # this is the near plane
 
-#projection_to_screen_scale = 280/2
-projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
+projection_to_screen_scale = 280/2
+#projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
 center_offset = (screen_width // 2, screen_height // 2)
 
 
@@ -1202,6 +1202,8 @@ def combine_faces (screen_vertices, sorted_faces):
             
             if ('merge_with_faces' not in face_a):
                 face_a['merge_with_faces'] = []
+            if ('merge_with_faces' not in face_b):
+                face_b['merge_with_faces'] = []
                 
             merge_info = {
 # FIXME: we can simplify this to just the index (no dict)
@@ -1209,8 +1211,13 @@ def combine_faces (screen_vertices, sorted_faces):
             }
             face_a['merge_with_faces'].append(merge_info)
             
-            # FIXME: REMOVE: storing in ONE-direction (low index to high index) prevents recursive loops!
-            # face_b['merge_with_faces'].append(face_a_index)
+# REMOVE            # FIXME: REMOVE: storing in ONE-direction (low index to high index) prevents recursive loops!
+
+            merge_info = {
+# FIXME: we can simplify this to just the index (no dict)
+                'face_index' : face_a_index
+            }
+            face_b['merge_with_faces'].append(merge_info)
     
     # Search for clusters of faces to be merged
     #   All triangles that are directly or indirectly connected below to a 'cluster': they have to be joined to form a new (larger) polygon
@@ -1857,6 +1864,7 @@ while running:
         filtered_world_objects['CameraBox'] = world_objects['CameraBox']
         
         for current_object_name in world_objects:
+            # FIXME: HARDCODED!
             if (current_object_name != 'kulmatalot'):
                 continue
                 
@@ -1867,7 +1875,8 @@ while running:
             filtered_object_faces = []
             for object_face_index, object_face in enumerate(object_faces):
             
-                if (object_face_index == 1):
+                # FIXME: HARDCODED: First wall in first seconds
+                if (object_face_index != 2):  
                     continue
                     
                 filtered_object_faces.append(object_face)
@@ -1978,7 +1987,11 @@ while running:
     #     - ISSUE: how to deal with 2D vs 3D faces/vertices? 
     #         SOLUTION:  are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
 
+# FIXME!
+# FIXME!
+# FIXME!
 #    culled_view_faces = culled_view_faces[1:2]
+    #print(len(culled_view_faces))
     
     if PRINT_PROGRESS: print("Z clipping")
     # Clip/remove where Z > -1 (behind or very close to camera)
