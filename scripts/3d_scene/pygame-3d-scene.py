@@ -70,8 +70,8 @@ TOP_EDGE_Y = +1 * (200/320)
 
 Z_EDGE = -1.0   # this is the near plane
 
-projection_to_screen_scale = 280/2
-#projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
+#projection_to_screen_scale = 280/2
+projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
 center_offset = (screen_width // 2, screen_height // 2)
 
 
@@ -2056,13 +2056,13 @@ while running:
         tris_seen = draw_and_export(screen_vertices, merged_faces)
         
         if (PRINT_FRAME_TRIANGLES):
-            print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(sorted_faces))+':'+str(len(merged_faces)))
+            print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces))+':'+str(len(merged_faces)))
     else:   
         if PRINT_PROGRESS: print("Draw and export")
-        tris_seen = draw_and_export(screen_vertices, sorted_faces)
+        tris_seen = draw_and_export(screen_vertices, visible_sorted_faces)
         
         if (PRINT_FRAME_TRIANGLES):
-            print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(sorted_faces)))
+            print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces)))
     # FIXME: enable this again!
     '''
     if tris_seen and (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
