@@ -45,6 +45,7 @@ ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
+DRAW_BLACK_PIXELS = True
 DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
@@ -1116,6 +1117,8 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
     # Checking all pixels in the check_triangle_visibility_buffer and see which face_indexes are still in there. We should ONLY draw these!
     visible_face_indexes = {}
     
+    black_pixels = 320*200*[0]
+    
     check_pxarray = pygame.PixelArray(check_triangle_visibility_buffer)
     
     nr_of_black_pixels_found = 0
@@ -1125,13 +1128,14 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
             visible_face_indexes[visible_face_index] = True
             if (visible_face_index == 256):
                 nr_of_black_pixels_found += 1
+                black_pixels[y*320+x] = 1
                 
     if nr_of_black_pixels_found > 0:
         print("WARNING: FOUND BLACK PIXELS: " + str(nr_of_black_pixels_found))
         
     check_pxarray.close()
     
-    return (screen_vertices, sorted_faces, visible_face_indexes)
+    return (screen_vertices, sorted_faces, visible_face_indexes, black_pixels)
 
 def faces_share_edge(face_a, face_b):
 
@@ -2061,7 +2065,7 @@ while running:
     '''
     
     if PRINT_PROGRESS: print("Sort, scale to screen and check visibility")
-    (screen_vertices, sorted_faces, visible_face_indexes) = sort_faces_scale_to_screen_and_check_visibility(camera_clipped_projected_vertices, camera_clipped_projected_faces)
+    (screen_vertices, sorted_faces, visible_face_indexes, black_pixels) = sort_faces_scale_to_screen_and_check_visibility(camera_clipped_projected_vertices, camera_clipped_projected_faces)
 
     visible_sorted_faces = []
     for face_index, face in enumerate(sorted_faces):
@@ -2093,6 +2097,14 @@ while running:
         f.write(b'\xff') # end of frame
     '''
 
+    if (DRAW_BLACK_PIXELS):
+        for y in range(200):
+            for x in range(320):
+                if (black_pixels[y*320+x] == 1):
+                    pixel_color = (0xFF, 0xFF, 0x00)
+                else:
+                    pixel_color = (0x00, 0x00, 0x00)
+                pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 1*scale, 1*scale))
 
     if (DRAW_PALETTE):
         
