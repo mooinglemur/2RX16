@@ -1839,6 +1839,14 @@ while running:
                     increment_frame_by = -1
                 if event.key == pygame.K_SPACE:
                     increment_frame_by = 0
+                if event.key == pygame.K_PERIOD:
+                    frame_nr += 100
+                    if frame_nr > max_frame_nr:
+                        frame_nr = max_frame_nr
+                if event.key == pygame.K_COMMA:
+                    frame_nr -= 100
+                    if frame_nr < 1:
+                        frame_nr = 1
 
             if event.key == pygame.K_r:
                 DEBUG_COUNT_REDRAWS = not DEBUG_COUNT_REDRAWS
