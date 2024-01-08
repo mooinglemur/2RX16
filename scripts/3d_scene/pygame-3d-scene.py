@@ -32,7 +32,7 @@ SCENE = 'U2E'
 
 random.seed(10)
 
-MERGE_FACES = False
+MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
 
@@ -40,13 +40,13 @@ ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
-DEBUG_SHOW_VERTEX_NRS = True
+DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = True
+DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -70,7 +70,8 @@ TOP_EDGE_Y = +1 * (200/320)
 
 Z_EDGE = -1.0   # this is the near plane
 
-projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
+projection_to_screen_scale = 280/2
+# FIXME! projection_to_screen_scale = 320/2  # projected coordinates go from -1.0 to +1.0 and since that is 2.0 total, we need to divide the width of our screen by 2
 center_offset = (screen_width // 2, screen_height // 2)
 
 
@@ -571,7 +572,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices, created_vertic
     elif (len(inside_vertex_indices) == 2):
         # We have a quad we have to split into two triangles
         
-        if (inside_vertex_nrs[0] == 1 and inside_vertex_nrs[1] == 2):
+        if (inside_vertex_nrs[0] == 0 and inside_vertex_nrs[1] == 2):
             # We need to switch the inside vertices to preserve the order
             inside_vertex_indices.reverse()
             inside_vertex_nrs.reverse()
@@ -580,7 +581,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices, created_vertic
         clipped_vertex_index_1 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0], created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
-        clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_1, inside_vertex_indices[1]]
+        clipped_face['vertex_indices'] = [clipped_vertex_index_1, inside_vertex_indices[0], inside_vertex_indices[1]]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 2
@@ -590,7 +591,7 @@ def clip_face_against_z_edge(non_clipped_face, combined_vertices, created_vertic
         clipped_vertex_index_0 = clip_vertex_against_z_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
-        clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
+        clipped_face['vertex_indices'] = [clipped_vertex_index_0, inside_vertex_indices[0], clipped_vertex_index_1]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 4
@@ -926,7 +927,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name, creat
     elif (len(inside_vertex_indices) == 2):
         # We have a quad we have to split into two triangles
         
-        if (inside_vertex_nrs[0] == 1 and inside_vertex_nrs[1] == 2):
+        if (inside_vertex_nrs[0] == 0 and inside_vertex_nrs[1] == 2):
             # We need to switch the inside vertices to preserve the order
             inside_vertex_indices.reverse()
             inside_vertex_nrs.reverse()
@@ -935,7 +936,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name, creat
         clipped_vertex_index_1 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[1], outside_vertex_indices[0], edge_name, created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
-        clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_1, inside_vertex_indices[1]]
+        clipped_face['vertex_indices'] = [clipped_vertex_index_1, inside_vertex_indices[0], inside_vertex_indices[1]]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 9
@@ -945,7 +946,7 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name, creat
         clipped_vertex_index_0 = clip_2d_vertex_against_edge(combined_vertices, inside_vertex_indices[0], outside_vertex_indices[0], edge_name, created_vertices_by_code)
         
         clipped_face = copy.deepcopy(non_clipped_face)
-        clipped_face['vertex_indices'] = [inside_vertex_indices[0], clipped_vertex_index_0, clipped_vertex_index_1]
+        clipped_face['vertex_indices'] = [clipped_vertex_index_0, inside_vertex_indices[0], clipped_vertex_index_1]
         clipped_face['is_clipped'] = True
         if (DEBUG_CLIP_COLORS):
             clipped_face['color_index'] = 10
@@ -976,7 +977,10 @@ def camera_clip_projected_triangles(projected_faces, projected_vertices):
         queue_faces = [ non_clipped_face ]
         
         for edge_name in edge_names:
-
+        
+            #if (edge_name == 'BOTTOM'):
+            #    continue
+            
             clipped_faces_against_this_edge = []
             for queue_face in queue_faces:
                 
@@ -988,6 +992,8 @@ def camera_clip_projected_triangles(projected_faces, projected_vertices):
 
             # The output faces (left over after clipping) become the input faces for the next edge
             queue_faces = clipped_faces_against_this_edge
+            # print('After clipping against ' + edge_name + ':' + str(json.dumps(queue_faces,indent=4)))
+    
             
         
         # After clipping against all 4 edges we are left with only clipped faces in the queue
@@ -1301,7 +1307,7 @@ def combine_faces (screen_vertices, sorted_faces):
         
         merged_faces.append(merged_face)
         
-        print('<==========')
+        #print('<==========')
             
     
     return merged_faces
@@ -1972,6 +1978,8 @@ while running:
     #     - ISSUE: how to deal with 2D vs 3D faces/vertices? 
     #         SOLUTION:  are these identifiers only needed *DURING* CLIPPING/SPLITTING? (and can be thrown away afterwards)
 
+#    culled_view_faces = culled_view_faces[1:2]
+    
     if PRINT_PROGRESS: print("Z clipping")
     # Clip/remove where Z > -1 (behind or very close to camera)
 # FIXME: dont we need the normals for this? To CORRECT the ORDERING after clipping?
@@ -1994,6 +2002,7 @@ while running:
     if PRINT_PROGRESS: print("Camera clipping")
     # Clip 4 sides of the camera -> creating NEW triangles!
     (camera_clipped_projected_faces, camera_clipped_projected_vertices) = camera_clip_projected_triangles(projected_faces, projected_vertices)
+    
     
     # print(str(len(projected_vertices))+'=>'+str(len(camera_clipped_projected_vertices)))
 
@@ -2028,7 +2037,7 @@ while running:
         if PRINT_PROGRESS: print("Merging/joining faces")
         merged_faces = combine_faces(screen_vertices, visible_sorted_faces)
         
-        print(json.dumps(merged_faces, indent=4))
+        #print(json.dumps(merged_faces, indent=4))
         
         if PRINT_PROGRESS: print("Draw and export")
         tris_seen = draw_and_export(screen_vertices, merged_faces)
