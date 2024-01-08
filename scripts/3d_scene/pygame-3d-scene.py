@@ -30,6 +30,11 @@ from functools import cmp_to_key
 SCENE = 'U2E'
 #SCENE = 'U2A'
 
+# FIXME!
+# FIXME!
+# FIXME!
+COLOR_IDX_SKY_BLACK = 253
+
 random.seed(10)
 
 MERGE_FACES = True
@@ -40,7 +45,7 @@ ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DEBUG_SORTING = False
+DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
@@ -256,6 +261,9 @@ def load_vertices_and_faces(frame_nr):
                 color_index_and_shades = mat_name_to_index_and_shades[current_material_name]
                 color_index = color_index_and_shades['color_index']
                 nr_of_shades = color_index_and_shades['nr_of_shades']
+            elif current_material_name == 'SKY_BLACK':
+                color_index = COLOR_IDX_SKY_BLACK
+                nr_of_shades = 0
             else:
                 # TODO: These materials should never be shown, so we set the to None for now, but this isnt really correct
                 color_index = None
@@ -1375,7 +1383,6 @@ def draw_and_export(screen_vertices, sorted_faces):
             if ('merge_with_faces' in face):
                 color_idx = 250
                 
-            
         # We add the first vertex at the end, since pygame wants polygon to draw back to the beginning point
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
     
@@ -1692,7 +1699,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 190
+    frame_nr = 275
     increment_frame_by = 0
 
 material_info = load_material_info()

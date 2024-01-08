@@ -5,8 +5,8 @@ import copy
 import json
 
 scene_dir = 'assets/3d_scene/SCENE'
-#scene_name = 'U2E'
-scene_name = 'U2A'
+scene_name = 'U2E'
+#scene_name = 'U2A'
 
 def lsget (f, u2_bin, pos):
     value = None
@@ -536,9 +536,42 @@ def generate_obj_text_for_u2_object(u2_object, vertex_index_start, mat_info):
     return (obj_text, nr_of_vertices)
 
 
+
+def generate_obj_text_for_manual_object(u2_object, vertex_index_start):
+    obj_text = ""
+    
+    obj_text += "o " + u2_object['name'] + "\n"
+    for vertex_raw in u2_object['vertices_raw']:
+        vertex_x = vertex_raw[0] / 256
+        vertex_y = vertex_raw[1] / 256
+# FIXME: make this a value per type?
+        vertex_z = 0
+        
+        obj_text += "v "
+        obj_text += str(vertex_x)
+        obj_text += " "
+        obj_text += str(vertex_y)
+        obj_text += " "
+        obj_text += str(vertex_z)
+        obj_text += "\n"
+    
+    obj_text += "usemtl " 
+    obj_text += "SKY_BLACK"
+    obj_text += "\n"
+    
+    nr_of_vertices = len(u2_object['vertices_raw'])
+    
+# FIXME: right now, we can have only ONE face in manual objects!    
+    obj_text += "f "
+    obj_text += ' '.join(str(vertex_index+vertex_index_start) for vertex_index in range(nr_of_vertices))
+    obj_text += "\n"
+        
+    return (obj_text, nr_of_vertices)
+
+
 def parse_mat_file(u2_mat_file):
 
-    #  Note: U2C uses these starting-color-indexes (based on color_index of parsed objects):
+    #  Note: U2E uses these starting-color-indexes (based on color_index of parsed objects):
     #        0, 8, 16, 32, 64, 96, 128, 192, 208
     #  Note: U2A uses these starting-color-indexes (based on color_index of parsed objects):
     #        0, 4?, 32, 64, 96, 128
@@ -609,6 +642,8 @@ vertex_index_start = 1
 
 subnr_per_object_file_index = {}
 object_nr_to_name = {}
+objects_by_name = {}
+objects = []
 
 for (object_index, object_file_index) in enumerate(objects_and_material_info['object_file_indexes']):
     
@@ -637,12 +672,34 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
         u2_object['name'] = u2_object['name'] + '_' + str(subnr_per_object_file_index[object_file_index])
     
     object_nr_to_name[str(object_index)] = u2_object['name']
+    objects_by_name[u2_object['name']] = u2_object
+    objects.append(u2_object)
     
     #if (u2_object['name'] == '"s01"'):
     #    print(u2_object['vertices'])
+
+# Adding manual objects (to fill in the sky- and ground- gaps)
+if (scene_name == 'U2E'):
     
-    # FIXME: also export NORMALS and use this: normal_index_start = 0
-    (obj_text, nr_of_vertices) = generate_obj_text_for_u2_object(u2_object, vertex_index_start, mat_info)
+    object_to_add = {
+        'name' : '__road_1',
+        'vertices_raw' : [
+            (-7000, -15000),  # 0: NE
+            (-8000, -15000),  # 1: NW
+            (-8000, -26000),  # 2: SW
+            (-7000, -26000),  # 3: SE
+        ],
+    }
+    objects.append(object_to_add)
+
+    
+for u2_object in objects:
+    # TODO: also export NORMALS and use this: normal_index_start = 0
+    if ('vertices_raw' in u2_object):
+        # Manually added object
+        (obj_text, nr_of_vertices) = generate_obj_text_for_manual_object(u2_object, vertex_index_start)
+    else:
+        (obj_text, nr_of_vertices) = generate_obj_text_for_u2_object(u2_object, vertex_index_start, mat_info)
     objs_text += obj_text
     vertex_index_start += nr_of_vertices
     
