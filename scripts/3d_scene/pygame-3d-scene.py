@@ -32,6 +32,8 @@ SCENE = 'U2E'
 
 random.seed(10)
 
+MERGE_FACES = False
+
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
@@ -41,7 +43,7 @@ DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = False
+DEBUG_SORTING_LIMIT_OBJECTS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -1104,7 +1106,7 @@ def faces_share_edge(face_a, face_b):
 
 
 
-def find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces, visible_face_indexes):
+def find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces):
 
     # We mark this face as in this cluster and it to the cluster
     face['cluster_id'] = cluster['id']
@@ -1114,13 +1116,10 @@ def find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces, visible
         for merge_info in face['merge_with_faces']:
             face_index = merge_info['face_index']
             
-            if (face_index not in visible_face_indexes):    
-                continue
-
             face_to_merge_with = sorted_faces[face_index]
             
             if ('cluster_id' not in face_to_merge_with):
-                find_connected_faces_and_put_in_cluster(face_to_merge_with, cluster, sorted_faces, visible_face_indexes)
+                find_connected_faces_and_put_in_cluster(face_to_merge_with, cluster, sorted_faces)
 
 def create_edge(from_vertex_index, to_vertex_index):
  
@@ -1138,14 +1137,13 @@ def create_edge(from_vertex_index, to_vertex_index):
     return edge
 
 
-def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes):
+def check_to_combine_faces (screen_vertices, sorted_faces):
 
 
 # FIXME: what is somehow the SORTING of the to-be-combined faces is DIFFERENT?
 
     # For each face we try to find another face (for now only triangles) to see if shares an edge with another face
     # Both faces have to be:
-    #   - is visible
     #   - Not been marked as merged already
     # FIXME NOT CHECKING THIS ANYMORE: - Have not been clipped
     #   - Are not the same face
@@ -1156,8 +1154,6 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
     
     for face_a_index, face_a in enumerate(sorted_faces):
         
-        if (face_a_index not in visible_face_indexes):    
-            continue
         #if ('is_clipped' in face_a):
         #    continue
         # FIXME: instead of marking a face as merged we should actually merge it AND remove it!
@@ -1167,8 +1163,6 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
         # FIXME: this can be done much FASTER! (for example by keeping a map/dict per vertex_index of all triangles that use that vertex)
         for face_b_index, face_b in enumerate(sorted_faces):
             if face_a_index >= face_b_index:
-                continue
-            if (face_b_index not in visible_face_indexes):    
                 continue
             #if ('is_clipped' in face_b):
             #    continue
@@ -1221,9 +1215,6 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
     clusters = []
     for face_index, face in enumerate(sorted_faces):
             
-        if (face_index not in visible_face_indexes):    
-            continue
-
         if ('cluster_id' not in face):
             cluster = {
                 'id' : cluster_id,
@@ -1231,12 +1222,12 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
                 'edges' : {},
             }
             # IMPORTANT: if a triangle is not connected to anything it becomes its own cluster (of *one* triangle)
-            find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces, visible_face_indexes)
+            find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces)
             
             clusters.append(cluster)
             cluster_id += 1
 
-    new_faces = []
+    merged_faces = []
     for cluster in clusters:
         edges = cluster['edges']
         for face in cluster['faces']:
@@ -1285,8 +1276,8 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
 #        print('<==========')
             
 # FIXME: CHECK is it correct that we take the first face in the cluster (as our base for the new face)? What about sorting?
-        new_face = copy.deepcopy(cluster['faces'][0])
-        new_face['vertex_indices'] = []
+        merged_face = copy.deepcopy(cluster['faces'][0])
+        merged_face['vertex_indices'] = []
         
         # We just take the first edge as our starting
         starting_edge_identifier = list(edges.keys())[0]
@@ -1295,18 +1286,14 @@ def check_to_combine_faces (screen_vertices, sorted_faces, visible_face_indexes)
         # We keep on adding vertices until we reach the start again
         while(current_edge['to_vertex_index'] != starting_edge['from_vertex_index']):
         
-            new_face['vertex_indices'].append(current_edge['from_vertex_index'])
+            merged_face['vertex_indices'].append(current_edge['from_vertex_index'])
 
             # We go to the edge that starts with the vertex where the currect edge ends
             current_edge = edges_by_from_vertex_index[current_edge['to_vertex_index']]
         
-        
-        new_faces.append(new_face)
+        merged_faces.append(merged_face)
     
-    # The last cluster_id is considered to be the nr of clusters found
-#    nr_of_clusters = cluster_id
-    
-    return new_faces
+    return merged_faces
     
 
 def add_face_with_frame_buffer(face_surface, frame_buffer):
@@ -1326,7 +1313,7 @@ def add_face_with_frame_buffer(face_surface, frame_buffer):
     face_pxarray.close()
 
 
-def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
+def draw_and_export(screen_vertices, sorted_faces):
 
 # FIXME: this sorter is probably the wrong way around now, since y is not flipped anymore in the projected_vertices!
     def y_sorter(item):
@@ -1352,13 +1339,6 @@ def draw_and_export(screen_vertices, sorted_faces, visible_face_indexes):
     frame_buffer.fill((0,0,0))
     for face_index, face in enumerate(sorted_faces):
  
-# FIXME! 
-# FIXME! 
-# FIXME! 
-#        if (face_index not in visible_face_indexes):    
-            # We skip faces that are not visible (aka that are overdrawn completely)
-#            continue
-        
         color_idx = face['color_index']
         
         if (DEBUG_COLORS and not DEBUG_CLIP_COLORS):
@@ -1884,7 +1864,7 @@ while running:
             continue
             
         if (DEBUG_SORTING_LIMIT_OBJECTS):
-            if (current_object_name != 'b4' and current_object_name != 'BuildingC_1'):
+            if (current_object_name != 'kulmatalot'):
                 continue
         
         object_vertices = view_objects[current_object_name]['vertices']
@@ -1967,23 +1947,27 @@ while running:
     
     if PRINT_PROGRESS: print("Sort, scale to screen and check visibility")
     (screen_vertices, sorted_faces, visible_face_indexes) = sort_faces_scale_to_screen_and_check_visibility(camera_clipped_projected_vertices, camera_clipped_projected_faces)
+
+    visible_sorted_faces = []
+    for face_index, face in enumerate(sorted_faces):
+        if (face_index not in visible_face_indexes):    
+            # We skip faces that are not visible (aka that are overdrawn completely)
+            continue
+        visible_sorted_faces.append(face)
     
 #    if PRINT_PROGRESS: print("Checking to combine faces")
 # FIXME: if/when we ACTUALLY combine faces, we should RETURN something here!
-    new_faces = check_to_combine_faces(screen_vertices, sorted_faces, visible_face_indexes)
+    merged_faces = check_to_combine_faces(screen_vertices, visible_sorted_faces)
     
-# FIXME: naming!
-    nr_of_clusters = len(new_faces)
     
-    print(json.dumps(new_faces, indent=4))
+    print(json.dumps(merged_faces, indent=4))
     
     if PRINT_PROGRESS: print("Draw and export")
     
-# FIXME: remove visible_face_indexes!!
-# FIXME: remove visible_face_indexes!!
-# FIXME: remove visible_face_indexes!!
-    tris_seen = draw_and_export(screen_vertices, new_faces, visible_face_indexes)
-#    tris_seen = draw_and_export(screen_vertices, sorted_faces, visible_face_indexes)
+    if (MERGE_FACES):
+        tris_seen = draw_and_export(screen_vertices, merged_faces)
+    else:   
+        tris_seen = draw_and_export(screen_vertices, sorted_faces)
     # FIXME: enable this again!
     '''
     if tris_seen and (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
@@ -1991,18 +1975,7 @@ while running:
     '''
 
     if (PRINT_FRAME_TRIANGLES):
-#        nr_of_potentially_removed_faces_by_merging = 0
-#        for face in camera_clipped_projected_faces:
-#            if ('merge_with_faces' in face):
-# FIXME: this is WRONG is you combine more than 2 triangle into one polygon!
-#                nr_of_potentially_removed_faces_by_merging += 0.5
-                
-        nr_of_visible_faces = len(visible_face_indexes.keys())
-        
-#        nr_of_potentially_visible_faces = nr_of_visible_faces - int(nr_of_potentially_removed_faces_by_merging)
-    
-        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(nr_of_visible_faces)+':'+str(nr_of_clusters))
-
+        print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(sorted_faces))+':'+str(len(merged_faces)))
 
     if (DRAW_PALETTE):
         
