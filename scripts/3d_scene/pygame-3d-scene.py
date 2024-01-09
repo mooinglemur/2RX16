@@ -47,7 +47,7 @@ PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = True
 DEBUG_SORTING = False
-DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
+DEBUG_DRAW_TRIANGLE_BOUNDARIES = False  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
@@ -2102,9 +2102,10 @@ while running:
             for x in range(320):
                 if (black_pixels[y*320+x] == 1):
                     pixel_color = (0xFF, 0xFF, 0x00)
+                    pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 1*scale, 1*scale))
                 else:
                     pixel_color = (0x00, 0x00, 0x00)
-                pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 1*scale, 1*scale))
+                    # pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 1*scale, 1*scale))
 
     if (DRAW_PALETTE):
         
