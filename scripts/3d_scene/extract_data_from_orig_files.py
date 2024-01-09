@@ -289,6 +289,29 @@ def parse_object_file(u2_bin):
                 # FIXME: HACK! For some reason the large ship in U2A ('Sippi') is about twice as wide as in the object files. So we just widen it here.
                 if (u2_object['name'] == 'Sippi'):
                     x = x * 2
+
+
+                # Note: there are 8 extra vertexes (forming a small cube) to each platform (or even each object) in the original data. 
+                #       BUT there are no FACES using that! But these vertices are probably used as 'central point' for object. We DONT USE those right now!
+                
+                if (scene_name == 'U2E'):
+                    platforms = [
+                        '_L_pohja',
+                        '_levyt',
+                        '_levyt3',
+                        '_laatta',
+                        '_laatta01',
+                        '_laatta2',
+                        '_laatta02',
+                        '_laatta',
+                        '_platform',
+                        '_platform0'
+                    ]
+
+                    # We are 'fixing' a few vertices of the platforms so they all become at the same height
+                    if (u2_object['name'] in platforms):
+                        if (z == 0.13671875):  # = 35 / 256
+                            z = 0.12890625  # = 33 / 256
                 
                 vertex = { 'x' : x, 'y': y, 'z': z, 'normal_index': normal_index }
                 vertices.append(vertex)
@@ -545,8 +568,7 @@ def generate_obj_text_for_manual_object(u2_object, vertex_index_start):
         vertex_x = vertex_raw[0] / 256
         vertex_y = vertex_raw[1] / 256
         if (u2_object['type'] == 'ground'):
-# FIXME: make this a value per type? Is this the correct value?
-            vertex_z = 35 / 256
+            vertex_z = 33 / 256
         
         obj_text += "v "
         obj_text += str(vertex_x)
