@@ -46,7 +46,7 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = True
-DEBUG_SORTING = False
+DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = False  # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
@@ -1710,7 +1710,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 275
+    frame_nr = 226
     increment_frame_by = 0
 
 material_info = load_material_info()
@@ -1852,12 +1852,23 @@ while running:
                     increment_frame_by = 0
                 if event.key == pygame.K_PERIOD:
                     frame_nr += 100
-                    if frame_nr > max_frame_nr:
-                        frame_nr = max_frame_nr
                 if event.key == pygame.K_COMMA:
                     frame_nr -= 100
-                    if frame_nr < 1:
-                        frame_nr = 1
+                if event.key == pygame.K_PERIOD:
+                    frame_nr += 100
+                if event.key == pygame.K_COMMA:
+                    frame_nr -= 100
+                if event.key == pygame.K_RIGHTBRACKET:
+                    frame_nr += 1
+                if event.key == pygame.K_LEFTBRACKET:
+                    frame_nr -= 1
+                    
+                    
+                    
+                if frame_nr < 1:
+                    frame_nr = 1
+                if frame_nr > max_frame_nr:
+                    frame_nr = max_frame_nr
 
             if event.key == pygame.K_r:
                 DEBUG_COUNT_REDRAWS = not DEBUG_COUNT_REDRAWS
