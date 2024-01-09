@@ -898,6 +898,56 @@ if (scene_name == 'U2E'):
         ],
     },
     {
+        'name' : '__7th_south_road_1',
+        'type' : 'ground',
+        'vertices_raw' : [
+            ( 11139, -11000),  # 0: NE
+            ( 10000, -11000),  # 1: NW
+            ( 10000, -17000),  # 2: SW
+            ( 11139, -17000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__7th_8th_east_road_1',
+        'type' : 'ground',
+        'vertices_raw' : [
+            ( 21000, -10000),  # 0: NE
+            ( 10000, -10000),  # 1: NW
+            ( 10000, -11000),  # 2: SW
+            ( 21000, -11000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__7th_8th_platform',
+        'type' : 'ground',
+        'vertices_raw' : [
+            ( 16500, -5000),  # 0: NE
+            ( 10000, -5000),  # 1: NW
+            ( 10000, -10000),  # 2: SW
+            ( 16500, -10000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__7th_8th_east_road_2',
+        'type' : 'ground',
+        'vertices_raw' : [
+            ( 15500, -17000),  # 0: NE
+            ( 10000, -17000),  # 1: NW
+            ( 10000, -18000),  # 2: SW
+            ( 15500, -18000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__8th_south_road_1',
+        'type' : 'ground',
+        'vertices_raw' : [
+            ( 16500, -17000),  # 0: NE
+            ( 15500, -17000),  # 1: NW
+            ( 15500, -19000),  # 2: SW
+            ( 16500, -19000),  # 3: SE
+        ],
+    },
+    {
         'name' : '__tree_background_standing_up',
         'type' : 'free',
         'vertices_raw' : [
