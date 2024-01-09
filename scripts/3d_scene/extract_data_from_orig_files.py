@@ -569,6 +569,8 @@ def generate_obj_text_for_manual_object(u2_object, vertex_index_start):
         vertex_y = vertex_raw[1] / 256
         if (u2_object['type'] == 'ground'):
             vertex_z = 33 / 256
+        elif (u2_object['type'] == 'free'):
+            vertex_z = vertex_raw[2] / 256
         
         obj_text += "v "
         obj_text += str(vertex_x)
@@ -893,6 +895,16 @@ if (scene_name == 'U2E'):
             ( 4000, -15000),  # 1: NW
             ( 4000, -18000),  # 2: SW
             ( 5000, -18000),  # 3: SE
+        ],
+    },
+    {
+        'name' : '__tree_background_standing_up',
+        'type' : 'free',
+        'vertices_raw' : [
+            ( 13000, 3000, 20000),  # 0: NE
+            ( -7000, 3000, 20000),  # 1: NW
+            ( -7000, 3000,  9000),  # 2: SW
+            ( 13000, 3000,  9000),  # 3: SE
         ],
     },
     ]
