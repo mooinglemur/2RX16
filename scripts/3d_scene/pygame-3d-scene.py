@@ -1368,6 +1368,7 @@ def add_face_with_frame_buffer(face_surface, frame_buffer):
 
 def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices):
 
+    file_data = []
 # FIXME! REMOVE THIS!
 #    face_vertices = vertices + [vertices[0]]
 #    pygame.draw.polygon(draw_buffer, line_color, face_vertices, 0)
@@ -1392,6 +1393,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
     #  - set x1 incr or x2 incr accordingly
     #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
     #  - Stop until left and right reach the end
+    
+    return file_data
 
     
 
