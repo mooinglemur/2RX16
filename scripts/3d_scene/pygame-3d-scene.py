@@ -30,6 +30,12 @@ from functools import cmp_to_key
 SCENE = 'U2E'
 #SCENE = 'U2A'
 
+# FIXME!!
+# We need to REMOVE the REDUNDANT VERTICES in the large polygons!!
+# We need to REMOVE the REDUNDANT VERTICES in the large polygons!!
+# We need to REMOVE the REDUNDANT VERTICES in the large polygons!!
+
+
 # FIXME!
 # FIXME!
 # FIXME!
