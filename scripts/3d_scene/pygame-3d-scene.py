@@ -1366,11 +1366,32 @@ def add_face_with_frame_buffer(face_surface, frame_buffer):
 
 
 
-def fx_sim_draw_polygon(draw_buffer, line_color, vertices):
+def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices):
 
 # FIXME! REMOVE THIS!
 #    face_vertices = vertices + [vertices[0]]
 #    pygame.draw.polygon(draw_buffer, line_color, face_vertices, 0)
+
+    # TODO:
+    
+    # Setup:
+    # - Get top vertex (index)
+    # - Get bottom vertex (index)
+    # - Create left and right list
+    #   - Check if both top vertex_indexes are the same
+    #   - Check if both bottom vertex_indexes are the same
+    
+    # Drawing algo:
+    #  - Set x1 and x2 according to first in left/right list (NOTE: if the same we only have to export ONE in the data!)
+    #  - set left and right indexes to 0 (n and m)
+    #  - Calculate x1/x2 slopes by left[n+1]-left[n] and right[m+1]-right[m]
+    #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
+    #  - draw the polygon part
+    #  - increment n or m
+    #  - set x1 or x2 position accordingly
+    #  - set x1 incr or x2 incr accordingly
+    #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
+    #  - Stop until left and right reach the end
 
     
 
@@ -1420,14 +1441,14 @@ def draw_and_export(screen_vertices, sorted_faces):
             face_buffer.fill((0,0,0))
             
             if (USE_FX_POLY_FILLER_SIM):
-                fx_sim_draw_polygon(face_buffer, 1, [screen_vertices[i] for i in face['vertex_indices']])
+                fx_sim_draw_polygon(face_buffer, 1, face['vertex_indices'], screen_vertices)
             else:
                 pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
             add_face_with_frame_buffer(face_buffer, frame_buffer)
         else:
             # We draw the polygon to the screen
             if (USE_FX_POLY_FILLER_SIM):
-                fx_sim_draw_polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face['vertex_indices']])
+                fx_sim_draw_polygon(frame_buffer, colors[color_idx], face['vertex_indices'], screen_vertices)
             else:
                 pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
             
