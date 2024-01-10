@@ -110,20 +110,25 @@ def run():
         nr_of_lines_to_draw = 150
             
         # FIXME: we need to calculate the ACTUAL x1 and x2 values (with SUBPIXEL precsion!)
-        x1 = int(x_top)
-        x2 = int(x_top)
+        x1 = int(x_top) + 0.5
+        x2 = int(x_top) + 0.5
         
-        y_start = int(y_top)
+# FIXME: is this CORRECT?
+        y_start = int(y_top) + 0.5
             
         line_color = (0xFF, 0xFF, 0xFF)
         
         for y_in_part in range(nr_of_lines_to_draw):
             y_screen = y_start + y_in_part
-            pygame.draw.line(frame_buffer, line_color, (x1,y_screen), (x2,y_screen), 1)
             
 # FIXME: x1 and x2 are NOT ACCURATE!
-            x1 += (x1_half_slope / 512) * 2
-            x2 += (x2_half_slope / 512) * 2
+            x1 += x1_half_slope / 512
+            x2 += x2_half_slope / 512
+            pygame.draw.line(frame_buffer, line_color, (x1,y_screen), (x2-1,y_screen), 1)
+            
+# FIXME: x1 and x2 are NOT ACCURATE!
+            x1 += x1_half_slope / 512
+            x2 += x2_half_slope / 512
         
         screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (0, 0))
         
