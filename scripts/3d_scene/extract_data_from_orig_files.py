@@ -564,12 +564,36 @@ def generate_obj_text_for_manual_object(u2_object, vertex_index_start):
     obj_text = ""
     
     obj_text += "o " + u2_object['name'] + "\n"
-    for vertex_raw in u2_object['vertices_raw']:
-        vertex_x = vertex_raw[0] / 256
-        vertex_y = vertex_raw[1] / 256
+    for vertex_nr, vertex_raw in enumerate(u2_object['vertices_raw']):
         if (u2_object['type'] == 'ground'):
+        
+            # We assume this order of the vertices for the 'ground' faces
+            
+            # 0: NE
+            # 1: NW
+            # 2: SW
+            # 3: SE
+            
+# FIXME: we we *REALLY* need this?
+            # We adjust x and y so that the ground rectangle becomes a little larger/wider (to prevent missing a few SKY_BLACK pixels)
+            adjusted_x = None
+            adjusted_y = None
+            if (vertex_nr == 0 or vertex_nr == 3):
+                adjusted_x = vertex_raw[0] + 100  # East
+            else:
+                adjusted_x = vertex_raw[0] - 100  # West
+        
+            if (vertex_nr == 0 or vertex_nr == 1):
+                adjusted_y = vertex_raw[1] + 100  # North
+            else:
+                adjusted_y = vertex_raw[1] - 100  # South
+                
+            vertex_x = adjusted_x / 256
+            vertex_y = adjusted_y / 256
             vertex_z = 33 / 256
         elif (u2_object['type'] == 'free'):
+            vertex_x = vertex_raw[0] / 256
+            vertex_y = vertex_raw[1] / 256
             vertex_z = vertex_raw[2] / 256
         
         obj_text += "v "
