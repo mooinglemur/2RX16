@@ -60,6 +60,31 @@ pygame_screen_size = (screen_width*scale, screen_height*scale)
 screen = pygame.display.set_mode(pygame_screen_size)
 clock = pygame.time.Clock()
 
+fx_state = {
+    'x1_pos' : int(256),  # This is a 11.9 fixed point value (so you should divide by 512 to get the real value)
+    'x2_pos' : int(256),  # This is a 11.9 fixed point value (so you should divide by 512 to get the real value)
+    'x1_incr' : int(0),   # This is a 6.9 fixed point value (so you should divide by 512 to get the real value)
+    'x2_incr' : int(0),   # This is a 6.9 fixed point value (so you should divide by 512 to get the real value)
+}
+
+def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_lines_to_draw):
+
+    for y_in_part in range(nr_of_lines_to_draw):
+        y_screen = y_start + y_in_part
+
+        # This is 'equivalent' of what happens when reading from DATA1
+        fx_state['x1_pos'] += fx_state['x1_incr']
+        fx_state['x2_pos'] += fx_state['x2_incr']
+        
+        x1 = fx_state['x1_pos'] / 512
+        x2 = fx_state['x2_pos'] / 512
+        
+        pygame.draw.line(frame_buffer, line_color, (x1, y_screen), (x2-1, y_screen), 1)
+        
+        # This is 'equivalent' of what happens when reading from DATA0
+        fx_state['x1_pos'] += fx_state['x1_incr']
+        fx_state['x2_pos'] += fx_state['x2_incr']
+    
 
 def run():
 
@@ -91,6 +116,8 @@ def run():
         
         frame_buffer.fill(MAGENTA)
 
+        line_color = (0xFF, 0xFF, 0xFF)
+
         # FIXME: we are using a starting position that has INTEGERS for now. We want to be able to use SUBPIXELS instead!
         x_top = 90
         y_top = 20
@@ -107,46 +134,27 @@ def run():
         x1_half_slope = -110   # this moves -0.21484375 pixels for each half step (minus means: to the left)
         x2_half_slope = +380  # this moves  0.7421875  pixels for each half step (plus means: to the right)
         
-        nr_of_lines_to_draw = 150
-            
+        fx_state['x1_incr'] = x1_half_slope
+        fx_state['x2_incr'] = x2_half_slope
+        
         # FIXME: we need to calculate the ACTUAL x1 and x2 values (with SUBPIXEL precsion!)
-        x1 = int(x_top) + 0.5
-        x2 = int(x_top) + 0.5
+        fx_state['x1_pos'] = int(x_top) * 512 + 256
+        fx_state['x2_pos'] = int(x_top) * 512 + 256
         
-# FIXME: is this CORRECT?
-        y_start = int(y_top) + 0.5
-            
-        line_color = (0xFF, 0xFF, 0xFF)
+        y_start = int(y_top)
+        nr_of_lines_to_draw = 150
         
-        for y_in_part in range(nr_of_lines_to_draw):
-            y_screen = y_start + y_in_part
-            
-# FIXME: x1 and x2 are NOT ACCURATE!
-            x1 += x1_half_slope / 512
-            x2 += x2_half_slope / 512
-            pygame.draw.line(frame_buffer, line_color, (x1,y_screen), (x2-1,y_screen), 1)
-            
-# FIXME: x1 and x2 are NOT ACCURATE!
-            x1 += x1_half_slope / 512
-            x2 += x2_half_slope / 512
-        
+        draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_lines_to_draw)
         y_start = y_start + nr_of_lines_to_draw
+        
+        # Setting a new (half) slope for x2
         x2_half_slope = -1590  # this moves 3.10546875  pixels for each half step (minus means: to the left)
+        fx_state['x2_incr'] = x2_half_slope
         nr_of_lines_to_draw = 50
-        x2 = int(x2) + 0.5
+        # This is equivalent of what happens when setting the new x2_incr
+        fx_state['x2_pos'] = (fx_state['x2_pos'] // 512) * 512 + 256
 
-        for y_in_part in range(nr_of_lines_to_draw):
-            y_screen = y_start + y_in_part
-            
-# FIXME: x1 and x2 are NOT ACCURATE!
-            x1 += x1_half_slope / 512
-            x2 += x2_half_slope / 512
-            pygame.draw.line(frame_buffer, line_color, (x1,y_screen), (x2-1,y_screen), 1)
-            
-# FIXME: x1 and x2 are NOT ACCURATE!
-            x1 += x1_half_slope / 512
-            x2 += x2_half_slope / 512
-
+        draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_lines_to_draw)
         
         screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (0, 0))
         
