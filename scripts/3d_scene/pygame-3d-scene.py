@@ -43,6 +43,7 @@ COLOR_IDX_SKY_BLACK = 253
 
 random.seed(10)
 
+REMOVE_INVISIBLE_FACES = False
 MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
@@ -1363,6 +1364,16 @@ def add_face_with_frame_buffer(face_surface, frame_buffer):
     face_pxarray.close()
 
 
+
+
+def fx_sim_draw_polygon(draw_buffer, line_color, vertices):
+
+# FIXME! REMOVE THIS!
+#    face_vertices = vertices + [vertices[0]]
+#    pygame.draw.polygon(draw_buffer, line_color, face_vertices, 0)
+
+    
+
 def draw_and_export(screen_vertices, sorted_faces):
 
 # FIXME: this sorter is probably the wrong way around now, since y is not flipped anymore in the projected_vertices!
@@ -1407,11 +1418,19 @@ def draw_and_export(screen_vertices, sorted_faces):
         if (DEBUG_COUNT_REDRAWS):
             # We draw the polygon to the face_buffer
             face_buffer.fill((0,0,0))
-            pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
+            
+            if (USE_FX_POLY_FILLER_SIM):
+                fx_sim_draw_polygon(face_buffer, 1, [screen_vertices[i] for i in face['vertex_indices']])
+            else:
+                pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
             add_face_with_frame_buffer(face_buffer, frame_buffer)
         else:
             # We draw the polygon to the screen
-            pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
+            if (USE_FX_POLY_FILLER_SIM):
+                fx_sim_draw_polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face['vertex_indices']])
+            else:
+                pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
+            
         if (DEBUG_DRAW_TRIANGLE_BOUNDARIES):
             pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i] for i in face_vertex_indices], 1)
         
@@ -1851,9 +1870,10 @@ while running:
 
     visible_sorted_faces = []
     for face_index, face in enumerate(sorted_faces):
-        if (face_index not in visible_face_indexes):    
-            # We skip faces that are not visible (aka that are overdrawn completely)
-            continue
+        if REMOVE_INVISIBLE_FACES:
+            if (face_index not in visible_face_indexes):    
+                # We skip faces that are not visible (aka that are overdrawn completely)
+                continue
         visible_sorted_faces.append(face)
     
     if (MERGE_FACES):
