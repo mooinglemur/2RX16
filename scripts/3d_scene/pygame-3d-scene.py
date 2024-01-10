@@ -43,22 +43,23 @@ COLOR_IDX_SKY_BLACK = 253
 
 random.seed(10)
 
-MERGE_FACES = False
+MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
+USE_FX_POLY_FILLER_SIM = True
 
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = False
-DEBUG_SORTING = False
-DEBUG_DRAW_TRIANGLE_BOUNDARIES = True  # Very informative!
+DEBUG_SORTING = True
+DEBUG_DRAW_TRIANGLE_BOUNDARIES = True # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = False
+DEBUG_SORTING_LIMIT_OBJECTS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -1452,244 +1453,8 @@ def draw_and_export(screen_vertices, sorted_faces):
     screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (frame_buffer_on_screen_x, frame_buffer_on_screen_y))
         
 # FIXME!
-    '''
-    
-        if (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
-        
-        # Triangle type (bit 0 is X high bit)
-        #  $00 - two part, change X1
-        #  $40 - two part, change X2
-        #  $80 - part 1 only
-        #  $C0 - part 2 only
-        #     bit 1 is X2 high bit
-        #  $FF - end of triangle list for this frame
-        
-        # Triangle type 00
-        # 
-        # 01 - Y
-        # 02 - X
-        # 03 - X1 inc low
-        # 04 - X1 inc high
-        # 05 - X2 inc low
-        # 06 - X2 inc high
-        # 07 - color index
-        # 08 - row count part 1
-        # 09 - new X1 inc low
-        # 0a - new X1 inc high
-        # 0b - row count part 2
-
-        # Triangle type 40
-        # 
-        # 01 - Y
-        # 02 - X
-        # 03 - X1 inc low
-        # 04 - X1 inc high
-        # 05 - X2 inc low
-        # 06 - X2 inc high
-        # 07 - color index
-        # 08 - row count part 1
-        # 09 - new X2 inc low
-        # 0a - new X2 inc high
-        # 0b - row count part 2
-
-        # Triangle type 80
-        # 
-        # 01 - Y
-        # 02 - X
-        # 03 - X1 inc low
-        # 04 - X1 inc high
-        # 05 - X2 inc low
-        # 06 - X2 inc high
-        # 07 - color index
-        # 08 - row count
-
-        # Triangle type c0
-        # 
-        # 01 - Y
-        # 02 - X
-        # 03 - X2
-        # 04 - X1 inc low
-        # 05 - X1 inc high
-        # 06 - X2 inc low
-        # 07 - X2 inc high
-        # 08 - color index
-        # 09 - row count
-
-        color_idx_out = (color_idx+1) | ((color_idx+1)*16)
-
-        # find top two points of triangle
-        face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
-        sorted_points = sorted(face_vertex_indices, key=y_sorter, reverse=False)
-
-        v0 = list(copy.deepcopy(projected_vertices[sorted_points[0]]))
-        v1 = list(copy.deepcopy(projected_vertices[sorted_points[1]]))
-        v2 = list(copy.deepcopy(projected_vertices[sorted_points[2]]))
-
-        if v2[1] < 0:
-            print("Fully offscreen")
-            continue # fully offscreen
-
-        if v1[1] <= 0 and v0[1] < 0:
-            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
-
-            dx_1 = v1[0] - v0[0]
-            dy_1 = v1[1] - v0[1]
-            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
-            dx_2 = v2[0] - v0[0]
-            dy_2 = v2[1] - v0[1]
-            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
-            v0[0] = round(v0[0] + (slope_2 * dy_1))
-            v0[1] = v1[1]
-
-            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
-
-            dx_1 = v2[0] - v0[0]
-            dy_1 = v2[1] - v0[1]
-            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
-            dx_2 = v2[0] - v1[0]
-            dy_2 = v2[1] - v1[1]
-            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
-            d0 = 0 - v0[1]
-
-            v0[0] = round(math.copysign(1, v0[0] - v1[0]) + v0[0] + (slope_1 * d0))
-            v1[0] = round(math.copysign(1, v1[0] - v0[0]) + v1[0] + (slope_2 * d0))
-
-            v0[1] = 0
-            v1[1] = 0
-
-            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
-            print(f"v2 {v2[0]} {v2[1]}")
-            #time.sleep(2)
-
-        if v2[1] == v1[1] and v1[1] == v0[1]:
-            print(f"v0 {v0[0]} {v0[1]} v1 {v1[0]} {v1[1]}")
-            print(f"v2 {v2[0]} {v2[1]}")
-            #time.sleep(10)
-            continue
-
-        if (v0[1] == v1[1]): # Part 2 only
-            print("Part 2 only")
-            dx_1 = v2[0] - v0[0]
-            dy_1 = v2[1] - v0[1]
-            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
-            dx_2 = v2[0] - v1[0]
-            dy_2 = v2[1] - v1[1]
-            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
-            rowcount = v2[1] - v1[1]
-            if v0[0] < v1[0]:
-                slope_x1 = slope_1
-                slope_x2 = slope_2
-                x1 = v0[0]
-                x2 = v1[0]
-            else:
-                slope_x1 = slope_2
-                slope_x2 = slope_1
-                x1 = v1[0]
-                x2 = v0[0]
-            yy = v0[1]
-            print(f"Y {yy} X1 {x1} X2 {x2} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount}")
-            f.write(b'\xc0')                  # 00 - type C0
-            if (yy < 0):
-                assert y > -55
-                f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
-            else:
-                f.write(yy.to_bytes(1, 'little')) # 01 - Y
-            f.write(x1.to_bytes(1, 'little')) # 02 - X1
-            f.write(x2.to_bytes(1, 'little')) # 03 - X1
-            f.write(slope2bytes(slope_x1))    # 04-05 - X1 inc
-            f.write(slope2bytes(slope_x2))    # 06-07 - X2 inc
-            f.write(color_idx_out.to_bytes(1, 'little')) # 08 color index
-            f.write(rowcount.to_bytes(1, 'little')) # 09 row count
-        elif (v1[1] == v2[1]): # Part 1 only
-            print("Part 1 only")
-            dx_1 = v1[0] - v0[0]
-            dy_1 = v1[1] - v0[1]
-            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
-            dx_2 = v2[0] - v0[0]
-            dy_2 = v2[1] - v0[1]
-            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
-            rowcount = v1[1] - v0[1]
-            if v1[0] < v2[0]:
-                slope_x1 = slope_1
-                slope_x2 = slope_2
-            else:
-                slope_x1 = slope_2
-                slope_x2 = slope_1
-            xx = v0[0]
-            yy = v0[1]
-            print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount}")
-            if v0[0] == v1[0]:
-                #time.sleep(5)
-                pass
-            f.write(b'\x80')                  # 00 - type 80
-            if (yy < 0):
-                assert y > -55
-                f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
-            else:
-                f.write(yy.to_bytes(1, 'little')) # 01 - Y
-            f.write(xx.to_bytes(1, 'little')) # 02 - X
-            f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
-            f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
-            f.write(color_idx_out.to_bytes(1, 'little')) # 07 color index
-            f.write(rowcount.to_bytes(1, 'little')) # 08 row count
-
-        else:
-            dx_1 = v1[0] - v0[0]
-            dy_1 = v1[1] - v0[1]
-            slope_1 = dx_1 / dy_1 if dy_1 != 0 else 0
-            dx_2 = v2[0] - v0[0]
-            dy_2 = v2[1] - v0[1]
-            slope_2 = dx_2 / dy_2 if dy_2 != 0 else 0
-            rowcount1 = v1[1] - v0[1]
-            if (slope_1 > slope_2): # Two part, change X2
-                print("Two part change X2")
-                slope_x1 = slope_2
-                slope_x2 = slope_1
-                dx_x2_new = v2[0] - v1[0]
-                dy_x2_new = v2[1] - v1[1]
-                slope_x2_new = dx_x2_new / dy_x2_new if dy_x2_new != 0 else 0
-                rowcount2 = v2[1] - v1[1]
-                xx = v0[0]
-                yy = v0[1]
-                print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount1} New X2 {slope_x2_new} Count {rowcount2}")
-                f.write(b'\x40')                  # 00 - type 40
-                if (yy < 0):
-                    assert y > -55
-                    f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
-                else:
-                    f.write(yy.to_bytes(1, 'little')) # 01 - Y
-                f.write(xx.to_bytes(1, 'little')) # 02 - X
-                f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
-                f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
-                f.write(color_idx_out.to_bytes(1, 'little')) # 07 color index
-                f.write(rowcount1.to_bytes(1, 'little')) # 08 row count 1
-                f.write(slope2bytes(slope_x2_new)) # 09-0a - new X2 inc
-                f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
-            else: # Two part, change X1
-                print("Two part change X1")
-                slope_x1 = slope_1
-                slope_x2 = slope_2
-                dx_x1_new = v2[0] - v1[0]
-                dy_x1_new = v2[1] - v1[1]
-                slope_x1_new = dx_x1_new / dy_x1_new if dy_x1_new != 0 else 0
-                rowcount2 = v2[1] - v1[1]
-                xx = v0[0]
-                yy = v0[1]
-                print(f"Y {yy} X {xx} Slope X1 {slope_x1} Slope X2 {slope_x2} Count {rowcount1} New X1 {slope_x1_new} Count {rowcount2}")
-                f.write(b'\x00')                  # 00 - type 00
-                if (yy < 0):
-                    assert y > -55
-                    f.write(yy.to_bytes(1, 'little', signed=True)) # 01 - Y
-                else:
-                    f.write(yy.to_bytes(1, 'little')) # 01 - Y
-                f.write(xx.to_bytes(1, 'little')) # 02 - X
-                f.write(slope2bytes(slope_x1))    # 03-04 - X1 inc
-                f.write(slope2bytes(slope_x2))    # 05-06 - X2 inc
-                f.write(color_idx_out.to_bytes(1, 'little')) # 07 color index
-                f.write(rowcount1.to_bytes(1, 'little')) # 08 row count 1
-                f.write(slope2bytes(slope_x1_new)) # 09-0a - new X1 inc
-                f.write(rowcount2.to_bytes(1, 'little')) # 0b row count 1
-        '''
+#        if (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
+#            output to FILE! Here?
 
 # FIXME: what should we do here?
     tris_seen = True
@@ -1716,7 +1481,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 226
+    frame_nr = 85
     increment_frame_by = 0
 
 material_info = load_material_info()
@@ -1908,7 +1673,7 @@ while running:
         
         for current_object_name in world_objects:
             # FIXME: HARDCODED!
-            if (current_object_name != 'kulmatalot'):
+            if (current_object_name != 'fcirto01'):
                 continue
                 
             filtered_world_objects[current_object_name] = world_objects[current_object_name]
@@ -1917,9 +1682,9 @@ while running:
             
             filtered_object_faces = []
             for object_face_index, object_face in enumerate(object_faces):
-            
-                # FIXME: HARDCODED: First wall in first seconds
-                if (object_face_index != 2):  
+
+                # FIXME: HARDCODED: Window on second building
+                if (object_face_index >= 8):  
                     continue
                     
                 filtered_object_faces.append(object_face)

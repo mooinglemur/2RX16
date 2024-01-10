@@ -579,14 +579,14 @@ def generate_obj_text_for_manual_object(u2_object, vertex_index_start):
             adjusted_x = None
             adjusted_y = None
             if (vertex_nr == 0 or vertex_nr == 3):
-                adjusted_x = vertex_raw[0] + 100  # East
+                adjusted_x = vertex_raw[0] + 250  # East
             else:
-                adjusted_x = vertex_raw[0] - 100  # West
+                adjusted_x = vertex_raw[0] - 250  # West
         
             if (vertex_nr == 0 or vertex_nr == 1):
-                adjusted_y = vertex_raw[1] + 100  # North
+                adjusted_y = vertex_raw[1] + 250  # North
             else:
-                adjusted_y = vertex_raw[1] - 100  # South
+                adjusted_y = vertex_raw[1] - 250  # South
                 
             vertex_x = adjusted_x / 256
             vertex_y = adjusted_y / 256
