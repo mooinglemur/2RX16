@@ -47,20 +47,20 @@ REMOVE_INVISIBLE_FACES = True
 MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
-USE_FX_POLY_FILLER_SIM = False
+USE_FX_POLY_FILLER_SIM = True
 
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DRAW_BLACK_PIXELS = True
-DEBUG_SORTING = False
-DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
+DRAW_BLACK_PIXELS = False
+DEBUG_SORTING = True
+DEBUG_DRAW_TRIANGLE_BOUNDARIES = True # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = False
+DEBUG_SORTING_LIMIT_OBJECTS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -1364,6 +1364,21 @@ def add_face_with_frame_buffer(face_surface, frame_buffer):
     face_pxarray.close()
 
 
+def top_vertices_are_at_the_start(top_vertex_indices, vertex_indices):
+    if len(top_vertex_indices) == 1:
+        if top_vertex_indices[0] in vertex_indices[0:1]:
+            return True
+        else:
+            return False
+    elif len(top_vertex_indices) == 2:
+        if (top_vertex_indices.keys()[0] in vertex_indices[0:2]) and (top_vertex_indices.keys()[1] in vertex_indices[0:2]):
+            return True
+        else:
+            return False
+        
+    else:
+        print("ERROR: we have more than TWO top vertices!!")
+        return None
 
 
 def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices):
@@ -1393,6 +1408,70 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
     #  - set x1 incr or x2 incr accordingly
     #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
     #  - Stop until left and right reach the end
+    
+    #print(vertex_indices)
+    
+    top_y = None
+    bottom_y = None
+    
+    # There can be 1-2 top and bottom vertices. We keep a record of them.
+    top_vertex_indices = None
+    bottom_vertex_indices = None
+    
+    for vertex_index in vertex_indices:
+        screen_vertex = screen_vertices[vertex_index]
+        
+        vertex_y = screen_vertex[1]
+        
+        if (top_y is None or vertex_y < top_y):
+            top_y = vertex_y
+            top_vertex_indices = []  # We create a new list (removing any old candidates)
+            top_vertex_indices.append(vertex_index)
+        elif (vertex_y == top_y):
+            top_vertex_indices.append(vertex_index)
+            
+        if (bottom_y is None or vertex_y > bottom_y):
+            bottom_y = vertex_y
+            bottom_vertex_indices = []  # We create a new list (removing any old candidates)
+            bottom_vertex_indices.append(vertex_index)
+        elif (vertex_y == bottom_y):
+            bottom_vertex_indices.append(vertex_index)
+            
+    # We rotate the list of vertex indices until the top vertice(s) are at the start of the list
+    while (not top_vertices_are_at_the_start(top_vertex_indices, vertex_indices)):
+        vertex_indices = vertex_indices[1:] + vertex_indices[:1]
+
+    # If we have 2 top vertices we rotate once more, so the two top vertices are at either end of the list
+    if (len(top_vertex_indices) == 2):
+        vertex_indices = vertex_indices[1:] + vertex_indices[:1]
+
+    # We create a left list and a right list of vertices (that contain the vertices that are that side of the polygon)
+    left_vertices = []
+    for vertex_index in vertex_indices:
+        screen_vertex = screen_vertices[vertex_index]
+        left_vertices.append(screen_vertex)
+        # We keep adding vertices until we reach the (first) bottom vertex
+        if (vertex_index in bottom_vertex_indices):
+            break
+
+    # If we have 1 top vertex we rotate once more, so the top vertex it at the end of the list
+    if (len(top_vertex_indices) == 1):
+        vertex_indices = vertex_indices[1:] + vertex_indices[:1]
+        
+    right_vertices = []
+    vertex_indices.reverse()
+    for vertex_index in vertex_indices:
+        screen_vertex = screen_vertices[vertex_index]
+        right_vertices.append(screen_vertex)
+        # We keep adding vertices until we reach the (first) bottom vertex
+        if (vertex_index in bottom_vertex_indices):
+            break
+    
+    print(left_vertices)
+    print(right_vertices)
+    #print(top_y)
+    #print(bottom_y)
+    
     
     return file_data
 
