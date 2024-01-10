@@ -76,12 +76,12 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         fx_state['x1_pos'] += fx_state['x1_incr']
         fx_state['x2_pos'] += fx_state['x2_incr']
         
-        x1 = fx_state['x1_pos'] / 512
-        x2 = fx_state['x2_pos'] / 512
+        x1 = int(fx_state['x1_pos'] / 512)
+        x2 = int(fx_state['x2_pos'] / 512)
         
         pygame.draw.line(frame_buffer, line_color, (x1, y_screen), (x2-1, y_screen), 1)
         
-        # This is 'equivalent' of what happens when reading from DATA0
+        # This is 'equivalent' of what happens when reading from DATA0 (this (effectively) also increments y_in_part)
         fx_state['x1_pos'] += fx_state['x1_incr']
         fx_state['x2_pos'] += fx_state['x2_incr']
     
@@ -129,6 +129,8 @@ def run():
         #x_right = ..
         #y_right = ..
         
+        # == First Part ==
+        
         # These half slopes are 6.9 fixed point signed values. This means you have to take the real number and multiply by 512 (eg 256 is 0.5)
         #   Or in other words: take the 6.9 signed value and divide by 512 to get the real value
         x1_half_slope = -110   # this moves -0.21484375 pixels for each half step (minus means: to the left)
@@ -147,12 +149,16 @@ def run():
         draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_lines_to_draw)
         y_start = y_start + nr_of_lines_to_draw
         
+        # == Second Part ==
+        
         # Setting a new (half) slope for x2
+        
         x2_half_slope = -1590  # this moves 3.10546875  pixels for each half step (minus means: to the left)
         fx_state['x2_incr'] = x2_half_slope
         nr_of_lines_to_draw = 50
+        
         # This is equivalent of what happens when setting the new x2_incr
-        fx_state['x2_pos'] = (fx_state['x2_pos'] // 512) * 512 + 256
+        fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
 
         draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_lines_to_draw)
         
