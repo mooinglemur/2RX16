@@ -130,6 +130,24 @@ def run():
             x1 += x1_half_slope / 512
             x2 += x2_half_slope / 512
         
+        y_start = y_start + nr_of_lines_to_draw
+        x2_half_slope = -1590  # this moves 3.10546875  pixels for each half step (minus means: to the left)
+        nr_of_lines_to_draw = 50
+        x2 = int(x2) + 0.5
+
+        for y_in_part in range(nr_of_lines_to_draw):
+            y_screen = y_start + y_in_part
+            
+# FIXME: x1 and x2 are NOT ACCURATE!
+            x1 += x1_half_slope / 512
+            x2 += x2_half_slope / 512
+            pygame.draw.line(frame_buffer, line_color, (x1,y_screen), (x2-1,y_screen), 1)
+            
+# FIXME: x1 and x2 are NOT ACCURATE!
+            x1 += x1_half_slope / 512
+            x2 += x2_half_slope / 512
+
+        
         screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (0, 0))
         
         pygame.display.update()
