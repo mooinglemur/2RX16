@@ -575,18 +575,19 @@ def generate_obj_text_for_manual_object(u2_object, vertex_index_start):
             # 3: SE
             
 # FIXME: we we *REALLY* need this?
+            MARGIN = 100
             # We adjust x and y so that the ground rectangle becomes a little larger/wider (to prevent missing a few SKY_BLACK pixels)
             adjusted_x = None
             adjusted_y = None
             if (vertex_nr == 0 or vertex_nr == 3):
-                adjusted_x = vertex_raw[0] + 250  # East
+                adjusted_x = vertex_raw[0] + MARGIN  # East
             else:
-                adjusted_x = vertex_raw[0] - 250  # West
+                adjusted_x = vertex_raw[0] - MARGIN  # West
         
             if (vertex_nr == 0 or vertex_nr == 1):
-                adjusted_y = vertex_raw[1] + 250  # North
+                adjusted_y = vertex_raw[1] + MARGIN  # North
             else:
-                adjusted_y = vertex_raw[1] - 250  # South
+                adjusted_y = vertex_raw[1] - MARGIN  # South
                 
             vertex_x = adjusted_x / 256
             vertex_y = adjusted_y / 256
