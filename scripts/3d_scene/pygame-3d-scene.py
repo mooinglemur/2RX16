@@ -70,6 +70,8 @@ screen_width = 320
 screen_height = 200
 scale = 3            # this is only used to scale up the screen in pygame
 
+fx_state = {}
+
 # FIXME: we took the FOV from U2E.INF (which might not be completely accurate, since its converted to a 16bit number first)
 if SCENE == 'U2E':
     fov_degrees = 40
@@ -1381,7 +1383,38 @@ def top_vertices_are_at_the_start(top_vertex_indices, vertex_indices):
         return None
 
 
+def reset_fx_state(fx_state):
+    fx_state = {
+        'x1_pos' : int(256),  # This is a 11.9 fixed point value (so you should divide by 512 to get the real value)
+        'x2_pos' : int(256),  # This is a 11.9 fixed point value (so you should divide by 512 to get the real value)
+        'x1_incr' : int(0),   # This is a 6.9 fixed point value (so you should divide by 512 to get the real value)
+        'x2_incr' : int(0),   # This is a 6.9 fixed point value (so you should divide by 512 to get the real value)
+    }
+
+def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_lines_to_draw):
+
+    for y_in_part in range(nr_of_lines_to_draw):
+        y_screen = y_start + y_in_part
+
+        # This is 'equivalent' of what happens when reading from DATA1
+        fx_state['x1_pos'] += fx_state['x1_incr']
+        fx_state['x2_pos'] += fx_state['x2_incr']
+        
+        x1 = int(fx_state['x1_pos'] / 512)
+        x2 = int(fx_state['x2_pos'] / 512)
+        
+        pygame.draw.line(frame_buffer, line_color, (x1, y_screen), (x2-1, y_screen), 1)
+        
+        # This is 'equivalent' of what happens when reading from DATA0 (this (effectively) also increments y_in_part)
+        fx_state['x1_pos'] += fx_state['x1_incr']
+        fx_state['x2_pos'] += fx_state['x2_incr']
+
+
+
 def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices):
+
+# FIXME: do we need to this this for each polygon?
+    reset_fx_state(fx_state)
 
     file_data = []
 # FIXME! REMOVE THIS!
@@ -1466,6 +1499,119 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
         # We keep adding vertices until we reach the (first) bottom vertex
         if (vertex_index in bottom_vertex_indices):
             break
+    
+    current_left_index = 0
+    current_right_index = 0
+
+# FIXME: setup the INITIAL position(s) and slopes!
+#          if x1 == x2 keep a record of THAT!
+
+# Next to change Slope
+    next_side_to_change_slope = None
+    left_half_slope = None
+    right_half_slope = None
+    next_left_vertex = left_vertices[current_left_index+1]
+    next_right_vertex = right_vertices[current_right_index+1]
+    current_left_vertex = left_vertices[current_left_index]
+    current_right_vertex = right_vertices[current_right_index]
+    
+    left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
+    right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
+    
+    left_pos = current_left_vertex[0]
+    right_pos = current_right_vertex[0]
+    
+    fx_state['x1_pos'] = int(left_pos) * 512 + 256
+    fx_state['x2_pos'] = int(right_pos) * 512 + 256
+
+    fx_state['x1_incr'] = left_half_slope
+    fx_state['x2_incr'] = right_half_slope
+        
+    # We take the top y as starting y position
+    current_y_position = top_y
+# FIXME: what if we reached the last vertex? then nothing has to be changed, but we need to stop next time!
+    # Check which vertex is first (looking at the y-coordinate)
+    if (next_left_vertex[1] < next_right_vertex[1]):
+        next_side_to_change_slope = 'left'
+        nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
+    elif (next_left_vertex[1] > next_right_vertex[1]):
+        next_side_to_change_slope = 'right'
+        nr_of_lines_to_draw = next_right_vertex[1] - current_y_position
+    else:
+        # Both are at the same y, so they both have to change
+        next_side_to_change_slope = 'both'
+        nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
+
+# FIXME: put this in a proper LOOP!
+    draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
+    current_y_position += nr_of_lines_to_draw
+    
+# FIXME: make sure 'none' can HAPPEN!
+# FIXME: this should be a WHILE LOOP!
+    keep_drawing_parts = True
+    while (keep_drawing_parts):
+        if next_side_to_change_slope == 'right':
+            current_right_index += 1
+            
+            next_right_vertex = right_vertices[current_right_index+1]
+            current_right_vertex = right_vertices[current_right_index]
+            
+            right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
+            
+            fx_state['x2_incr'] = right_half_slope
+            
+            # This is equivalent of what happens when setting the new x2_incr
+            fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
+            
+        elif next_side_to_change_slope == 'left':
+            current_left_index += 1
+            
+            next_left_vertex = left_vertices[current_left_index+1]
+            current_left_vertex = left_vertices[current_left_index]
+            
+            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
+            
+            fx_state['x1_incr'] = left_half_slope
+            
+            # This is equivalent of what happens when setting the new x1_incr
+            fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
+            
+            
+        else:  # both
+# FIXME!
+            pass
+            
+# FIXME: what if we reached the last vertex? then nothing has to be changed, but we need to stop next time!
+        # Check which vertex is first (looking at the y-coordinate)
+        if (next_left_vertex[1] < next_right_vertex[1]):
+            next_side_to_change_slope = 'left'
+            nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
+        elif (next_left_vertex[1] > next_right_vertex[1]):
+            next_side_to_change_slope = 'right'
+            nr_of_lines_to_draw = next_right_vertex[1] - current_y_position
+        else:
+            # Both are at the same y, so they both have to change
+            next_side_to_change_slope = 'both'
+            nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
+
+    # FIXME: put this in a proper LOOP!
+        draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
+        current_y_position += nr_of_lines_to_draw
+        
+        if ((current_right_index+1 == len(right_vertices)-1) and (current_left_index+1 == len(left_vertices)-1)):
+            keep_drawing_parts = False
+
+
+    print(next_side_to_change_slope)
+    print(nr_of_lines_to_draw)
+    print(left_half_slope)
+    print(right_half_slope)
+    keep_drawing = True
+#    while(keep_drawing):
+    
+# FIXME: how do we know there *is* a NEXT vertex?
+#        if (
+    
     
     print(left_vertices)
     print(right_vertices)
