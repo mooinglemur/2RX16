@@ -60,7 +60,7 @@ DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = True
+DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -68,7 +68,7 @@ DRAW_INTERSECTION_POINTS = False
 
 screen_width = 320
 screen_height = 200
-scale = 3            # this is only used to scale up the screen in pygame
+scale = 0.5          # this is only used to scale up the screen in pygame
 
 fx_state = {}
 
@@ -871,19 +871,22 @@ def clip_2d_vertex_against_edge(combined_vertices, inside_vertex_index, outside_
         if edge_name == 'LEFT':
             percentage_to_keep = (inside_vertex[0] - LEFT_EDGE_X) / (inside_vertex[0] - outside_vertex[0])
             y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-            clipped_vertex = (LEFT_EDGE_X, y_clipped)
+            clipped_vertex = (LEFT_EDGE_X, y_clipped, {})
         elif edge_name == 'RIGHT':
             percentage_to_keep = (RIGHT_EDGE_X - inside_vertex[0]) / (outside_vertex[0] - inside_vertex[0])
             y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-            clipped_vertex = (RIGHT_EDGE_X, y_clipped)
+            clipped_vertex = (RIGHT_EDGE_X, y_clipped, {})
         elif edge_name == 'BOTTOM':
             percentage_to_keep = (inside_vertex[1] - BOTTOM_EDGE_Y) / (inside_vertex[1] - outside_vertex[1])
             x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-            clipped_vertex = (x_clipped, BOTTOM_EDGE_Y)
+            clipped_vertex = (x_clipped, BOTTOM_EDGE_Y, {})
         elif edge_name == 'TOP':
             percentage_to_keep = (TOP_EDGE_Y - inside_vertex[1]) / (outside_vertex[1] - inside_vertex[1])
             x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-            clipped_vertex = (x_clipped, TOP_EDGE_Y)
+            clipped_vertex = (x_clipped, TOP_EDGE_Y, {})
+        
+        # HACK: we use the thrird index in the tuple to store a dict containing information about on which screen-edges a vertex lies!
+        clipped_vertex[2][edge_name] = True
         
         clipped_vertex_index = len(combined_vertices)
         combined_vertices.append(clipped_vertex)
@@ -977,7 +980,12 @@ def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name, creat
 def camera_clip_projected_triangles(projected_faces, projected_vertices):
 
     camera_clipped_projected_faces = []
-    camera_clipped_projected_vertices = copy.deepcopy(projected_vertices)
+    
+    camera_clipped_projected_vertices = []
+    for projected_vertex in projected_vertices:
+        # HACK: we add a dict to the vertices to store information about lying on screen-edges!
+        camera_clipped_projected_vertices.append((projected_vertex[0], projected_vertex[1], {}))
+    # REMOVE OLD: camera_clipped_projected_vertices = copy.deepcopy(projected_vertices)
     
     edge_names = ['LEFT', 'TOP', 'RIGHT', 'BOTTOM']
 
@@ -1107,6 +1115,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
         screen_vertex = [
             screen_x,
             screen_y,
+            projected_vertex[2]  # HACK: this contains the lies_on_screen_edges info!
         ]
         screen_vertices.append(screen_vertex)
     
@@ -1121,7 +1130,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         
         # We use the face_index as 'color'. So we can later on check whether a triangle has effectively changed any pixels (aka is visible)
-        pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i] for i in face_vertex_indices], 0)
+        pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i][0:2] for i in face_vertex_indices], 0)
 
         
     # Checking all pixels in the check_triangle_visibility_buffer and see which face_indexes are still in there. We should ONLY draw these!
@@ -1194,6 +1203,32 @@ def create_edge(from_vertex_index, to_vertex_index):
     return edge
 
 
+def second_vertex_can_be_removed(vertex_indices, screen_vertices):
+
+    nr_of_vertices_per_edge = {}
+    # Loop through the first 3 vertices
+    for vertex_nr in range(3):
+        screen_vertex = screen_vertices[vertex_indices[vertex_nr]]
+        
+        # HACK: we use the third index in the tuple for 'lies_on_screen_edges' info
+        lies_on_screen_edges = screen_vertex[2]
+        if (len(list(lies_on_screen_edges.keys())) > 0):
+            for edge_name in lies_on_screen_edges:
+                if (edge_name not in nr_of_vertices_per_edge):
+                    nr_of_vertices_per_edge[edge_name] = 0
+                nr_of_vertices_per_edge[edge_name] += 1
+                
+                # If all three vertices lie on the same edge, we assume we can remove the middle (= second) one
+                if nr_of_vertices_per_edge[edge_name] == 3:
+                    return True
+        else:
+            # One of the three first vertices does not lie at all on a screen edge, so we cant remove the second vertex
+            return False
+            
+    return False
+
+    
+
 def combine_faces (screen_vertices, sorted_faces):
 
 
@@ -1240,8 +1275,6 @@ def combine_faces (screen_vertices, sorted_faces):
             }
             face_a['merge_with_faces'].append(merge_info)
             
-# REMOVE            # FIXME: REMOVE: storing in ONE-direction (low index to high index) prevents recursive loops!
-
             merge_info = {
 # FIXME: we can simplify this to just the index (no dict)
                 'face_index' : face_a_index
@@ -1345,8 +1378,73 @@ def combine_faces (screen_vertices, sorted_faces):
         
         #print('<==========')
             
+            
+    # After merging there will be many faces that have 'redundant' vertices: vertices that lie in-line of each other
+    # We want to remove any unneeded vertices: when 3 (or more) lie on the same screen-edge we can remove all but the first and last
     
-    return merged_faces
+    # Important: sometimes a vertex has been clipped against TWO screen-edges! We keep track of this in vertex[2] (=dict containing lies_on_screen_edges) so we need to take this into account!
+    
+    cleaned_merged_faces = []
+    for merged_face in merged_faces:
+        cleaned_merged_face = copy.deepcopy(merged_face)
+
+        # We first check if there are any vertices that lie on any screen edge at all for this face
+        there_are_vertices_that_lie_on_any_screen_edge = False
+        first_edge_name_found = None
+        merged_vertex_indices = merged_face['vertex_indices']
+        for vertex_index in merged_vertex_indices:
+            screen_vertex = screen_vertices[vertex_index]
+            # HACK: we use the third index in the tuple for 'lies_on_screen_edges' info
+            lies_on_screen_edges = screen_vertex[2]
+            if (len(list(lies_on_screen_edges.keys())) > 0):
+                there_are_vertices_that_lie_on_any_screen_edge = True
+                first_edge_name_found = list(lies_on_screen_edges.keys())[0]
+                break
+        
+        if (there_are_vertices_that_lie_on_any_screen_edge):
+            # There are vertices on the screen edges, so we need to cleanup up this face
+            
+            cleaned_vertex_indices = copy.deepcopy(merged_vertex_indices)
+            
+            # First we rotate the vertex list so we know that there is a vertex at the start of the list that is the first in a series of vertices that lie on the same screen edge
+
+            while(True):
+                first_screen_vertex_index = cleaned_vertex_indices[0]
+                first_screen_vertex = screen_vertices[first_screen_vertex_index]
+                
+                last_screen_vertex_index = cleaned_vertex_indices[-1]
+                last_screen_vertex = screen_vertices[last_screen_vertex_index]
+                
+                # HACK: we use the third index in the tuple for 'lies_on_screen_edges' info
+                if (first_edge_name_found in first_screen_vertex[2] and
+                    not (first_edge_name_found in last_screen_vertex[2])):
+                    # We rotated enough so that the first vertex lies on the edge but the last vertex doesnt, meaning: our list starts with a vertex that is the first in a series of vertices that lie on the same screen edge
+                    break
+                else:
+                    cleaned_vertex_indices = cleaned_vertex_indices[1:] + cleaned_vertex_indices[:1]
+                    
+            # Look ahead 3 vertices: if the second can be removed, then we remove it. Otherwise we rotate. We do this until you reach the first vertex index one again
+# FIXME: POSSIBLE ISSUE: 2 vertices AND 2 edges in SEQUENCE!
+            first_screen_vertex_index = cleaned_vertex_indices[0]
+            while(True):
+                
+                if (second_vertex_can_be_removed(cleaned_vertex_indices, screen_vertices)):
+                    cleaned_vertex_indices.pop(1)
+                else:
+                    cleaned_vertex_indices = cleaned_vertex_indices[1:] + cleaned_vertex_indices[:1]
+                    if (cleaned_vertex_indices[0] == first_screen_vertex_index):
+                        break
+            
+            cleaned_merged_face['vertex_indices'] = cleaned_vertex_indices
+            
+        else:
+            # There are no vertices on the screen edges, so nothting to cleanup up for this face
+            pass
+
+        cleaned_merged_faces.append(cleaned_merged_face)
+            
+    
+    return cleaned_merged_faces
     
 
 def add_face_with_frame_buffer(face_surface, frame_buffer):
@@ -1373,7 +1471,7 @@ def top_vertices_are_at_the_start(top_vertex_indices, vertex_indices):
         else:
             return False
     elif len(top_vertex_indices) == 2:
-        if (top_vertex_indices.keys()[0] in vertex_indices[0:2]) and (top_vertex_indices.keys()[1] in vertex_indices[0:2]):
+        if (top_vertex_indices[0] in vertex_indices[0:2]) and (top_vertex_indices[1] in vertex_indices[0:2]):
             return True
         else:
             return False
@@ -1413,36 +1511,15 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
 
 def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices):
 
-# FIXME: do we need to this this for each polygon?
-    reset_fx_state(fx_state)
-
+# FIXME: fill the file_data!
     file_data = []
-# FIXME! REMOVE THIS!
-#    face_vertices = vertices + [vertices[0]]
-#    pygame.draw.polygon(draw_buffer, line_color, face_vertices, 0)
 
-    # TODO:
-    
-    # Setup:
+    # == Setup left and right lists ==
     # - Get top vertex (index)
     # - Get bottom vertex (index)
     # - Create left and right list
-    #   - Check if both top vertex_indexes are the same
-    #   - Check if both bottom vertex_indexes are the same
-    
-    # Drawing algo:
-    #  - Set x1 and x2 according to first in left/right list (NOTE: if the same we only have to export ONE in the data!)
-    #  - set left and right indexes to 0 (n and m)
-    #  - Calculate x1/x2 slopes by left[n+1]-left[n] and right[m+1]-right[m]
-    #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
-    #  - draw the polygon part
-    #  - increment n or m
-    #  - set x1 or x2 position accordingly
-    #  - set x1 incr or x2 incr accordingly
-    #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
-    #  - Stop until left and right reach the end
-    
-    #print(vertex_indices)
+    #   - If there is one top vertex both lists share it, if not they have a separate one
+    #   - If there is one bottom vertex both lists share it, if not they have a separate one
     
     top_y = None
     bottom_y = None
@@ -1471,8 +1548,13 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             bottom_vertex_indices.append(vertex_index)
             
     # We rotate the list of vertex indices until the top vertice(s) are at the start of the list
-    while (not top_vertices_are_at_the_start(top_vertex_indices, vertex_indices)):
+    done_rotating = top_vertices_are_at_the_start(top_vertex_indices, vertex_indices)
+    while (not done_rotating):
         vertex_indices = vertex_indices[1:] + vertex_indices[:1]
+        done_rotating = top_vertices_are_at_the_start(top_vertex_indices, vertex_indices)
+        if (done_rotating is None):
+            print("ERROR: could not find top vertices!")
+            return None
 
     # If we have 2 top vertices we rotate once more, so the two top vertices are at either end of the list
     if (len(top_vertex_indices) == 2):
@@ -1500,16 +1582,26 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
         if (vertex_index in bottom_vertex_indices):
             break
     
+    
+    # == Drawing algo ==
+    #  - Set x1 and x2 according to first in left/right list (NOTE: if the same we only have to export ONE in the data!)
+    #  - set left and right indexes to 0 (n and m)
+    #  - Calculate x1/x2 slopes by left[n+1]-left[n] and right[m+1]-right[m]
+    #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
+    #  - draw the polygon part
+    #  - increment n or m
+    #  - set x1 or x2 position accordingly
+    #  - set x1 incr or x2 incr accordingly
+    #  - Calculate how many lines have to be drawn (is left[n+1] or right[n+1] top?)
+    #  - Stop until left and right reach the end
+    
     current_left_index = 0
     current_right_index = 0
 
-# FIXME: setup the INITIAL position(s) and slopes!
-#          if x1 == x2 keep a record of THAT!
-
-# Next to change Slope
     next_side_to_change_slope = None
     left_half_slope = None
     right_half_slope = None
+    
     next_left_vertex = left_vertices[current_left_index+1]
     next_right_vertex = right_vertices[current_right_index+1]
     current_left_vertex = left_vertices[current_left_index]
@@ -1518,6 +1610,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
     left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
     right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
     
+# FIXME: setup the INITIAL position(s) and slopes!
+#          if x1 == x2 keep a record of THAT!
     left_pos = current_left_vertex[0]
     right_pos = current_right_vertex[0]
     
@@ -1529,28 +1623,29 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
         
     # We take the top y as starting y position
     current_y_position = top_y
-# FIXME: what if we reached the last vertex? then nothing has to be changed, but we need to stop next time!
-    # Check which vertex is first (looking at the y-coordinate)
-    if (next_left_vertex[1] < next_right_vertex[1]):
-        next_side_to_change_slope = 'left'
-        nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
-    elif (next_left_vertex[1] > next_right_vertex[1]):
-        next_side_to_change_slope = 'right'
-        nr_of_lines_to_draw = next_right_vertex[1] - current_y_position
-    else:
-        # Both are at the same y, so they both have to change
-        next_side_to_change_slope = 'both'
-        nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
-
-# FIXME: put this in a proper LOOP!
-    draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
-    current_y_position += nr_of_lines_to_draw
     
-# FIXME: make sure 'none' can HAPPEN!
-# FIXME: this should be a WHILE LOOP!
-    keep_drawing_parts = True
-    while (keep_drawing_parts):
+    while (True):
+    
+        # Check which vertex is next in line to change (looking at the y-coordinate): we have to draw until that y-line
+        if (next_left_vertex[1] < next_right_vertex[1]):
+            next_side_to_change_slope = 'left'
+            nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
+        elif (next_left_vertex[1] > next_right_vertex[1]):
+            next_side_to_change_slope = 'right'
+            nr_of_lines_to_draw = next_right_vertex[1] - current_y_position
+        else:
+            # Both are at the same y, so they both have to change
+            next_side_to_change_slope = 'both'
+            nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
+
+        draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
+        current_y_position += nr_of_lines_to_draw
+        
+        if ((current_right_index+1 == len(right_vertices)-1) and (current_left_index+1 == len(left_vertices)-1)):
+            break
+
         if next_side_to_change_slope == 'right':
+            # Change *right* slope
             current_right_index += 1
             
             next_right_vertex = right_vertices[current_right_index+1]
@@ -1564,6 +1659,34 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
             
         elif next_side_to_change_slope == 'left':
+            # Change *left* slope
+            current_left_index += 1
+            
+            next_left_vertex = left_vertices[current_left_index+1]
+            current_left_vertex = left_vertices[current_left_index]
+            
+            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
+            
+            fx_state['x1_incr'] = left_half_slope
+            
+            # This is equivalent of what happens when setting the new x1_incr
+            fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
+                        
+        else:  # both
+            # Change *right* slope
+            current_right_index += 1
+            
+            next_right_vertex = right_vertices[current_right_index+1]
+            current_right_vertex = right_vertices[current_right_index]
+            
+            right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
+            
+            fx_state['x2_incr'] = right_half_slope
+            
+            # This is equivalent of what happens when setting the new x2_incr
+            fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
+
+            # Change *left* slope
             current_left_index += 1
             
             next_left_vertex = left_vertices[current_left_index+1]
@@ -1576,48 +1699,6 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             # This is equivalent of what happens when setting the new x1_incr
             fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
             
-            
-        else:  # both
-# FIXME!
-            pass
-            
-# FIXME: what if we reached the last vertex? then nothing has to be changed, but we need to stop next time!
-        # Check which vertex is first (looking at the y-coordinate)
-        if (next_left_vertex[1] < next_right_vertex[1]):
-            next_side_to_change_slope = 'left'
-            nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
-        elif (next_left_vertex[1] > next_right_vertex[1]):
-            next_side_to_change_slope = 'right'
-            nr_of_lines_to_draw = next_right_vertex[1] - current_y_position
-        else:
-            # Both are at the same y, so they both have to change
-            next_side_to_change_slope = 'both'
-            nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
-
-    # FIXME: put this in a proper LOOP!
-        draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
-        current_y_position += nr_of_lines_to_draw
-        
-        if ((current_right_index+1 == len(right_vertices)-1) and (current_left_index+1 == len(left_vertices)-1)):
-            keep_drawing_parts = False
-
-
-    print(next_side_to_change_slope)
-    print(nr_of_lines_to_draw)
-    print(left_half_slope)
-    print(right_half_slope)
-    keep_drawing = True
-#    while(keep_drawing):
-    
-# FIXME: how do we know there *is* a NEXT vertex?
-#        if (
-    
-    
-    print(left_vertices)
-    print(right_vertices)
-    #print(top_y)
-    #print(bottom_y)
-    
     
     return file_data
 
@@ -1646,6 +1727,9 @@ def draw_and_export(screen_vertices, sorted_faces):
         scaled_up_vertices.append(scaled_up_vertex)
     '''
         
+# FIXME: do we need to this this for each frame?
+    reset_fx_state(fx_state)
+        
     frame_buffer.fill((0,0,0))
     for face_index, face in enumerate(sorted_faces):
  
@@ -1671,17 +1755,17 @@ def draw_and_export(screen_vertices, sorted_faces):
             if (USE_FX_POLY_FILLER_SIM):
                 fx_sim_draw_polygon(face_buffer, 1, face['vertex_indices'], screen_vertices)
             else:
-                pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
+                pygame.draw.polygon(face_buffer, 1, [screen_vertices[i][0:2] for i in face_vertex_indices], 0)
             add_face_with_frame_buffer(face_buffer, frame_buffer)
         else:
             # We draw the polygon to the screen
             if (USE_FX_POLY_FILLER_SIM):
                 fx_sim_draw_polygon(frame_buffer, colors[color_idx], face['vertex_indices'], screen_vertices)
             else:
-                pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
+                pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i][0:2] for i in face_vertex_indices], 0)
             
         if (DEBUG_DRAW_TRIANGLE_BOUNDARIES):
-            pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i] for i in face_vertex_indices], 1)
+            pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i][0:2] for i in face_vertex_indices], 1)
         
                 
         
