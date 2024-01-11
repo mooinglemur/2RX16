@@ -60,7 +60,7 @@ DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = False
+DEBUG_SORTING_LIMIT_OBJECTS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -1760,7 +1760,10 @@ def draw_and_export(screen_vertices, sorted_faces):
         else:
             # We draw the polygon to the screen
             if (USE_FX_POLY_FILLER_SIM):
-                fx_sim_draw_polygon(frame_buffer, colors[color_idx], face['vertex_indices'], screen_vertices)
+                file_data = fx_sim_draw_polygon(frame_buffer, colors[color_idx], face['vertex_indices'], screen_vertices)
+                # FIXME: do something REAL with the file_data!
+                if file_data is None:
+                    print(face)
             else:
                 pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i][0:2] for i in face_vertex_indices], 0)
             
@@ -1833,7 +1836,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 85
+    frame_nr = 10
     increment_frame_by = 0
 
 material_info = load_material_info()
@@ -2025,7 +2028,7 @@ while running:
         
         for current_object_name in world_objects:
             # FIXME: HARDCODED!
-            if (current_object_name != 'fcirto01'):
+            if (current_object_name != 'kulmatalot'):
                 continue
                 
             filtered_world_objects[current_object_name] = world_objects[current_object_name]
@@ -2036,8 +2039,8 @@ while running:
             for object_face_index, object_face in enumerate(object_faces):
 
                 # FIXME: HARDCODED: Window on second building
-                if (object_face_index >= 8):  
-                    continue
+                #if (object_face_index >= 8):  
+                #    continue
                     
                 filtered_object_faces.append(object_face)
                 
