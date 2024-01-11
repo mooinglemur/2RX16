@@ -1377,32 +1377,52 @@ def combine_faces (screen_vertices, sorted_faces):
     lies_on_screen_edges_by_vertex_index = {}
     
     for merged_face in merged_faces:
+        face_min_x = None
+        face_max_x = None
+        face_min_y = None
+        face_max_y = None
         for vertex_index in merged_face['vertex_indices']:
             screen_vertex = screen_vertices[vertex_index]
             vertex_is_lying_on_edges = []
-# FIXME: HARDCODED COORDINATES!
-            # x == 0
-            if (screen_vertex[0] == 0):
+            
+            x = screen_vertex[0]
+            y = screen_vertex[1]
+            
+            if (face_max_x is None or x > face_max_x):
+                face_max_x = x
+            if (face_min_x is None or x < face_min_x):
+                face_min_x = x
+                
+            if (face_max_y is None or y > face_max_y):
+                face_max_y = y
+            if (face_min_y is None or y < face_min_y):
+                face_min_y = y
+#  FIXME: HARDCODED COORDINATES!
+            if (x == 0):
                 vertex_is_lying_on_edges.append('LEFT')
-            # x == 320
-            if (screen_vertex[0] == 320):
+            if (x == 320):
                 vertex_is_lying_on_edges.append('RIGHT')
-            # x == 0
-            if (screen_vertex[1] == 0):
+            if (y == 0):
                 vertex_is_lying_on_edges.append('TOP')
-            # x == 320
-            if (screen_vertex[1] == 200):
+            if (y == 200):
                 vertex_is_lying_on_edges.append('BOTTOM')
                 
             if (len(vertex_is_lying_on_edges) > 0):
                 lies_on_screen_edges_by_vertex_index[vertex_index] = {}
                 for edge_name in vertex_is_lying_on_edges:
                     lies_on_screen_edges_by_vertex_index[vertex_index][edge_name] = True
+                    
+        if (face_min_x == face_max_x) or (face_min_y == face_max_y):
+            print("ERROR: face is invalid because it has no width or height!")
+            merged_face['invalid'] = True
     
     #print(lies_on_screen_edges_by_vertex_index)
     
     cleaned_merged_faces = []
     for merged_face in merged_faces:
+        if ('invalid' in merged_face):
+            continue
+    
         cleaned_merged_face = copy.deepcopy(merged_face)
 
         # We first check if there are any vertices that lie on any screen edge at all for this face
@@ -1415,7 +1435,7 @@ def combine_faces (screen_vertices, sorted_faces):
                 first_edge_name_found = list(lies_on_screen_edges_by_vertex_index[vertex_index].keys())[0]
                 break
         
-        safety_count = 100
+        #safety_count = 100
         if (there_are_vertices_that_lie_on_any_screen_edge):
             # There are vertices on the screen edges, so we need to cleanup up this face
             
@@ -1432,14 +1452,14 @@ def combine_faces (screen_vertices, sorted_faces):
                     not (last_screen_vertex_index in lies_on_screen_edges_by_vertex_index and first_edge_name_found in lies_on_screen_edges_by_vertex_index[last_screen_vertex_index])):
                     # We rotated enough so that the first vertex lies on the edge but the last vertex doesnt, meaning: our list starts with a vertex that is the first in a series of vertices that lie on the same screen edge
                     break
-                elif (safety_count < 0):
-                    print("ERROR: too many tries on rotating to get first vertex on correct spot")
-                    print(lies_on_screen_edges_by_vertex_index)
-                    print(cleaned_vertex_indices)
-                    break
+                #elif (safety_count < 0):
+                #    print("ERROR: too many tries on rotating to get first vertex on correct spot")
+                #    print(lies_on_screen_edges_by_vertex_index)
+                #    print(cleaned_vertex_indices)
+                #    break
                 else:
                     cleaned_vertex_indices = cleaned_vertex_indices[1:] + cleaned_vertex_indices[:1]
-                    safety_count -= 1
+                #    safety_count -= 1
                     
             # Look ahead 3 vertices: if the second can be removed, then we remove it. Otherwise we rotate. We do this until you reach the first vertex index one again
 # FIXME: POSSIBLE ISSUE: 2 vertices AND 2 edges in SEQUENCE!
@@ -1452,8 +1472,8 @@ def combine_faces (screen_vertices, sorted_faces):
             
             first_screen_vertex_index = cleaned_vertex_indices[0]
 # FIXME: UGLY!
-            while(safety_count > 0):
-            #while(True):
+            #while(safety_count > 0):
+            while(True):
                 
                 if (second_vertex_can_be_removed(cleaned_vertex_indices, lies_on_screen_edges_by_vertex_index)):
                     cleaned_vertex_indices.pop(1)
@@ -1470,8 +1490,8 @@ def combine_faces (screen_vertices, sorted_faces):
             pass
 
 # FIXME: UGLY!
-        if (safety_count > 0):
-            cleaned_merged_faces.append(cleaned_merged_face)
+        #if (safety_count > 0):
+        cleaned_merged_faces.append(cleaned_merged_face)
             
     
     return cleaned_merged_faces
