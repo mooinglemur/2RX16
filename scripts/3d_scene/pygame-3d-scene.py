@@ -1217,6 +1217,16 @@ def second_vertex_can_be_removed(vertex_indices, lies_on_screen_edges_by_vertex_
     return False
 
     
+def first_and_second_vertex_have_same_x_and_y(vertex_indices, screen_vertices):
+
+    first_vertex = screen_vertices[vertex_indices[0]]
+    second_vertex = screen_vertices[vertex_indices[1]]
+    
+    if (first_vertex[0] == second_vertex[0] and first_vertex[1] == second_vertex[1]):
+        print(str(first_vertex) + '-->' + str(second_vertex))
+        return True
+    else:
+        return False
 
 def combine_faces (screen_vertices, sorted_faces):
 
@@ -1477,6 +1487,13 @@ def combine_faces (screen_vertices, sorted_faces):
                 
                 if (second_vertex_can_be_removed(cleaned_vertex_indices, lies_on_screen_edges_by_vertex_index)):
                     cleaned_vertex_indices.pop(1)
+                elif (first_and_second_vertex_have_same_x_and_y(cleaned_vertex_indices, screen_vertices)):
+                    print("WARNING: screen vertices have the same x AND y coordinate!")
+                    cleaned_vertex_indices.pop(1)
+                    if (len(cleaned_vertex_indices) < 3):
+                        print("ERROR: not enough vertices in face anymore!")
+                        cleaned_merged_face['invalid'] = True
+                        break
                 else:
                     cleaned_vertex_indices = cleaned_vertex_indices[1:] + cleaned_vertex_indices[:1]
                     if (cleaned_vertex_indices[0] == first_screen_vertex_index):
@@ -1491,7 +1508,8 @@ def combine_faces (screen_vertices, sorted_faces):
 
 # FIXME: UGLY!
         #if (safety_count > 0):
-        cleaned_merged_faces.append(cleaned_merged_face)
+        if ('invalid' not in cleaned_merged_faces):
+            cleaned_merged_faces.append(cleaned_merged_face)
             
     
     return cleaned_merged_faces
@@ -1700,6 +1718,9 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             
             next_right_vertex = right_vertices[current_right_index+1]
             current_right_vertex = right_vertices[current_right_index]
+            
+            #print(current_right_vertex)
+            #print(next_right_vertex)
             
             right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
             
@@ -2266,7 +2287,7 @@ while running:
         if PRINT_PROGRESS: print("Merging/joining faces")
         merged_faces = combine_faces(screen_vertices, visible_sorted_faces)
         
-        print(json.dumps(merged_faces, indent=4))
+        #print(json.dumps(merged_faces, indent=4))
         
         if PRINT_PROGRESS: print("Draw and export")
         tris_seen = draw_and_export(screen_vertices, merged_faces)
