@@ -49,8 +49,8 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = False
-DEBUG_SORTING = False
-DEBUG_DRAW_TRIANGLE_BOUNDARIES = True # Very informative!
+DEBUG_SORTING = True
+DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
@@ -63,7 +63,7 @@ DRAW_INTERSECTION_POINTS = False
 
 screen_width = 320
 screen_height = 200
-scale = 0.5          # this is only used to scale up the screen in pygame
+scale = 3          # this is only used to scale up the screen in pygame
 
 fx_state = {}
 
@@ -1113,8 +1113,10 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         
         # We use the face_index as 'color'. So we can later on check whether a triangle has effectively changed any pixels (aka is visible)
-        pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i] for i in face_vertex_indices], 0)
-
+        if (USE_FX_POLY_FILLER_SIM):
+            fx_sim_draw_polygon(check_triangle_visibility_buffer, face_index, face['vertex_indices'], screen_vertices)
+        else:
+            pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i] for i in face_vertex_indices], 0)
         
     # Checking all pixels in the check_triangle_visibility_buffer and see which face_indexes are still in there. We should ONLY draw these!
     visible_face_indexes = {}
@@ -1441,11 +1443,7 @@ def combine_faces (screen_vertices, sorted_faces):
             # Look ahead 3 vertices: if the second can be removed, then we remove it. Otherwise we rotate. We do this until you reach the first vertex index one again
 # FIXME: POSSIBLE ISSUE: 2 vertices AND 2 edges in SEQUENCE! (TOP, RIGHT) -> (TOP, RIGHT) -> (TOP, RIGHT) ?
             #print(cleaned_vertex_indices)
-            #to_print = ""
-            #for vertex_index in cleaned_vertex_indices:
-            #    screen_vertex = screen_vertices[vertex_index]
-            #    to_print += str(screen_vertex)
-            #print(to_print)
+            #print_vertices(cleaned_vertex_indices, screen_vertices)
             
             first_screen_vertex_index = cleaned_vertex_indices[0]
             while(True):
@@ -1495,6 +1493,14 @@ def add_face_with_frame_buffer(face_surface, frame_buffer):
 
 
 def top_vertices_are_at_the_start(top_vertex_indices, vertex_indices):
+    
+    # We check of all of the top vertex indices are in the first vertex indices
+    for vertex_nr in range(len(top_vertex_indices)):
+        if (top_vertex_indices[vertex_nr] not in vertex_indices[0:len(top_vertex_indices)]):
+            return False
+            
+    return True
+'''
     if len(top_vertex_indices) == 1:
         if top_vertex_indices[0] in vertex_indices[0:1]:
             return True
@@ -1509,7 +1515,7 @@ def top_vertices_are_at_the_start(top_vertex_indices, vertex_indices):
     else:
         print("ERROR: we have more than TWO top vertices!!")
         return None
-
+'''
 
 def reset_fx_state(fx_state):
     fx_state = {
@@ -1536,6 +1542,16 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         # This is 'equivalent' of what happens when reading from DATA0 (this (effectively) also increments y_in_part)
         fx_state['x1_pos'] += fx_state['x1_incr']
         fx_state['x2_pos'] += fx_state['x2_incr']
+
+
+def print_vertices(vertex_indices, screen_vertices):
+    to_print = []
+    str_vertex_indices = []
+    for vertex_index in vertex_indices:
+        screen_vertex = screen_vertices[vertex_index]
+        to_print.append(str(screen_vertex))
+        str_vertex_indices.append(str(vertex_index))
+    print(', '.join(to_print)+' - ('+','.join(str_vertex_indices)+')')
 
 
 
@@ -1582,14 +1598,31 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
     while (not done_rotating):
         vertex_indices = vertex_indices[1:] + vertex_indices[:1]
         done_rotating = top_vertices_are_at_the_start(top_vertex_indices, vertex_indices)
-        if (done_rotating is None):
-            print("ERROR: could not find top vertices!")
+        
+    if (len(top_vertex_indices) > 2):
+    
+        #print_vertices(vertex_indices, screen_vertices)
+            
+        nr_of_vertices_to_remove = len(top_vertex_indices) - 2
+        #print(str(vertex_indices)+'>>'+str(top_vertex_indices))
+        while nr_of_vertices_to_remove > 0:
+            print("WARNING: removing redundant top vertice!")
+            vertex_indices.pop(1)
+            nr_of_vertices_to_remove -= 1
+            
+        #print_vertices(vertex_indices, screen_vertices)
+            
+        if len(vertex_indices) < 3:
+            print("ERROR: less than 3 vertices left over.")
+# FIXME: what about file_data?
             return None
 
-    # If we have 2 top vertices we rotate once more, so the two top vertices are at either end of the list
-    if (len(top_vertex_indices) == 2):
+    # If we have 2 top vertices we rotate once more (if we had more, we removed them), so the two top vertices are at either end of the list
+    if (len(top_vertex_indices) >= 2):
         vertex_indices = vertex_indices[1:] + vertex_indices[:1]
 
+    # print_vertices(vertex_indices, screen_vertices)
+        
     # We create a left list and a right list of vertices (that contain the vertices that are that side of the polygon)
     left_vertices = []
     for vertex_index in vertex_indices:
@@ -1869,7 +1902,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 10
+    frame_nr = 110
     increment_frame_by = 0
 
 material_info = load_material_info()
