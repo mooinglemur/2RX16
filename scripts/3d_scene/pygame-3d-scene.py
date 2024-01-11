@@ -629,8 +629,6 @@ def z_clip_faces (view_faces, view_vertices):
     # We determine -for each face- whether it should be clipped against the edges of the screen
     for non_clipped_face in view_faces:
 
-        # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
-        
         # The clipped_vertices is an OUPUT vertex-array!
         clipped_faces_against_z_edge = clip_face_against_z_edge(non_clipped_face, combined_vertices, created_vertices_by_code)
 
@@ -891,8 +889,6 @@ def clip_2d_vertex_against_edge(combined_vertices, inside_vertex_index, outside_
 def clip_face_against_edge(non_clipped_face, combined_vertices, edge_name, created_vertices_by_code):
     clipped_faces = []
 
-# FIXME: we should try to REUSE vertices!
-
     # We need to check which of these vertices are INSIDE and OUTSIDE of the plane/edge we are clipping against
     
     inside_vertex_nrs = []
@@ -1002,8 +998,6 @@ def camera_clip_projected_triangles(projected_faces, projected_vertices):
             clipped_faces_against_this_edge = []
             for queue_face in queue_faces:
                 
-                # FIXME: we create many *DUPLICATE* vertices using this technique! Is there a SMARTER way?
-                
                 # The clipped_vertices is an OUPUT vertex-array that gets extended each time!
                 # We *extend* clipped_faces_against_this_edge here
                 clipped_faces_against_this_edge += clip_face_against_edge(queue_face, combined_vertices, edge_name, created_vertices_by_code)
@@ -1111,8 +1105,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
     
     sorted_faces = sorted(faces, key=compare_key, reverse=True)
 
-# FIXME: CHECK: is this the correct way of clearing an indexed color buffer?
-#    check_triangle_visibility_buffer.fill((0xFF,0,0))
+    # TODO: CHECK: is this the correct way of clearing an indexed color buffer?
     check_triangle_visibility_buffer.fill(255*256)
     for face_index, face in enumerate(sorted_faces):
 
@@ -1152,13 +1145,13 @@ def faces_share_edge(face_a, face_b):
     vertex_indices_b = face_b['vertex_indices']
     
     if (vertex_indices_a[0] in vertex_indices_b and vertex_indices_a[1] in vertex_indices_b):
-        return [vertex_indices_a[0], vertex_indices_a[1]]
+        return True
     if (vertex_indices_a[0] in vertex_indices_b and vertex_indices_a[2] in vertex_indices_b):
-        return [vertex_indices_a[0], vertex_indices_a[2]]
+        return True
     if (vertex_indices_a[1] in vertex_indices_b and vertex_indices_a[2] in vertex_indices_b):
-        return [vertex_indices_a[1], vertex_indices_a[2]]
+        return True
 
-    return None
+    return False
 
 
 
@@ -1169,8 +1162,7 @@ def find_connected_faces_and_put_in_cluster(face, cluster, sorted_faces):
     cluster['faces'].append(face)
 
     if ('merge_with_faces' in face):
-        for merge_info in face['merge_with_faces']:
-            face_index = merge_info['face_index']
+        for face_index in face['merge_with_faces']:
             
             face_to_merge_with = sorted_faces[face_index]
             
@@ -1231,7 +1223,7 @@ def first_and_second_vertex_have_same_x_and_y(vertex_indices, screen_vertices):
 def combine_faces (screen_vertices, sorted_faces):
 
 
-# FIXME: what is somehow the SORTING of the to-be-combined faces is DIFFERENT?
+# FIXME: what if somehow the SORTING of the to-be-combined faces is DIFFERENT?
 
     # For each face we try to find another face (for now only triangles) to see if shares an edge with another face
     # Both faces have to be:
@@ -1256,9 +1248,7 @@ def combine_faces (screen_vertices, sorted_faces):
             if (face_a['orig_face_index'] != face_b['orig_face_index']):
                 continue
                 
-# FIXME: we dont need this to RETURN anything anymore! Just a boolean!
-            vertex_indices_shared = faces_share_edge(face_a, face_b)
-            if (vertex_indices_shared is None):
+            if (not faces_share_edge(face_a, face_b)):
                 continue
             
             # print("Found mergable faces!")
@@ -1268,17 +1258,8 @@ def combine_faces (screen_vertices, sorted_faces):
             if ('merge_with_faces' not in face_b):
                 face_b['merge_with_faces'] = []
                 
-            merge_info = {
-# FIXME: we can simplify this to just the index (no dict)
-                'face_index' : face_b_index
-            }
-            face_a['merge_with_faces'].append(merge_info)
-            
-            merge_info = {
-# FIXME: we can simplify this to just the index (no dict)
-                'face_index' : face_a_index
-            }
-            face_b['merge_with_faces'].append(merge_info)
+            face_a['merge_with_faces'].append(face_b_index)
+            face_b['merge_with_faces'].append(face_a_index)
     
     # Search for clusters of faces to be merged
     #   All triangles that are directly or indirectly connected below to a 'cluster': they have to be joined to form a new (larger) polygon
@@ -1286,11 +1267,6 @@ def combine_faces (screen_vertices, sorted_faces):
     clusters = []
     for face_index, face in enumerate(sorted_faces):
         
-# FIXME: this is just for DEBUGGING and will NOT BE VALID after clustering!
-# FIXME: this is just for DEBUGGING and will NOT BE VALID after clustering!
-# FIXME: this is just for DEBUGGING and will NOT BE VALID after clustering!
-        face['index'] = face_index
-            
         if ('cluster_id' not in face):
             cluster = {
                 'id' : cluster_id,
@@ -1426,8 +1402,6 @@ def combine_faces (screen_vertices, sorted_faces):
             print("ERROR: face is invalid because it has no width or height!")
             merged_face['invalid'] = True
     
-    #print(lies_on_screen_edges_by_vertex_index)
-    
     cleaned_merged_faces = []
     for merged_face in merged_faces:
         if ('invalid' in merged_face):
@@ -1445,7 +1419,6 @@ def combine_faces (screen_vertices, sorted_faces):
                 first_edge_name_found = list(lies_on_screen_edges_by_vertex_index[vertex_index].keys())[0]
                 break
         
-        #safety_count = 100
         if (there_are_vertices_that_lie_on_any_screen_edge):
             # There are vertices on the screen edges, so we need to cleanup up this face
             
@@ -1462,17 +1435,11 @@ def combine_faces (screen_vertices, sorted_faces):
                     not (last_screen_vertex_index in lies_on_screen_edges_by_vertex_index and first_edge_name_found in lies_on_screen_edges_by_vertex_index[last_screen_vertex_index])):
                     # We rotated enough so that the first vertex lies on the edge but the last vertex doesnt, meaning: our list starts with a vertex that is the first in a series of vertices that lie on the same screen edge
                     break
-                #elif (safety_count < 0):
-                #    print("ERROR: too many tries on rotating to get first vertex on correct spot")
-                #    print(lies_on_screen_edges_by_vertex_index)
-                #    print(cleaned_vertex_indices)
-                #    break
                 else:
                     cleaned_vertex_indices = cleaned_vertex_indices[1:] + cleaned_vertex_indices[:1]
-                #    safety_count -= 1
                     
             # Look ahead 3 vertices: if the second can be removed, then we remove it. Otherwise we rotate. We do this until you reach the first vertex index one again
-# FIXME: POSSIBLE ISSUE: 2 vertices AND 2 edges in SEQUENCE!
+# FIXME: POSSIBLE ISSUE: 2 vertices AND 2 edges in SEQUENCE! (TOP, RIGHT) -> (TOP, RIGHT) -> (TOP, RIGHT) ?
             #print(cleaned_vertex_indices)
             #to_print = ""
             #for vertex_index in cleaned_vertex_indices:
@@ -1481,8 +1448,6 @@ def combine_faces (screen_vertices, sorted_faces):
             #print(to_print)
             
             first_screen_vertex_index = cleaned_vertex_indices[0]
-# FIXME: UGLY!
-            #while(safety_count > 0):
             while(True):
                 
                 if (second_vertex_can_be_removed(cleaned_vertex_indices, lies_on_screen_edges_by_vertex_index)):
@@ -1499,15 +1464,12 @@ def combine_faces (screen_vertices, sorted_faces):
                     if (cleaned_vertex_indices[0] == first_screen_vertex_index):
                         break
             
-            #print(cleaned_vertex_indices)
             cleaned_merged_face['vertex_indices'] = cleaned_vertex_indices
             
         else:
             # There are no vertices on the screen edges, so nothting to cleanup up for this face
             pass
 
-# FIXME: UGLY!
-        #if (safety_count > 0):
         if ('invalid' not in cleaned_merged_faces):
             cleaned_merged_faces.append(cleaned_merged_face)
             
