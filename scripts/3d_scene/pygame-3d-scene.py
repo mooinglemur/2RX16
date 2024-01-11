@@ -30,11 +30,6 @@ from functools import cmp_to_key
 SCENE = 'U2E'
 #SCENE = 'U2A'
 
-# FIXME!!
-# We need to REMOVE the REDUNDANT VERTICES in the large polygons!!
-# We need to REMOVE the REDUNDANT VERTICES in the large polygons!!
-# We need to REMOVE the REDUNDANT VERTICES in the large polygons!!
-
 
 # FIXME!
 # FIXME!
@@ -54,13 +49,13 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = False
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = True # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = True
+DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -871,22 +866,19 @@ def clip_2d_vertex_against_edge(combined_vertices, inside_vertex_index, outside_
         if edge_name == 'LEFT':
             percentage_to_keep = (inside_vertex[0] - LEFT_EDGE_X) / (inside_vertex[0] - outside_vertex[0])
             y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-            clipped_vertex = (LEFT_EDGE_X, y_clipped, {})
+            clipped_vertex = (LEFT_EDGE_X, y_clipped)
         elif edge_name == 'RIGHT':
             percentage_to_keep = (RIGHT_EDGE_X - inside_vertex[0]) / (outside_vertex[0] - inside_vertex[0])
             y_clipped = inside_vertex[1] + (outside_vertex[1] - inside_vertex[1]) * percentage_to_keep
-            clipped_vertex = (RIGHT_EDGE_X, y_clipped, {})
+            clipped_vertex = (RIGHT_EDGE_X, y_clipped)
         elif edge_name == 'BOTTOM':
             percentage_to_keep = (inside_vertex[1] - BOTTOM_EDGE_Y) / (inside_vertex[1] - outside_vertex[1])
             x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-            clipped_vertex = (x_clipped, BOTTOM_EDGE_Y, {})
+            clipped_vertex = (x_clipped, BOTTOM_EDGE_Y)
         elif edge_name == 'TOP':
             percentage_to_keep = (TOP_EDGE_Y - inside_vertex[1]) / (outside_vertex[1] - inside_vertex[1])
             x_clipped = inside_vertex[0] + (outside_vertex[0] - inside_vertex[0]) * percentage_to_keep
-            clipped_vertex = (x_clipped, TOP_EDGE_Y, {})
-        
-        # HACK: we use the thrird index in the tuple to store a dict containing information about on which screen-edges a vertex lies!
-        clipped_vertex[2][edge_name] = True
+            clipped_vertex = (x_clipped, TOP_EDGE_Y)
         
         clipped_vertex_index = len(combined_vertices)
         combined_vertices.append(clipped_vertex)
@@ -983,8 +975,7 @@ def camera_clip_projected_triangles(projected_faces, projected_vertices):
     
     camera_clipped_projected_vertices = []
     for projected_vertex in projected_vertices:
-        # HACK: we add a dict to the vertices to store information about lying on screen-edges!
-        camera_clipped_projected_vertices.append((projected_vertex[0], projected_vertex[1], {}))
+        camera_clipped_projected_vertices.append((projected_vertex[0], projected_vertex[1]))
     # REMOVE OLD: camera_clipped_projected_vertices = copy.deepcopy(projected_vertices)
     
     edge_names = ['LEFT', 'TOP', 'RIGHT', 'BOTTOM']
@@ -1115,7 +1106,6 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
         screen_vertex = [
             screen_x,
             screen_y,
-            projected_vertex[2]  # HACK: this contains the lies_on_screen_edges info!
         ]
         screen_vertices.append(screen_vertex)
     
@@ -1130,7 +1120,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
         face_vertex_indices = face['vertex_indices'] + [face['vertex_indices'][0]]
         
         # We use the face_index as 'color'. So we can later on check whether a triangle has effectively changed any pixels (aka is visible)
-        pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i][0:2] for i in face_vertex_indices], 0)
+        pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i] for i in face_vertex_indices], 0)
 
         
     # Checking all pixels in the check_triangle_visibility_buffer and see which face_indexes are still in there. We should ONLY draw these!
@@ -1203,17 +1193,16 @@ def create_edge(from_vertex_index, to_vertex_index):
     return edge
 
 
-def second_vertex_can_be_removed(vertex_indices, screen_vertices):
+def second_vertex_can_be_removed(vertex_indices, lies_on_screen_edges_by_vertex_index):
 
     nr_of_vertices_per_edge = {}
     # Loop through the first 3 vertices
     for vertex_nr in range(3):
-        screen_vertex = screen_vertices[vertex_indices[vertex_nr]]
+        vertex_index = vertex_indices[vertex_nr]
+        # screen_vertex = screen_vertices[]
         
-        # HACK: we use the third index in the tuple for 'lies_on_screen_edges' info
-        lies_on_screen_edges = screen_vertex[2]
-        if (len(list(lies_on_screen_edges.keys())) > 0):
-            for edge_name in lies_on_screen_edges:
+        if (vertex_index in lies_on_screen_edges_by_vertex_index):
+            for edge_name in lies_on_screen_edges_by_vertex_index[vertex_index]:
                 if (edge_name not in nr_of_vertices_per_edge):
                     nr_of_vertices_per_edge[edge_name] = 0
                 nr_of_vertices_per_edge[edge_name] += 1
@@ -1381,8 +1370,36 @@ def combine_faces (screen_vertices, sorted_faces):
             
     # After merging there will be many faces that have 'redundant' vertices: vertices that lie in-line of each other
     # We want to remove any unneeded vertices: when 3 (or more) lie on the same screen-edge we can remove all but the first and last
-    
+
+# REMOVE/EDIT COMMENT!    
     # Important: sometimes a vertex has been clipped against TWO screen-edges! We keep track of this in vertex[2] (=dict containing lies_on_screen_edges) so we need to take this into account!
+    
+    lies_on_screen_edges_by_vertex_index = {}
+    
+    for merged_face in merged_faces:
+        for vertex_index in merged_face['vertex_indices']:
+            screen_vertex = screen_vertices[vertex_index]
+            vertex_is_lying_on_edges = []
+# FIXME: HARDCODED COORDINATES!
+            # x == 0
+            if (screen_vertex[0] == 0):
+                vertex_is_lying_on_edges.append('LEFT')
+            # x == 320
+            if (screen_vertex[0] == 320):
+                vertex_is_lying_on_edges.append('RIGHT')
+            # x == 0
+            if (screen_vertex[1] == 0):
+                vertex_is_lying_on_edges.append('TOP')
+            # x == 320
+            if (screen_vertex[1] == 200):
+                vertex_is_lying_on_edges.append('BOTTOM')
+                
+            if (len(vertex_is_lying_on_edges) > 0):
+                lies_on_screen_edges_by_vertex_index[vertex_index] = {}
+                for edge_name in vertex_is_lying_on_edges:
+                    lies_on_screen_edges_by_vertex_index[vertex_index][edge_name] = True
+    
+    #print(lies_on_screen_edges_by_vertex_index)
     
     cleaned_merged_faces = []
     for merged_face in merged_faces:
@@ -1393,12 +1410,9 @@ def combine_faces (screen_vertices, sorted_faces):
         first_edge_name_found = None
         merged_vertex_indices = merged_face['vertex_indices']
         for vertex_index in merged_vertex_indices:
-            screen_vertex = screen_vertices[vertex_index]
-            # HACK: we use the third index in the tuple for 'lies_on_screen_edges' info
-            lies_on_screen_edges = screen_vertex[2]
-            if (len(list(lies_on_screen_edges.keys())) > 0):
+            if (vertex_index in lies_on_screen_edges_by_vertex_index):
                 there_are_vertices_that_lie_on_any_screen_edge = True
-                first_edge_name_found = list(lies_on_screen_edges.keys())[0]
+                first_edge_name_found = list(lies_on_screen_edges_by_vertex_index[vertex_index].keys())[0]
                 break
         
         if (there_are_vertices_that_lie_on_any_screen_edge):
@@ -1410,14 +1424,10 @@ def combine_faces (screen_vertices, sorted_faces):
 
             while(True):
                 first_screen_vertex_index = cleaned_vertex_indices[0]
-                first_screen_vertex = screen_vertices[first_screen_vertex_index]
-                
                 last_screen_vertex_index = cleaned_vertex_indices[-1]
-                last_screen_vertex = screen_vertices[last_screen_vertex_index]
                 
-                # HACK: we use the third index in the tuple for 'lies_on_screen_edges' info
-                if (first_edge_name_found in first_screen_vertex[2] and
-                    not (first_edge_name_found in last_screen_vertex[2])):
+                if (first_screen_vertex_index in lies_on_screen_edges_by_vertex_index and first_edge_name_found in lies_on_screen_edges_by_vertex_index[first_screen_vertex_index] and
+                    not (last_screen_vertex_index in lies_on_screen_edges_by_vertex_index and first_edge_name_found in lies_on_screen_edges_by_vertex_index[last_screen_vertex_index])):
                     # We rotated enough so that the first vertex lies on the edge but the last vertex doesnt, meaning: our list starts with a vertex that is the first in a series of vertices that lie on the same screen edge
                     break
                 else:
@@ -1425,16 +1435,24 @@ def combine_faces (screen_vertices, sorted_faces):
                     
             # Look ahead 3 vertices: if the second can be removed, then we remove it. Otherwise we rotate. We do this until you reach the first vertex index one again
 # FIXME: POSSIBLE ISSUE: 2 vertices AND 2 edges in SEQUENCE!
+            #print(cleaned_vertex_indices)
+            #to_print = ""
+            #for vertex_index in cleaned_vertex_indices:
+            #    screen_vertex = screen_vertices[vertex_index]
+            #    to_print += str(screen_vertex)
+            #print(to_print)
+            
             first_screen_vertex_index = cleaned_vertex_indices[0]
             while(True):
                 
-                if (second_vertex_can_be_removed(cleaned_vertex_indices, screen_vertices)):
+                if (second_vertex_can_be_removed(cleaned_vertex_indices, lies_on_screen_edges_by_vertex_index)):
                     cleaned_vertex_indices.pop(1)
                 else:
                     cleaned_vertex_indices = cleaned_vertex_indices[1:] + cleaned_vertex_indices[:1]
                     if (cleaned_vertex_indices[0] == first_screen_vertex_index):
                         break
             
+            #print(cleaned_vertex_indices)
             cleaned_merged_face['vertex_indices'] = cleaned_vertex_indices
             
         else:
@@ -1755,7 +1773,7 @@ def draw_and_export(screen_vertices, sorted_faces):
             if (USE_FX_POLY_FILLER_SIM):
                 fx_sim_draw_polygon(face_buffer, 1, face['vertex_indices'], screen_vertices)
             else:
-                pygame.draw.polygon(face_buffer, 1, [screen_vertices[i][0:2] for i in face_vertex_indices], 0)
+                pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
             add_face_with_frame_buffer(face_buffer, frame_buffer)
         else:
             # We draw the polygon to the screen
@@ -1765,10 +1783,10 @@ def draw_and_export(screen_vertices, sorted_faces):
                 if file_data is None:
                     print(face)
             else:
-                pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i][0:2] for i in face_vertex_indices], 0)
+                pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
             
         if (DEBUG_DRAW_TRIANGLE_BOUNDARIES):
-            pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i][0:2] for i in face_vertex_indices], 1)
+            pygame.draw.polygon(frame_buffer, (0xFF, 0xFF,0x00), [screen_vertices[i] for i in face_vertex_indices], 1)
         
                 
         
@@ -2216,7 +2234,7 @@ while running:
         if PRINT_PROGRESS: print("Merging/joining faces")
         merged_faces = combine_faces(screen_vertices, visible_sorted_faces)
         
-        #print(json.dumps(merged_faces, indent=4))
+        print(json.dumps(merged_faces, indent=4))
         
         if PRINT_PROGRESS: print("Draw and export")
         tris_seen = draw_and_export(screen_vertices, merged_faces)
