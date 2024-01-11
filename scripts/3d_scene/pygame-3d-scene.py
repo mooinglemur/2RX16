@@ -2038,9 +2038,9 @@ while running:
             filtered_object_faces = []
             for object_face_index, object_face in enumerate(object_faces):
 
-                # FIXME: HARDCODED: Window on second building
-                #if (object_face_index >= 8):  
-                #    continue
+                # FIXME: HARDCODED: Wall on first building
+                if (object_face_index != 2):  
+                    continue
                     
                 filtered_object_faces.append(object_face)
                 
