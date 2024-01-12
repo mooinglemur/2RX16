@@ -97,7 +97,7 @@ Y_TO_ADDRESS_BANK        = $8300
 
 NR_OF_BYTES_PER_LINE = 320
 
-BACKGROUND_COLOR = 4 ; nice purple
+BACKGROUND_COLOR = 0
 
 
 start:
@@ -116,7 +116,8 @@ start:
     jsr setup_polygon_data_address
     
 ; FIXME: UGLY HACK: fixed amount of polygons!
-    lda #94
+;    lda #94
+    lda #86
 ; FIXME: nr 86 is BROKEN!
 ; FIXME: nr 86 is BROKEN!
 ; FIXME: nr 86 is BROKEN!
@@ -236,7 +237,9 @@ polygon_data:
     .byte 0, 205, 116, 87, 0, 128, 127, 0, 4, 2, 3, 128, 3, 0, 127, 2, 0
     .byte 128, 201, 101, 89, 0, 96, 0, 85, 0, 64, 0, 3, 1, 0, 7, 1, 0
     .byte 0, 204, 112, 89, 0, 128, 127, 0, 4, 2, 2, 128, 127, 2, 1, 0, 4, 2, 0
-; FIXME! BROKEN!   .byte 0, 197, 108, 88, 0, 0, 0, 205, 127, 4, 1, 171, 127, 6, 0
+; FIXME! BROKEN!
+    .byte 0, 197, 108, 88, 0, 0, 0, 205, 127, 4, 1, 171, 127, 6, 0
+    
     .byte 0, 202, 104, 90, 0, 192, 127, 0, 7, 1, 2, 0, 0, 3, 1, 0, 4, 2, 0
     .byte 0, 5, 108, 89, 0, 0, 0, 0, 4, 2, 2, 0, 0, 2, 1, 0, 4, 2, 0
     .byte 0, 197, 101, 89, 0, 220, 127, 85, 0, 3, 2, 192, 127, 4, 3, 224, 127, 0, 0, 4, 2, 128, 127, 4, 0
@@ -247,6 +250,9 @@ polygon_data:
     .byte 0, 210, 190, 42, 0, 0, 117, 76, 0, 3, 1, 220, 127, 7, 0
     .byte 128, 2, 0, 171, 0, 64, 1, 0, 0, 0, 0, 176, 1, 138, 1, 24, 0
 
+
+; FIXME! BROKEN!
+;   .byte 0, 197, 108,   88, 0,   0, 0,   205, 127,   4,     1,    171, 127,   6,   0
 
 ; FIXME: put this somewhere else!
 ; polygon_data:
@@ -646,6 +652,16 @@ setup_vera_for_layer0_bitmap:
     lda #0
     sta VERA_L0_TILEBASE
 
+    ; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
+
+    lda #%00000010  ; DCSEL=1
+    sta VERA_CTRL
+   
+    lda #20
+    sta VERA_DC_VSTART
+    lda #400/2+20-1
+    sta VERA_DC_VSTOP
+    
     rts
     
 

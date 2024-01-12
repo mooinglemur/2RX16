@@ -43,7 +43,7 @@ MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
 USE_FX_POLY_FILLER_SIM = True
-PRINT_PALETTE = True
+PRINT_PALETTE = False
 
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
@@ -56,7 +56,7 @@ DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = False
+DEBUG_SORTING_LIMIT_OBJECTS = True
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -1538,6 +1538,10 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         x1 = int(fx_state['x1_pos'] / 512)
         x2 = int(fx_state['x2_pos'] / 512)
         
+        if (x2-x1 < 0):
+            print("ERROR: NEGATIVE fill length!")
+        
+# FIXME: what if x2 and x1 are the same? Wont that result in a draw -of one pixel- IN REVERSE?
         pygame.draw.line(frame_buffer, line_color, (x1, y_screen), (x2-1, y_screen), 1)
         
         # This is 'equivalent' of what happens when reading from DATA0 (this (effectively) also increments y_in_part)
@@ -1753,6 +1757,21 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
     polygon_bytes.append(x2_incr_high)
     
     nr_of_lines_to_draw_larger_than_63 = False
+    
+# FIXME!
+    do_print = False
+    if (line_color_index == 197 and current_y_position == 108):
+        do_print = True
+        
+# FIXME!
+    if (do_print):
+        return None
+    
+    #if (do_print):
+    #    print("This is the one!")
+    #    #print_vertices(vertex_indices, screen_vertices)
+    #    print(left_vertices)
+    #    print(right_vertices)
     
     while (True):
     
@@ -2231,7 +2250,7 @@ while running:
         
         for current_object_name in world_objects:
             # FIXME: HARDCODED!
-            if (current_object_name != 'kulmatalot'):
+            if (current_object_name != 's01'):
                 continue
                 
             filtered_world_objects[current_object_name] = world_objects[current_object_name]
@@ -2241,8 +2260,8 @@ while running:
             filtered_object_faces = []
             for object_face_index, object_face in enumerate(object_faces):
 
-                # FIXME: HARDCODED: Wall on first building
-                if (object_face_index != 2):  
+                # FIXME: HARDCODED: Problematic face on ship
+                if (object_face_index != 36):  
                     continue
                     
                 filtered_object_faces.append(object_face)
