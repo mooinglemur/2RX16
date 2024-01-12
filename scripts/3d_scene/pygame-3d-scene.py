@@ -1555,6 +1555,30 @@ def print_vertices(vertex_indices, screen_vertices):
 
 
 
+def convert_increment_to_incr_components(increment):
+    # The incoming increment is a signed integer number 
+    
+    # We can only store 15 bit signed numbers. BUT we can multiply by 32 if it doesnt fit.
+    
+    # In other words: 
+    # if the incremnt is smaller than -16384 or larger than +16383, we should divide the number by 32
+    x32_or = 0x00
+    incr_less_accurate = increment
+    if (increment < -16384 or increment > 16383):
+        increment = increment // 32
+        x32_or = 0x80
+        # The resulting (less accurate) signed number should be returned as incr_less_accurate
+        incr_less_accurate = increment * 32
+
+    incr_16bit = increment # this value has (potentially) been divided by 32
+    if incr_16bit < 0:
+        incr_16bit = 256*256 + incr_16bit
+    incr_packed_low = incr_16bit % 256
+    incr_packed_high = ((incr_16bit // 256) & 0x7f) | x32_or
+
+    return (incr_less_accurate, incr_packed_low, incr_packed_high)
+
+
 def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_vertices, polygon_type_stats, colors):
 
     # FIXME: this is a bit of an ugly workaround!
@@ -1717,20 +1741,16 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
         polygon_bytes.append(x2_pos_int % 256)
         polygon_bytes.append(x2_pos_int // 256)
 
-    fx_state['x1_incr'] = left_half_slope
-    x1_incr_16bit = fx_state['x1_incr']
-    if x1_incr_16bit < 0:
-        x1_incr_16bit = 256*256 + x1_incr_16bit
-    polygon_bytes.append(x1_incr_16bit % 256)
-    polygon_bytes.append((x1_incr_16bit // 256) & 0x7f)
+    (x1_incr, x1_incr_low, x1_incr_high) = convert_increment_to_incr_components(left_half_slope)
+    fx_state['x1_incr'] = x1_incr
+    polygon_bytes.append(x1_incr_low)
+    polygon_bytes.append(x1_incr_high)
     
-    fx_state['x2_incr'] = right_half_slope
-    x2_incr_16bit = fx_state['x2_incr']
-    if x2_incr_16bit < 0:
-        x2_incr_16bit = 256*256 + x2_incr_16bit
-    polygon_bytes.append(x2_incr_16bit % 256)
-    polygon_bytes.append((x2_incr_16bit // 256) & 0x7f)
-        
+    (x2_incr, x2_incr_low, x2_incr_high) = convert_increment_to_incr_components(right_half_slope)
+    fx_state['x2_incr'] = x2_incr
+    polygon_bytes.append(x2_incr_low)
+    polygon_bytes.append(x2_incr_high)
+    
     nr_of_lines_to_draw_larger_than_63 = False
     
     while (True):
@@ -1774,13 +1794,10 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
             
-            fx_state['x2_incr'] = right_half_slope
-            
-            x2_incr_16bit = fx_state['x2_incr']
-            if x2_incr_16bit < 0:
-                x2_incr_16bit = 256*256 + x2_incr_16bit
-            polygon_bytes.append(x2_incr_16bit % 256)
-            polygon_bytes.append((x2_incr_16bit // 256) & 0x7f)
+            (x2_incr, x2_incr_low, x2_incr_high) = convert_increment_to_incr_components(right_half_slope)
+            fx_state['x2_incr'] = x2_incr
+            polygon_bytes.append(x2_incr_low)
+            polygon_bytes.append(x2_incr_high)
     
             # This is equivalent of what happens when setting the new x2_incr
             fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
@@ -1797,13 +1814,10 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
             
-            fx_state['x1_incr'] = left_half_slope
-            
-            x1_incr_16bit = fx_state['x1_incr']
-            if x1_incr_16bit < 0:
-                x1_incr_16bit = 256*256 + x1_incr_16bit
-            polygon_bytes.append(x1_incr_16bit % 256)
-            polygon_bytes.append((x1_incr_16bit // 256) & 0x7f)
+            (x1_incr, x1_incr_low, x1_incr_high) = convert_increment_to_incr_components(left_half_slope)
+            fx_state['x1_incr'] = x1_incr
+            polygon_bytes.append(x1_incr_low)
+            polygon_bytes.append(x1_incr_high)
             
             # This is equivalent of what happens when setting the new x1_incr
             fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
@@ -1817,16 +1831,13 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             next_left_vertex = left_vertices[current_left_index+1]
             current_left_vertex = left_vertices[current_left_index]
-            
+
             left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
             
-            fx_state['x1_incr'] = left_half_slope
-            
-            x1_incr_16bit = fx_state['x1_incr']
-            if x1_incr_16bit < 0:
-                x1_incr_16bit = 256*256 + x1_incr_16bit
-            polygon_bytes.append(x1_incr_16bit % 256)
-            polygon_bytes.append((x1_incr_16bit // 256) & 0x7f)
+            (x1_incr, x1_incr_low, x1_incr_high) = convert_increment_to_incr_components(left_half_slope)
+            fx_state['x1_incr'] = x1_incr
+            polygon_bytes.append(x1_incr_low)
+            polygon_bytes.append(x1_incr_high)
             
             # This is equivalent of what happens when setting the new x1_incr
             fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
@@ -1840,17 +1851,15 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
             
-            fx_state['x2_incr'] = right_half_slope
+            (x2_incr, x2_incr_low, x2_incr_high) = convert_increment_to_incr_components(right_half_slope)
+            fx_state['x2_incr'] = x2_incr
+            polygon_bytes.append(x2_incr_low)
+            polygon_bytes.append(x2_incr_high)
             
-            x2_incr_16bit = fx_state['x2_incr']
-            if x2_incr_16bit < 0:
-                x2_incr_16bit = 256*256 + x2_incr_16bit
-            polygon_bytes.append(x2_incr_16bit % 256)
-            polygon_bytes.append((x2_incr_16bit // 256) & 0x7f)
-    
             # This is equivalent of what happens when setting the new x2_incr
             fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
 
+#        print(str(fx_state['x1_incr'])+'..'+str(fx_state['x2_incr']))
             
     # -- TODO: This MAY beinteresting --
     # If all nr_of_lines_to_draw in the polygon are below 64, we can use the two higest bits (of the nr_of_lines_to_draw) to mark whether we should do L/R/Both/None for the next polygon part
