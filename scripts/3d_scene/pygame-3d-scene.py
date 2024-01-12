@@ -316,6 +316,10 @@ def triangulate_faces(world_objects):
             
             orig_vertex_indices = copy.deepcopy(object_face['vertex_indices'])
         
+# FIXME: there are SOME concave faces in the original data! (most notable the two half-moon shapes on the back of the ship).
+#        We need to make sure we triangulate them in a specific way!
+#        So we need to make it possible to MANUALLY triangulate some of the faces!
+        
             # https://stackoverflow.com/questions/5247994/simple-2d-polygon-triangulation
             # This is when you want to handle simple polygons like rectangles, pentagons, hexagons and so on. 
             # Here you just take a starting point and connect it to all other vertices. 
@@ -1540,6 +1544,8 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         
         if (x2-x1 < 0):
             print("ERROR: NEGATIVE fill length!")
+# FIXME!
+#            return
         
 # FIXME: what if x2 and x1 are the same? Wont that result in a draw -of one pixel- IN REVERSE?
         pygame.draw.line(frame_buffer, line_color, (x1, y_screen), (x2-1, y_screen), 1)
@@ -1952,6 +1958,10 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
         else:
             # We draw the polygon to the screen
             if (USE_FX_POLY_FILLER_SIM):
+            
+# FIXME!
+#                print_vertices(face['vertex_indices'], screen_vertices)
+            
                 polygon_bytes = fx_sim_draw_polygon(frame_buffer, color_idx, face['vertex_indices'], screen_vertices, polygon_type_stats, colors)
                 # FIXME: do something REAL with the file_data!
                 if polygon_bytes is None:
