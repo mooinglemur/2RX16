@@ -1759,13 +1759,13 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
     nr_of_lines_to_draw_larger_than_63 = False
     
 # FIXME!
-    do_print = False
-    if (line_color_index == 197 and current_y_position == 108):
-        do_print = True
+#    do_print = False
+#    if (line_color_index == 197 and current_y_position == 108):
+#        do_print = True
         
 # FIXME!
-    if (do_print):
-        return None
+#    if (do_print):
+#        return None
     
     #if (do_print):
     #    print("This is the one!")
