@@ -75,6 +75,7 @@ NUMBER_OF_ROWS            = $42
 TMP_COLOR                 = $43
 TMP_POLYGON_TYPE          = $44
 NEXT_STEP                 = $45
+NR_OF_POLYGONS            = $46
 
 
 LOAD_ADDRESS              = $48 ; 49
@@ -111,8 +112,24 @@ start:
     
     jsr setup_polygon_filler
     jsr setup_polygon_data_address
+    
+; FIXME: UGLY HACK: fixed amount of polygons!
+    lda #2
+    sta NR_OF_POLYGONS
+    
+draw_next_polygon:
     jsr test_draw_polygon_fast
-; FIXME: increment polygon data address etc.
+    
+    clc
+    tya                 ; y contained the nr of bytes we read for the previous polygon
+    adc LOAD_ADDRESS
+    sta LOAD_ADDRESS
+    lda LOAD_ADDRESS+1
+    adc #0
+    sta LOAD_ADDRESS+1
+    
+    dec NR_OF_POLYGONS
+    bne draw_next_polygon
 
 
     jsr unset_polygon_filler
@@ -140,6 +157,16 @@ polygon_data:
     .byte $32          ; nr of lines       (note: 50 = $32)
     .byte $00          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
     
+    .byte $80          ; polygon type  ($00 = single top free form, $80 = double top free form)
+    .byte $02          ; polygon color
+    .byte $40          ; y-start           (note: 64 = $40)
+    .byte $9B, $00     ; x1 position (L, H) (note: 155 = $009B)
+    .byte $2C, $01     ; x2 position (L, H) (note: 300 = $012C)
+    .byte $7C, $01     ; x1 incr (L, H)    (note: 380 = $017C)
+    .byte $92, $7F     ; x2 incr (L, H)    (note: -100 = $FF92)
+    .byte $4B          ; nr of lines       (note: 75 = $4B)
+    .byte $00          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
+
     
 
 setup_polygon_filler:
@@ -365,6 +392,8 @@ right_increment_is_ok:
     
 
 done_drawing_polygon:
+    iny   ; We can only get here from one place, and there we still hadnt incremented y yet
+    
     rts
     
     
