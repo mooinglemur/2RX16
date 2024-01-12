@@ -49,7 +49,7 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = False
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
@@ -1114,7 +1114,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
         
         # We use the face_index as 'color'. So we can later on check whether a triangle has effectively changed any pixels (aka is visible)
         if (USE_FX_POLY_FILLER_SIM):
-            fx_sim_draw_polygon(check_triangle_visibility_buffer, face_index, face['vertex_indices'], screen_vertices)
+            fx_sim_draw_polygon(check_triangle_visibility_buffer, face_index, face['vertex_indices'], screen_vertices, {})
         else:
             pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i] for i in face_vertex_indices], 0)
         
@@ -1555,7 +1555,7 @@ def print_vertices(vertex_indices, screen_vertices):
 
 
 
-def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices):
+def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices, polygon_type_stats):
 
 # FIXME: fill the file_data!
     file_data = []
@@ -1673,8 +1673,13 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
     left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
     right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
     
-# FIXME: setup the INITIAL position(s) and slopes!
-#          if x1 == x2 keep a record of THAT!
+    
+    polygon_type_identifier = ''
+    if (len(top_vertex_indices) == 1):
+        polygon_type_identifier += 'SINGLE_TOP'
+    else:
+        polygon_type_identifier += 'DOUBLE_TOP'
+    
     left_pos = current_left_vertex[0]
     right_pos = current_right_vertex[0]
     
@@ -1686,6 +1691,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
         
     # We take the top y as starting y position
     current_y_position = top_y
+    
+    nr_of_lines_to_draw_larger_than_63 = False
     
     while (True):
     
@@ -1700,6 +1707,9 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             # Both are at the same y, so they both have to change
             next_side_to_change_slope = 'both'
             nr_of_lines_to_draw = next_left_vertex[1] - current_y_position
+            
+        if (nr_of_lines_to_draw > 63):
+            nr_of_lines_to_draw_larger_than_63 = True
 
         draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
         current_y_position += nr_of_lines_to_draw
@@ -1708,6 +1718,9 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             break
 
         if next_side_to_change_slope == 'right':
+        
+            polygon_type_identifier += '-CHANGE_RIGHT'
+            
             # Change *right* slope
             current_right_index += 1
             
@@ -1725,6 +1738,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
             
         elif next_side_to_change_slope == 'left':
+            polygon_type_identifier += '-CHANGE_LEFT'
+            
             # Change *left* slope
             current_left_index += 1
             
@@ -1739,6 +1754,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
                         
         else:  # both
+            polygon_type_identifier += '-CHANGE_BOTH'
+            
             # Change *right* slope
             current_right_index += 1
             
@@ -1765,12 +1782,23 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             # This is equivalent of what happens when setting the new x1_incr
             fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
             
+            
+    # -- TODO: This MAY beinteresting --
+    # If all nr_of_lines_to_draw in the polygon are below 64, we can use the two higest bits (of the nr_of_lines_to_draw) to mark whether we should do L/R/Both/None for the next polygon part
+    # So we want to know how many times it happens that we need more than 6 bit (>=64 lines to draw)
+    #if (nr_of_lines_to_draw_larger_than_63):
+    #    polygon_type_identifier += '-64+'
+            
+    if (polygon_type_identifier not in polygon_type_stats):
+        polygon_type_stats[polygon_type_identifier] = 0
+        
+    polygon_type_stats[polygon_type_identifier] += 1
     
     return file_data
 
     
 
-def draw_and_export(screen_vertices, sorted_faces):
+def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
 
 # FIXME: this sorter is probably the wrong way around now, since y is not flipped anymore in the projected_vertices!
     def y_sorter(item):
@@ -1795,7 +1823,7 @@ def draw_and_export(screen_vertices, sorted_faces):
         
 # FIXME: do we need to this this for each frame?
     reset_fx_state(fx_state)
-        
+    
     frame_buffer.fill((0,0,0))
     for face_index, face in enumerate(sorted_faces):
  
@@ -1819,14 +1847,14 @@ def draw_and_export(screen_vertices, sorted_faces):
             face_buffer.fill((0,0,0))
             
             if (USE_FX_POLY_FILLER_SIM):
-                fx_sim_draw_polygon(face_buffer, 1, face['vertex_indices'], screen_vertices)
+                fx_sim_draw_polygon(face_buffer, 1, face['vertex_indices'], screen_vertices, {})
             else:
                 pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
             add_face_with_frame_buffer(face_buffer, frame_buffer)
         else:
             # We draw the polygon to the screen
             if (USE_FX_POLY_FILLER_SIM):
-                file_data = fx_sim_draw_polygon(frame_buffer, colors[color_idx], face['vertex_indices'], screen_vertices)
+                file_data = fx_sim_draw_polygon(frame_buffer, colors[color_idx], face['vertex_indices'], screen_vertices, polygon_type_stats)
                 # FIXME: do something REAL with the file_data!
                 if file_data is None:
                     print(face)
@@ -1872,7 +1900,7 @@ def draw_and_export(screen_vertices, sorted_faces):
     frame_buffer_on_screen_y = 0
     screen.fill((0,0,0))
     screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (frame_buffer_on_screen_x, frame_buffer_on_screen_y))
-        
+    
 # FIXME!
 #        if (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
 #            output to FILE! Here?
@@ -2028,6 +2056,9 @@ for color_index in mat_info:
             'color_index' : int(color_index),
             'nr_of_shades' : int(nr_of_shades)
         }
+
+
+polygon_type_stats = {}
 
 while running:
     for event in pygame.event.get():
@@ -2285,13 +2316,13 @@ while running:
         #print(json.dumps(merged_faces, indent=4))
         
         if PRINT_PROGRESS: print("Draw and export")
-        tris_seen = draw_and_export(screen_vertices, merged_faces)
+        tris_seen = draw_and_export(screen_vertices, merged_faces, polygon_type_stats)
         
         if (PRINT_FRAME_TRIANGLES):
             print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces))+':'+str(len(merged_faces)))
     else:   
         if PRINT_PROGRESS: print("Draw and export")
-        tris_seen = draw_and_export(screen_vertices, visible_sorted_faces)
+        tris_seen = draw_and_export(screen_vertices, visible_sorted_faces, polygon_type_stats)
         
         if (PRINT_FRAME_TRIANGLES):
             print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces)))
@@ -2300,6 +2331,12 @@ while running:
     if tris_seen and (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
         f.write(b'\xff') # end of frame
     '''
+    
+        
+        
+    print(json.dumps(polygon_type_stats, indent=4))
+        
+    
 
     if (DRAW_BLACK_PIXELS):
         for y in range(200):
