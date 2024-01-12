@@ -34,7 +34,7 @@ SCENE = 'U2E'
 # FIXME!
 # FIXME!
 # FIXME!
-COLOR_IDX_SKY_BLACK = 253
+COLOR_IDX_SKY_BLACK = 254
 
 random.seed(10)
 
@@ -49,7 +49,7 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = False
-DEBUG_SORTING = False
+DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
@@ -1114,7 +1114,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
         
         # We use the face_index as 'color'. So we can later on check whether a triangle has effectively changed any pixels (aka is visible)
         if (USE_FX_POLY_FILLER_SIM):
-            fx_sim_draw_polygon(check_triangle_visibility_buffer, face_index, face['vertex_indices'], screen_vertices, {})
+            fx_sim_draw_polygon(check_triangle_visibility_buffer, face_index, face['vertex_indices'], screen_vertices, {}, None)
         else:
             pygame.draw.polygon(check_triangle_visibility_buffer, face_index, [screen_vertices[i] for i in face_vertex_indices], 0)
         
@@ -1555,10 +1555,16 @@ def print_vertices(vertex_indices, screen_vertices):
 
 
 
-def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices, polygon_type_stats):
+def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_vertices, polygon_type_stats, colors):
 
-# FIXME: fill the file_data!
-    file_data = []
+    # FIXME: this is a bit of an ugly workaround!
+    line_color = None
+    if (colors is not None):
+        line_color = colors[line_color_index]
+    else:
+        line_color = line_color_index
+        
+    polygon_bytes = []
 
     # == Setup left and right lists ==
     # - Get top vertex (index)
@@ -1614,7 +1620,7 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             
         if len(vertex_indices) < 3:
             print("ERROR: less than 3 vertices left over.")
-# FIXME: what about file_data?
+# FIXME: what about polygon_bytes?
             return None
 
     # If we have 2 top vertices we rotate once more (if we had more, we removed them), so the two top vertices are at either end of the list
@@ -1674,24 +1680,57 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
     right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
     
     
-    polygon_type_identifier = ''
-    if (len(top_vertex_indices) == 1):
-        polygon_type_identifier += 'SINGLE_TOP'
-    else:
-        polygon_type_identifier += 'DOUBLE_TOP'
+    SINGLE_TOP_FREE_FORM_TYPE = 0x00
+    DOUBLE_TOP_FREE_FORM_TYPE = 0x80
     
+    # We take the top y as starting y position
+    current_y_position = top_y
+
     left_pos = current_left_vertex[0]
     right_pos = current_right_vertex[0]
     
     fx_state['x1_pos'] = int(left_pos) * 512 + 256
     fx_state['x2_pos'] = int(right_pos) * 512 + 256
+    
+    polygon_type_identifier = ''
+    if (len(top_vertex_indices) == 1):
+        polygon_type_identifier += 'SINGLE_TOP'
+        
+# FIXME: for now we are ONLY doing free form types!
+        polygon_bytes.append(SINGLE_TOP_FREE_FORM_TYPE)
+        polygon_bytes.append(line_color_index)
+        polygon_bytes.append(current_y_position)
+        x1_pos_int = int(left_pos)
+        polygon_bytes.append(x1_pos_int % 256)
+        polygon_bytes.append(x1_pos_int // 256)
+    else:
+        polygon_type_identifier += 'DOUBLE_TOP'
+        
+# FIXME: for now we are ONLY doing free form types!
+        polygon_bytes.append(DOUBLE_TOP_FREE_FORM_TYPE)
+        polygon_bytes.append(line_color_index)
+        polygon_bytes.append(current_y_position)
+        x1_pos_int = int(left_pos)
+        polygon_bytes.append(x1_pos_int % 256)
+        polygon_bytes.append(x1_pos_int // 256)
+        x2_pos_int = int(right_pos)
+        polygon_bytes.append(x2_pos_int % 256)
+        polygon_bytes.append(x2_pos_int // 256)
 
     fx_state['x1_incr'] = left_half_slope
-    fx_state['x2_incr'] = right_half_slope
-        
-    # We take the top y as starting y position
-    current_y_position = top_y
+    x1_incr_16bit = fx_state['x1_incr']
+    if x1_incr_16bit < 0:
+        x1_incr_16bit = 256*256 + x1_incr_16bit
+    polygon_bytes.append(x1_incr_16bit % 256)
+    polygon_bytes.append((x1_incr_16bit // 256) & 0x7f)
     
+    fx_state['x2_incr'] = right_half_slope
+    x2_incr_16bit = fx_state['x2_incr']
+    if x2_incr_16bit < 0:
+        x2_incr_16bit = 256*256 + x2_incr_16bit
+    polygon_bytes.append(x2_incr_16bit % 256)
+    polygon_bytes.append((x2_incr_16bit // 256) & 0x7f)
+        
     nr_of_lines_to_draw_larger_than_63 = False
     
     while (True):
@@ -1711,15 +1750,18 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
         if (nr_of_lines_to_draw > 63):
             nr_of_lines_to_draw_larger_than_63 = True
 
+        polygon_bytes.append(nr_of_lines_to_draw)
+
         draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
         current_y_position += nr_of_lines_to_draw
         
         if ((current_right_index+1 == len(right_vertices)-1) and (current_left_index+1 == len(left_vertices)-1)):
+            polygon_bytes.append(0x00)
             break
 
         if next_side_to_change_slope == 'right':
-        
             polygon_type_identifier += '-CHANGE_RIGHT'
+            polygon_bytes.append(0x02)
             
             # Change *right* slope
             current_right_index += 1
@@ -1734,11 +1776,18 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             
             fx_state['x2_incr'] = right_half_slope
             
+            x2_incr_16bit = fx_state['x2_incr']
+            if x2_incr_16bit < 0:
+                x2_incr_16bit = 256*256 + x2_incr_16bit
+            polygon_bytes.append(x2_incr_16bit % 256)
+            polygon_bytes.append((x2_incr_16bit // 256) & 0x7f)
+    
             # This is equivalent of what happens when setting the new x2_incr
             fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
             
         elif next_side_to_change_slope == 'left':
             polygon_type_identifier += '-CHANGE_LEFT'
+            polygon_bytes.append(0x01)
             
             # Change *left* slope
             current_left_index += 1
@@ -1750,13 +1799,40 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             
             fx_state['x1_incr'] = left_half_slope
             
+            x1_incr_16bit = fx_state['x1_incr']
+            if x1_incr_16bit < 0:
+                x1_incr_16bit = 256*256 + x1_incr_16bit
+            polygon_bytes.append(x1_incr_16bit % 256)
+            polygon_bytes.append((x1_incr_16bit // 256) & 0x7f)
+            
             # This is equivalent of what happens when setting the new x1_incr
             fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
                         
         else:  # both
             polygon_type_identifier += '-CHANGE_BOTH'
+            polygon_bytes.append(0x03)
             
-            # Change *right* slope
+            # -- Change *left* slope --
+            current_left_index += 1
+            
+            next_left_vertex = left_vertices[current_left_index+1]
+            current_left_vertex = left_vertices[current_left_index]
+            
+            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
+            
+            fx_state['x1_incr'] = left_half_slope
+            
+            x1_incr_16bit = fx_state['x1_incr']
+            if x1_incr_16bit < 0:
+                x1_incr_16bit = 256*256 + x1_incr_16bit
+            polygon_bytes.append(x1_incr_16bit % 256)
+            polygon_bytes.append((x1_incr_16bit // 256) & 0x7f)
+            
+            # This is equivalent of what happens when setting the new x1_incr
+            fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
+
+            
+            # -- Change *right* slope --
             current_right_index += 1
             
             next_right_vertex = right_vertices[current_right_index+1]
@@ -1766,22 +1842,15 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
             
             fx_state['x2_incr'] = right_half_slope
             
+            x2_incr_16bit = fx_state['x2_incr']
+            if x2_incr_16bit < 0:
+                x2_incr_16bit = 256*256 + x2_incr_16bit
+            polygon_bytes.append(x2_incr_16bit % 256)
+            polygon_bytes.append((x2_incr_16bit // 256) & 0x7f)
+    
             # This is equivalent of what happens when setting the new x2_incr
             fx_state['x2_pos'] = int(fx_state['x2_pos'] / 512) * 512 + 256
 
-            # Change *left* slope
-            current_left_index += 1
-            
-            next_left_vertex = left_vertices[current_left_index+1]
-            current_left_vertex = left_vertices[current_left_index]
-            
-            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
-            
-            fx_state['x1_incr'] = left_half_slope
-            
-            # This is equivalent of what happens when setting the new x1_incr
-            fx_state['x1_pos'] = int(fx_state['x1_pos'] / 512) * 512 + 256
-            
             
     # -- TODO: This MAY beinteresting --
     # If all nr_of_lines_to_draw in the polygon are below 64, we can use the two higest bits (of the nr_of_lines_to_draw) to mark whether we should do L/R/Both/None for the next polygon part
@@ -1794,7 +1863,7 @@ def fx_sim_draw_polygon(draw_buffer, line_color, vertex_indices, screen_vertices
         
     polygon_type_stats[polygon_type_identifier] += 1
     
-    return file_data
+    return polygon_bytes
 
     
 
@@ -1847,17 +1916,21 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
             face_buffer.fill((0,0,0))
             
             if (USE_FX_POLY_FILLER_SIM):
-                fx_sim_draw_polygon(face_buffer, 1, face['vertex_indices'], screen_vertices, {})
+                fx_sim_draw_polygon(face_buffer, 1, face['vertex_indices'], screen_vertices, {}, None)
             else:
                 pygame.draw.polygon(face_buffer, 1, [screen_vertices[i] for i in face_vertex_indices], 0)
             add_face_with_frame_buffer(face_buffer, frame_buffer)
         else:
             # We draw the polygon to the screen
             if (USE_FX_POLY_FILLER_SIM):
-                file_data = fx_sim_draw_polygon(frame_buffer, colors[color_idx], face['vertex_indices'], screen_vertices, polygon_type_stats)
+                polygon_bytes = fx_sim_draw_polygon(frame_buffer, color_idx, face['vertex_indices'], screen_vertices, polygon_type_stats, colors)
                 # FIXME: do something REAL with the file_data!
-                if file_data is None:
+                if polygon_bytes is None:
                     print(face)
+                else:
+# FIXME!
+                    print(polygon_bytes)
+                    pass
             else:
                 pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
             
@@ -1930,7 +2003,7 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 110
+    frame_nr = 200
     increment_frame_by = 0
 
 material_info = load_material_info()
@@ -2334,7 +2407,7 @@ while running:
     
         
         
-    print(json.dumps(polygon_type_stats, indent=4))
+    #print(json.dumps(polygon_type_stats, indent=4))
         
     
 
