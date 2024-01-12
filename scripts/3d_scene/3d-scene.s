@@ -73,6 +73,8 @@ FILL_LENGTH_LOW           = $40
 FILL_LENGTH_HIGH          = $41
 NUMBER_OF_ROWS            = $42
 TMP_COLOR                 = $43
+TMP_POLYGON_TYPE          = $44
+NEXT_STEP                 = $45
 
 
 LOAD_ADDRESS              = $48 ; 49
@@ -126,14 +128,18 @@ infinite_loop:
     
 ; FIXME: put this somewhere else!
 polygon_data:
-    .byte $80          ; polygon type  ($80 = single top, free form)
+    .byte $00          ; polygon type  ($00 = single top free form, $80 = double top free form)
     .byte $01          ; polygon color
     .byte $14          ; y-start           (note: 20 = $14)
     .byte $5A, $00     ; x position (L, H) (note: 90 = $005A)
     .byte $92, $7F     ; x1 incr (L, H)    (note: -100 = $FF92)
     .byte $7C, $01     ; x2 incr (L, H)    (note: 380 = $017C)
     .byte $96          ; nr of lines       (note: 150 = $96)
-    .byte $00          ; next step      ($00 = stop, $01 = left, $02 = right, $80 = both left and right)
+    .byte $02          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
+    .byte $CA, $79     ; x2 incr (L, H)    (note: -1590 = $F9CA)
+    .byte $32          ; nr of lines       (note: 50 = $32)
+    .byte $00          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
+    
     
 
 setup_polygon_filler:
@@ -179,15 +185,21 @@ setup_polygon_data_address:
     
     
     
+; FIXME: make this test_draw_polygon*S*_fast!
 test_draw_polygon_fast:
 
     ldy #0
     
     ; -- Polygon type --
     lda (LOAD_ADDRESS), y
-    bpl double_free_form
-    
-single_free_form:
+    sta TMP_POLYGON_TYPE
+   
+; FIXME: we need an FRAME-END code!!
+; FIXME: we need an FRAME-END code!!
+; FIXME: we need an FRAME-END code!!
+
+; FIXME: technically this name is INCORRECT, since we are MIXING single and double top draws!
+single_top_free_form:
 ; FIXME: this iny should be moved up when we have an actual jump table!
     iny
     
@@ -213,6 +225,11 @@ single_free_form:
     lda #%00001000           ; DCSEL=4, ADDRSEL=0
     sta VERA_CTRL
     
+; FIXME: we are MIXING single and double top drawing, so we use TMP_POLYGON_TYPE here for now!
+    lda TMP_POLYGON_TYPE
+    bmi set_double_x_positions
+    
+set_single_x_positions:
     ; -- X-position LOW --
     lda (LOAD_ADDRESS), y
     iny
@@ -224,6 +241,31 @@ single_free_form:
     iny
     sta VERA_FX_X_POS_H
     sta VERA_FX_Y_POS_H
+    
+    bra done_with_x_positions
+    
+set_double_x_positions:
+    ; -- X1-position LOW --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_X_POS_L
+    
+    ; -- X1-position HIGH --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_X_POS_H
+
+    ; -- X2-position LOW --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_Y_POS_L
+    
+    ; -- X2-position HIGH --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_Y_POS_H
+    
+done_with_x_positions:
 
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
@@ -253,34 +295,73 @@ single_free_form:
     iny
     sta NUMBER_OF_ROWS
 
-; FIXME: temp solution
-; FIXME: this *DESTROYS* register y!!
+    phy
+; FIXME: temp solution for color!
     ldy TMP_COLOR
-    
     jsr draw_polygon_part_using_polygon_filler_slow
+    ply
     
     
-;lda #%00000110           ; DCSEL=3, ADDRSEL=0
-;    sta VERA_CTRL
-;    
-;    ; NOTE that these increments are *HALF* steps!!
-;    lda #<(-1590)             ; X2 increment low
-;    sta $9F2B                
-;    lda #>(-1590)             ; X2 increment high
-;    and #%01111111            ; increment is only 15-bits long
-;    sta $9F2C
-;
-;    lda #50
-;    sta NUMBER_OF_ROWS
-;    jsr draw_polygon_part_using_polygon_filler_slow
+draw_next_part:
     
-    
-    bra done_drawing_polygon
-    
-double_free_form:
-; FIXME: this iny should be moved up when we have an actual jump table!
+    ; -- next step code --
+    lda (LOAD_ADDRESS), y
+    sta NEXT_STEP
+    beq done_drawing_polygon
     iny
-; FIXME: NOT IMPLEMENTED YET!
+    
+    ; We know we have to either change the left or right increment (or both) so we need to set the appropiate DCSEL
+    ldx #%00000110           ; DCSEL=3, ADDRSEL=0
+    stx VERA_CTRL
+    
+    and #$01   ; bit 0 determines if we have to change the left increment
+    beq left_increment_is_ok
+    
+    ; we (at least) have to change the left increment
+    
+    ; -- X1 incr LOW --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_X_INCR_L
+
+    ; -- X1 incr HIGH --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_X_INCR_H
+    
+left_increment_is_ok:
+    
+    lda NEXT_STEP
+    and #$02   ; bit 1 determines if we have to change the right increment
+    beq right_increment_is_ok
+    
+    ; we have to change the right increment
+
+    ; -- X2 incr LOW --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_Y_INCR_L
+
+    ; -- X2 incr HIGH --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta VERA_FX_Y_INCR_H
+
+right_increment_is_ok:
+    
+    ; -- nr of lines --
+    lda (LOAD_ADDRESS), y
+    iny
+    sta NUMBER_OF_ROWS
+
+    phy
+; FIXME: temp solution for color!
+    ldy TMP_COLOR
+    jsr draw_polygon_part_using_polygon_filler_slow
+    ply
+    
+    bra draw_next_part
+    
     
 
 done_drawing_polygon:
