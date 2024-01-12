@@ -43,6 +43,7 @@ MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
 USE_FX_POLY_FILLER_SIM = True
+PRINT_PALETTE = True
 
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
 PRINT_FRAME_TRIANGLES = True
@@ -2023,6 +2024,7 @@ colors = []
 # HACK: see comment below
 avg_z_per_object = {}
 
+colors_12bit = []
 
 for clr_idx, rgb64 in enumerate(palette_colors):
 
@@ -2110,6 +2112,9 @@ for clr_idx, rgb64 in enumerate(palette_colors):
                     pass
             
 
+            new_12bit_color = (r,g,b)
+            colors_12bit.append(new_12bit_color)
+
             # 4 bit to 8 bit
             r = r * 17
             g = g * 17
@@ -2126,6 +2131,7 @@ for clr_idx, rgb64 in enumerate(palette_colors):
         
     
     colors.append(new_8bit_color)
+    
 
 if (DEBUG_COLORS):
     colors = debug_colors
@@ -2139,6 +2145,24 @@ for color_index in mat_info:
             'nr_of_shades' : int(nr_of_shades)
         }
 
+
+if (PRINT_PALETTE):
+    # Printing out asm for palette:
+    palette_string = ""
+    for new_color in colors_12bit:
+        red = new_color[0]
+        green = new_color[1]
+        blue = new_color[2]
+        
+        green = green << 4
+        
+        palette_string += "  .byte "
+        palette_string += "$" + format(green | blue,"02x") + ", "
+        palette_string += "$" + format(red,"02x")
+        palette_string += "\n"
+
+    print(palette_string)
+    
 
 polygon_type_stats = {}
 

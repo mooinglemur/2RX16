@@ -58,6 +58,7 @@ VERA_FX_CACHE_U   = $9F2C  ; DCSEL=6
 VERA_L0_CONFIG    = $9F2D
 VERA_L0_TILEBASE  = $9F2F
 
+VERA_PALETTE      = $1FA00
 
 
 ; === Zero page addresses ===
@@ -105,7 +106,8 @@ start:
     
     jsr setup_vera_for_layer0_bitmap
     
-    jsr change_palette_color
+    ; FIXME: REMOVE! jsr change_palette_color
+    jsr copy_palette_from_index_0
     jsr clear_screen_slow
     
     jsr generate_y_to_address_table
@@ -705,3 +707,297 @@ change_palette_color:
     sta VERA_DATA0
     
     rts
+    
+    
+
+copy_palette_from_index_0:
+
+    ; Starting at palette VRAM address
+    
+    lda #%00010001      ; setting bit 16 of vram address to 1, setting auto-increment value to 1
+    sta VERA_ADDR_BANK
+
+    ; We start at color index 0 of the palette (we preserve the first 16 default VERA colors)
+    lda #<(VERA_PALETTE)
+    sta VERA_ADDR_LOW
+    lda #>(VERA_PALETTE)
+    sta VERA_ADDR_HIGH
+
+    ; HACK: we know we have more than 128 colors to copy (meaning: > 256 bytes), so we are just going to copy 128 colors first
+    
+    ldy #0
+next_packed_color_256:
+    lda palette_data, y
+    sta VERA_DATA0
+    iny
+    bne next_packed_color_256
+
+    ldy #0
+next_packed_color_1:
+    lda palette_data+256, y
+    sta VERA_DATA0
+    iny
+    ; TODO: remove this? we are now assuming all 256 colors need to be copied!
+    ;    cpy #<(end_of_palette_data-palette_data)
+    bne next_packed_color_1
+    
+    rts
+
+palette_data:
+  .byte $00, $00
+  .byte $33, $04
+  .byte $33, $04
+  .byte $33, $04
+  .byte $33, $04
+  .byte $44, $05
+  .byte $44, $05
+  .byte $55, $06
+  .byte $55, $06
+  .byte $55, $06
+  .byte $66, $07
+  .byte $66, $07
+  .byte $77, $08
+  .byte $77, $08
+  .byte $88, $09
+  .byte $88, $09
+  .byte $99, $09
+  .byte $99, $09
+  .byte $aa, $0a
+  .byte $aa, $0a
+  .byte $aa, $0a
+  .byte $bb, $0b
+  .byte $bb, $0b
+  .byte $cc, $0c
+  .byte $cc, $0c
+  .byte $dd, $0d
+  .byte $dd, $0d
+  .byte $dd, $0d
+  .byte $ee, $0e
+  .byte $ee, $0e
+  .byte $ff, $0f
+  .byte $ff, $0f
+  .byte $32, $02
+  .byte $32, $02
+  .byte $42, $02
+  .byte $43, $03
+  .byte $43, $03
+  .byte $53, $03
+  .byte $53, $03
+  .byte $53, $03
+  .byte $64, $03
+  .byte $64, $04
+  .byte $64, $04
+  .byte $74, $04
+  .byte $74, $04
+  .byte $74, $04
+  .byte $85, $04
+  .byte $85, $04
+  .byte $85, $04
+  .byte $95, $05
+  .byte $95, $05
+  .byte $95, $05
+  .byte $a5, $05
+  .byte $a5, $05
+  .byte $a5, $05
+  .byte $b6, $05
+  .byte $b6, $05
+  .byte $b6, $05
+  .byte $c6, $05
+  .byte $c6, $05
+  .byte $c6, $05
+  .byte $d6, $05
+  .byte $d6, $05
+  .byte $d7, $05
+  .byte $33, $02
+  .byte $33, $02
+  .byte $43, $03
+  .byte $44, $03
+  .byte $44, $03
+  .byte $55, $04
+  .byte $55, $04
+  .byte $55, $04
+  .byte $66, $04
+  .byte $66, $05
+  .byte $67, $05
+  .byte $67, $05
+  .byte $77, $05
+  .byte $78, $06
+  .byte $78, $06
+  .byte $79, $06
+  .byte $79, $06
+  .byte $79, $07
+  .byte $7a, $07
+  .byte $8a, $07
+  .byte $8a, $08
+  .byte $8b, $08
+  .byte $8b, $08
+  .byte $9c, $09
+  .byte $9c, $09
+  .byte $9d, $0a
+  .byte $ad, $0a
+  .byte $ad, $0a
+  .byte $ae, $0b
+  .byte $ae, $0b
+  .byte $bf, $0c
+  .byte $bf, $0c
+  .byte $46, $03
+  .byte $56, $03
+  .byte $56, $03
+  .byte $57, $03
+  .byte $57, $04
+  .byte $57, $04
+  .byte $67, $04
+  .byte $68, $04
+  .byte $68, $05
+  .byte $68, $05
+  .byte $78, $05
+  .byte $79, $05
+  .byte $79, $06
+  .byte $89, $06
+  .byte $89, $06
+  .byte $8a, $07
+  .byte $8a, $07
+  .byte $9a, $07
+  .byte $9a, $08
+  .byte $9a, $08
+  .byte $ab, $09
+  .byte $ab, $09
+  .byte $ab, $09
+  .byte $ab, $0a
+  .byte $bc, $0a
+  .byte $bc, $0a
+  .byte $bc, $0b
+  .byte $cc, $0b
+  .byte $cd, $0c
+  .byte $dd, $0c
+  .byte $dd, $0d
+  .byte $de, $0d
+  .byte $34, $03
+  .byte $34, $03
+  .byte $44, $04
+  .byte $45, $04
+  .byte $45, $05
+  .byte $55, $05
+  .byte $56, $05
+  .byte $56, $06
+  .byte $56, $06
+  .byte $67, $06
+  .byte $67, $07
+  .byte $67, $07
+  .byte $78, $08
+  .byte $78, $08
+  .byte $78, $08
+  .byte $89, $09
+  .byte $89, $09
+  .byte $99, $0a
+  .byte $9a, $0a
+  .byte $9a, $0a
+  .byte $aa, $0a
+  .byte $aa, $0b
+  .byte $aa, $0b
+  .byte $ab, $0c
+  .byte $bb, $0c
+  .byte $bb, $0c
+  .byte $bb, $0d
+  .byte $cc, $0d
+  .byte $cc, $0d
+  .byte $dd, $0e
+  .byte $dd, $0e
+  .byte $ed, $0f
+  .byte $40, $0a
+  .byte $40, $0a
+  .byte $50, $0a
+  .byte $50, $0a
+  .byte $50, $0a
+  .byte $60, $0b
+  .byte $60, $0b
+  .byte $60, $0b
+  .byte $70, $0b
+  .byte $70, $0c
+  .byte $80, $0c
+  .byte $80, $0c
+  .byte $90, $0c
+  .byte $90, $0c
+  .byte $90, $0d
+  .byte $a0, $0d
+  .byte $a0, $0d
+  .byte $b0, $0d
+  .byte $b0, $0d
+  .byte $c0, $0e
+  .byte $c0, $0e
+  .byte $d0, $0e
+  .byte $d0, $0e
+  .byte $e0, $0f
+  .byte $e0, $0f
+  .byte $f0, $0f
+  .byte $f2, $0f
+  .byte $f5, $0f
+  .byte $f7, $0f
+  .byte $fa, $0f
+  .byte $fc, $0f
+  .byte $ff, $0f
+  .byte $34, $03
+  .byte $44, $04
+  .byte $44, $04
+  .byte $45, $04
+  .byte $55, $05
+  .byte $56, $05
+  .byte $56, $05
+  .byte $67, $06
+  .byte $67, $06
+  .byte $77, $06
+  .byte $78, $07
+  .byte $78, $07
+  .byte $89, $07
+  .byte $89, $08
+  .byte $8a, $08
+  .byte $9a, $08
+  .byte $9a, $09
+  .byte $ab, $09
+  .byte $ab, $09
+  .byte $ac, $0a
+  .byte $ac, $0a
+  .byte $bd, $0a
+  .byte $bd, $0a
+  .byte $be, $0b
+  .byte $ce, $0b
+  .byte $cf, $0b
+  .byte $df, $0b
+  .byte $df, $0c
+  .byte $ef, $0d
+  .byte $ef, $0d
+  .byte $ef, $0e
+  .byte $ff, $0f
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $b5, $0e
+  .byte $00, $00
+  .byte $b5, $0e
+end_of_palette_data:
