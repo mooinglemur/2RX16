@@ -48,6 +48,13 @@ VERA_FX_Y_POS_S   = $9F2A  ; DCSEL=5
 VERA_FX_POLY_FILL_L = $9F2B  ; DCSEL=5
 VERA_FX_POLY_FILL_H = $9F2C  ; DCSEL=5
 
+VERA_FX_CACHE_L   = $9F29  ; DCSEL=6
+VERA_FX_ACCUM_RESET = $9F29  ; DCSEL=6
+VERA_FX_CACHE_M   = $9F2A  ; DCSEL=6
+VERA_FX_ACCUM     = $9F2A  ; DCSEL=6
+VERA_FX_CACHE_H   = $9F2B  ; DCSEL=6
+VERA_FX_CACHE_U   = $9F2C  ; DCSEL=6
+
 VERA_L0_CONFIG    = $9F2D
 VERA_L0_TILEBASE  = $9F2F
 
@@ -117,10 +124,11 @@ FILL_LINE_END_CODE_3     = $6E00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta 
 
 TRIANGLE_TOP_POINT_X = 90
 TRIANGLE_TOP_POINT_Y = 20
+TRIANGLE_COLOR = 1
 
 BACKGROUND_COLOR = 4 ; nice purple
 
-USE_JUMP_TABLE = 0
+USE_JUMP_TABLE = 1
 DEBUG = 0
 
 ; Jump table specific constants
@@ -159,6 +167,20 @@ infinite_loop:
    
 test_draw_triangle:
 
+    .if(USE_JUMP_TABLE)
+        ; We first need to fill the 32-bit cache with 4 times our color
+        
+        lda #%00001100           ; DCSEL=6, ADDRSEL=0
+        sta VERA_CTRL
+
+        lda #TRIANGLE_COLOR
+; FIXME: we can SPEED this up  if we use the alternative cache incrementer! (only 2 bytes need to be set then)
+        sta VERA_FX_CACHE_L      ; cache32[7:0]
+        sta VERA_FX_CACHE_M      ; cache32[15:8]
+        sta VERA_FX_CACHE_H      ; cache32[23:16]
+        sta VERA_FX_CACHE_U      ; cache32[31:24]
+    .endif
+
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
    
@@ -172,6 +194,9 @@ test_draw_triangle:
     sta VERA_ADDR_LOW
 
     lda #%00000010           ; Entering *polygon filler mode*
+    .if(USE_JUMP_TABLE)
+        ora #%01000000           ; cache write enabled = 1
+    .endif
     sta VERA_FX_CTRL
     
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
@@ -203,18 +228,30 @@ test_draw_triangle:
     ora #%00100000           ; Reset subpixel position
     sta VERA_FX_Y_POS_H      ; Y (=X2) pixel position high [10:8]
 
-    lda #%00010000           ; ADDR1 increment: +1 byte
+    .if(USE_JUMP_TABLE)
+        lda #%00110000           ; ADDR1 increment: +4 byte
+    .else
+        lda #%00010000           ; ADDR1 increment: +1 byte
+    .endif
     sta VERA_ADDR_BANK
 
     .if(USE_JUMP_TABLE)
+        ldy #150              ; Hardcoded amount of lines to draw
+        
+        lda VERA_DATA1   ; this will increment x1 and x2 and the fill_length value will be calculated (= x2 - x1). Also: ADDR1 will be updated with ADDR0 + x1
+
+        lda #%00001010           ; DCSEL=5, ADDRSEL=0
+        sta VERA_CTRL
+        ldx VERA_FX_POLY_FILL_L  ; This contains: FILL_LENGTH >= 16, X1[1:0], FILL_LENGTH[3:0], 0
+    
+        jsr draw_polygon_part_using_polygon_filler_and_jump_tables
     .else
-        ldy #1                ; White color
+        ldy #TRIANGLE_COLOR
         lda #150              ; Hardcoded amount of lines to draw
         sta NUMBER_OF_ROWS
 
         jsr draw_polygon_part_using_polygon_filler
     .endif
-    
     
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
@@ -227,6 +264,15 @@ test_draw_triangle:
     sta VERA_FX_Y_INCR_H
 
     .if(USE_JUMP_TABLE)
+        ldy #50               ; Hardcoded amount of lines to draw
+        
+        lda VERA_DATA1   ; this will increment x1 and x2 and the fill_length value will be calculated (= x2 - x1). Also: ADDR1 will be updated with ADDR0 + x1
+
+        lda #%00001010           ; DCSEL=5, ADDRSEL=0
+        sta VERA_CTRL
+        ldx VERA_FX_POLY_FILL_L  ; This contains: FILL_LENGTH >= 16, X1[1:0], FILL_LENGTH[3:0], 0
+        
+        jsr draw_polygon_part_using_polygon_filler_and_jump_tables
     .else
         lda #50
         sta NUMBER_OF_ROWS
@@ -236,6 +282,10 @@ test_draw_triangle:
     rts
     
     
+    
+draw_polygon_part_using_polygon_filler_and_jump_tables:
+    jmp (FILL_LINE_START_JUMP,x)
+
 
 ; Routine to draw a triangle part
 draw_polygon_part_using_polygon_filler:
