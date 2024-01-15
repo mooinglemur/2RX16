@@ -31,7 +31,7 @@ SCENE = 'U2E'
 #SCENE = 'U2A'
 
 
-polygon_data_file = SCENE + '-POLYGONS.DAT'
+polygon_data_file = 'scripts/3d_scene/' + SCENE + '-POLYGONS.DAT'
 
 # FIXME!
 # FIXME!
@@ -52,7 +52,7 @@ PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = False
-DEBUG_SORTING = False
+DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
@@ -1658,7 +1658,7 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
         if len(vertex_indices) < 3:
             print("ERROR: less than 3 vertices left over.")
-# FIXME: what about polygon_bytes?
+# FIXME: can we fix/prevent this?
             return None
 
     # If we have 2 top vertices we rotate once more (if we had more, we removed them), so the two top vertices are at either end of the list
@@ -1803,7 +1803,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
 
         if (not draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)):
             print("ERROR: not adding polygon to polygon stream since it encountered an error during drawing!")
-            return []
+# FIXME: can we fix/prevent this?
+            return None
         current_y_position += nr_of_lines_to_draw
         
         if ((current_right_index+1 == len(right_vertices)-1) and (current_left_index+1 == len(left_vertices)-1)):
@@ -1826,7 +1827,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
             if (polygon_part_height <= 0):
                 print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
-                return []
+# FIXME: can we fix/prevent this?
+                return None
             
             right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (polygon_part_height) * 256)
             
@@ -1851,7 +1853,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
             if (polygon_part_height <= 0):
                 print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
-                return []
+# FIXME: can we fix/prevent this?
+                return None
                 
             left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (polygon_part_height) * 256)
             
@@ -1876,7 +1879,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
             if (polygon_part_height <= 0):
                 print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
-                return []
+# FIXME: can we fix/prevent this?
+                return None
                 
             left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (polygon_part_height) * 256)
             
@@ -1898,7 +1902,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
             if (polygon_part_height <= 0):
                 print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
-                return []
+# FIXME: can we fix/prevent this?
+                return None
                 
             right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (polygon_part_height) * 256)
             
@@ -2067,10 +2072,10 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 200
-    max_frame_nr = 220
+    frame_nr = 1      # ALWAYS *ODD*!!
+    max_frame_nr = 1000
 # FIXME: we need proper interpolation! (now just dropping every other frame!
-    increment_frame_by = 2
+    increment_frame_by = 1
 
 material_info = load_material_info()
 mat_info = material_info['mat_info']
@@ -2224,6 +2229,7 @@ polygon_type_stats = {}
 
 
 all_frame_bytes = []
+bank_bytes = []
 
 while running:
     for event in pygame.event.get():
@@ -2483,8 +2489,17 @@ while running:
         if PRINT_PROGRESS: print("Draw and export")
         frame_bytes = draw_and_export(screen_vertices, merged_faces, polygon_type_stats)
         
-        all_frame_bytes += frame_bytes
-#        print(frame_bytes)
+        # print(frame_bytes)
+        
+        if (len(bank_bytes) + len(frame_bytes) >= 8192):
+            # We add a polygon count of 255 as a marker that we have to switch to the next RAM Bank
+            bank_bytes.append(255)
+            fill_ln = 8192 - len(bank_bytes)
+            all_frame_bytes += bank_bytes
+            all_frame_bytes += fill_ln * [0]
+            bank_bytes = []
+            
+        bank_bytes += frame_bytes
         
         if (PRINT_FRAME_TRIANGLES):
             print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces))+':'+str(len(merged_faces)))
@@ -2556,6 +2571,9 @@ while running:
     
     clock.tick(60)
 
+# We add the left-over frame bytes
+if (len(bank_bytes) > 0): 
+    all_frame_bytes += bank_bytes
 
 polygonDataFile = open(polygon_data_file, "wb")
 polygonDataFile.write(bytearray(all_frame_bytes))
