@@ -156,19 +156,25 @@ start:
 
     sei
     
-    jsr setup_vera_for_layer0_bitmap
+; FIXME: do this a cleaner/nicer way!
+    lda VERA_DC_VIDEO
+    and #%10001111           ; Disable Layer 0, Layer 1 and sprites
+    sta VERA_DC_VIDEO
+
+    jsr copy_palette_from_index_0
+; FIXME: use a fast clear screen!
+    jsr clear_screen_slow
     
+; FIXME: generate these tables *offline* (in Python!)
     .if(USE_JUMP_TABLE)
         jsr generate_fill_line_end_code
         jsr generate_fill_line_end_jump
         jsr generate_fill_line_start_code_and_jump
     .endif
     
-    ; FIXME: REMOVE! jsr change_palette_color
-    jsr copy_palette_from_index_0
-    jsr clear_screen_slow
-    
     jsr generate_y_to_address_table
+    
+    jsr setup_vera_for_layer0_bitmap
     
     jsr setup_polygon_filler
     jsr setup_polygon_data_address
@@ -315,6 +321,11 @@ polygon_data:
     .byte 0, 45, 126, 107, 0, 201, 127, 27, 0, 74, 0
     .byte 0, 32, 126, 107, 0, 70, 127, 201, 127, 74, 0
     
+
+
+
+
+
 
 ; FIXME! BROKEN!
 ;   .byte 0, 197, 108,   88, 0,   0, 0,   205, 127,   4,     1,    171, 127,   6,   0
@@ -834,25 +845,6 @@ clear_bitmap_next_1a:
     
     rts
 
-change_palette_color:
-
-    ; -- Change some colors in the palette
-    
-    lda #%00010001           ; Setting bit 16 of vram address to the highest bit in the tilebase (=1), setting auto-increment value to 1
-    sta VERA_ADDR_BANK
-    
-    lda #$FA
-    sta VERA_ADDR_HIGH
-    lda #$08                 ; We use color 4 in the pallete (each color takes 2 bytes)
-    sta VERA_ADDR_LOW
-
-    lda #$05                 ; gb
-    sta VERA_DATA0
-    lda #$05                 ; -r
-    sta VERA_DATA0
-    
-    rts
-    
     
 
 copy_palette_from_index_0:
