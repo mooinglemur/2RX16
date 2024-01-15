@@ -120,7 +120,7 @@ TRIANGLE_TOP_POINT_Y = 20
 
 BACKGROUND_COLOR = 4 ; nice purple
 
-USE_JUMP_TABLE = 1
+USE_JUMP_TABLE = 0
 DEBUG = 0
 
 ; Jump table specific constants
@@ -206,14 +206,17 @@ test_draw_triangle:
     lda #%00010000           ; ADDR1 increment: +1 byte
     sta VERA_ADDR_BANK
 
-    ldy #1                ; White color
-    lda #150              ; Hardcoded amount of lines to draw
-    sta NUMBER_OF_ROWS
+    .if(USE_JUMP_TABLE)
+    .else
+        ldy #1                ; White color
+        lda #150              ; Hardcoded amount of lines to draw
+        sta NUMBER_OF_ROWS
 
-    jsr draw_polygon_part_using_polygon_filler
+        jsr draw_polygon_part_using_polygon_filler
+    .endif
     
     
-lda #%00000110           ; DCSEL=3, ADDRSEL=0
+    lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
     
     ; NOTE that these increments are *HALF* steps!!
@@ -223,9 +226,12 @@ lda #%00000110           ; DCSEL=3, ADDRSEL=0
     and #%01111111            ; increment is only 15-bits long
     sta VERA_FX_Y_INCR_H
 
-    lda #50
-    sta NUMBER_OF_ROWS
-    jsr draw_polygon_part_using_polygon_filler
+    .if(USE_JUMP_TABLE)
+    .else
+        lda #50
+        sta NUMBER_OF_ROWS
+        jsr draw_polygon_part_using_polygon_filler
+    .endif
 
     rts
     
