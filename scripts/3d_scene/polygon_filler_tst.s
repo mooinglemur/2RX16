@@ -45,6 +45,8 @@ VERA_FX_Y_POS_H   = $9F2C  ; DCSEL=4
 
 VERA_FX_X_POS_S   = $9F29  ; DCSEL=5
 VERA_FX_Y_POS_S   = $9F2A  ; DCSEL=5
+VERA_FX_POLY_FILL_L = $9F2B  ; DCSEL=5
+VERA_FX_POLY_FILL_H = $9F2C  ; DCSEL=5
 
 VERA_L0_CONFIG    = $9F2D
 VERA_L0_TILEBASE  = $9F2F
@@ -170,22 +172,22 @@ test_draw_triangle:
     sta VERA_ADDR_LOW
 
     lda #%00000010           ; Entering *polygon filler mode*
-    sta $9F29
+    sta VERA_FX_CTRL
     
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
     
     ; IMPORTANT: these increments are *HALF* steps!
     lda #<(-110)             ; X1 increment low (signed)
-    sta $9F29
+    sta VERA_FX_X_INCR_L
     lda #>(-110)             ; X1 increment high (signed)
     and #%01111111           ; increment is only 15-bits long
-    sta $9F2A
+    sta VERA_FX_X_INCR_H
     lda #<(380)              ; X2 increment low (signed)
-    sta $9F2B                
+    sta VERA_FX_Y_INCR_L
     lda #>(380)              ; X2 increment high (signed)
     and #%01111111           ; increment is only 15-bits long
-    sta $9F2C    
+    sta VERA_FX_Y_INCR_H
 
     ; Setting x1 and x2 pixel position
     
@@ -193,13 +195,13 @@ test_draw_triangle:
     sta VERA_CTRL
     
     lda #<TRIANGLE_TOP_POINT_X
-    sta $9F29                ; X (=X1) pixel position low [7:0]
-    sta $9F2B                ; Y (=X2) pixel position low [7:0]
+    sta VERA_FX_X_POS_L      ; X (=X1) pixel position low [7:0]
+    sta VERA_FX_Y_POS_L      ; Y (=X2) pixel position low [7:0]
     
     lda #>TRIANGLE_TOP_POINT_X
-    sta $9F2A                ; X (=X1) pixel position high [10:8]
+    sta VERA_FX_X_POS_H      ; X (=X1) pixel position high [10:8]
     ora #%00100000           ; Reset subpixel position
-    sta $9F2C                ; Y (=X2) pixel position high [10:8]
+    sta VERA_FX_Y_POS_H      ; Y (=X2) pixel position high [10:8]
 
     lda #%00010000           ; ADDR1 increment: +1 byte
     sta VERA_ADDR_BANK
@@ -216,10 +218,10 @@ lda #%00000110           ; DCSEL=3, ADDRSEL=0
     
     ; NOTE that these increments are *HALF* steps!!
     lda #<(-1590)             ; X2 increment low
-    sta $9F2B                
+    sta VERA_FX_Y_INCR_L
     lda #>(-1590)             ; X2 increment high
     and #%01111111            ; increment is only 15-bits long
-    sta $9F2C
+    sta VERA_FX_Y_INCR_H
 
     lda #50
     sta NUMBER_OF_ROWS
@@ -245,7 +247,7 @@ polygon_fill_triangle_row_next:
     ; What we do below is SLOW: we are not using all the information 
     ; we get here and are *only* reconstructing the 10-bit value.
     
-    lda $9F2B             ; This contains: FILL_LENGTH >= 16, X1[1:0],
+    lda VERA_FX_POLY_FILL_L ; This contains: FILL_LENGTH >= 16, X1[1:0],
                           ;                FILL_LENGTH[3:0], 0
     lsr
     and #%00000111        ; We keep the 3 lower bits (note that bit 3 is ALSO in the HIGH byte, so we discard it)
@@ -253,7 +255,7 @@ polygon_fill_triangle_row_next:
     sta FILL_LENGTH_LOW   ; We now have 3 bits in FILL_LENGTH_LOW
 
     stz FILL_LENGTH_HIGH
-    lda $9F2C             ; This contains: FILL_LENGTH[9:3], 0
+    lda VERA_FX_POLY_FILL_H ; This contains: FILL_LENGTH[9:3], 0
     asl
     rol FILL_LENGTH_HIGH
     asl
