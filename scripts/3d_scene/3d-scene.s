@@ -142,12 +142,27 @@ NR_OF_BYTES_PER_LINE = 320
 
 BACKGROUND_COLOR = 0
 
+USE_JUMP_TABLE = 1
+DEBUG = 0
+
+; Jump table specific constants
+TEST_JUMP_TABLE = 0   ; This turns off the iteration in-between the jump-table calls
+USE_SOFT_FILL_LEN = 0 ; This turns off reading from 9F2B and 9F2C (for fill length data) and instead reads from USE_SOFT_FILL_LEN-variables
+DO_4BIT = 0
+DO_2BIT = 0
+
 
 start:
 
     sei
     
     jsr setup_vera_for_layer0_bitmap
+    
+    .if(USE_JUMP_TABLE)
+        jsr generate_fill_line_end_code
+        jsr generate_fill_line_end_jump
+        jsr generate_fill_line_start_code_and_jump
+    .endif
     
     ; FIXME: REMOVE! jsr change_palette_color
     jsr copy_palette_from_index_0
@@ -335,7 +350,11 @@ setup_polygon_filler:
     lda #%00000101           ; DCSEL=2, ADDRSEL=1
     sta VERA_CTRL
     
-    lda #%00010000           ; ADDR1 increment: +1 byte
+    .if(USE_JUMP_TABLE)
+        lda #%00110000           ; ADDR1 increment: +4 byte
+    .else
+        lda #%00010000           ; ADDR1 increment: +1 byte
+    .endif
     sta VERA_ADDR_BANK
 
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
@@ -345,6 +364,9 @@ setup_polygon_filler:
     sta VERA_ADDR_BANK
 
     lda #%00000010           ; Entering *polygon filler mode*
+    .if(USE_JUMP_TABLE)
+        ora #%01000000           ; cache write enabled = 1
+    .endif
     sta VERA_FX_CTRL
     
     rts
@@ -392,11 +414,27 @@ single_top_free_form:
     iny
     
     ; -- Polygon color --
-    lda (LOAD_ADDRESS), y
-    iny
-; FIXME: for now we put it into a ZP, but we *SHOULD* fill the cache with this color!
-    sta TMP_COLOR
+    
+    .if(USE_JUMP_TABLE)
+        ; We first need to fill the 32-bit cache with 4 times our color
+        
+        lda #%00001100           ; DCSEL=6, ADDRSEL=0
+        sta VERA_CTRL
 
+        lda (LOAD_ADDRESS), y
+        iny
+; FIXME: we can SPEED this up  if we use the alternative cache incrementer! (only 2 bytes need to be set then)
+        sta VERA_FX_CACHE_L      ; cache32[7:0]
+        sta VERA_FX_CACHE_M      ; cache32[15:8]
+        sta VERA_FX_CACHE_H      ; cache32[23:16]
+        sta VERA_FX_CACHE_U      ; cache32[31:24]
+    .else
+        lda (LOAD_ADDRESS), y
+        iny
+        ; We put it into a ZP when drawing slowly
+        sta TMP_COLOR
+    .endif
+    
     ; -- Y-start --
     lda (LOAD_ADDRESS), y
     iny
@@ -478,16 +516,36 @@ done_with_x_positions:
     iny
     sta VERA_FX_Y_INCR_H
     
-    ; -- nr of lines --
-    lda (LOAD_ADDRESS), y
-    iny
-    sta NUMBER_OF_ROWS
+    .if(USE_JUMP_TABLE)
+        ; -- nr of lines --
+        lda (LOAD_ADDRESS), y
+        iny
+        
+        phy   ; backup y (byte offset into data)
+        
+        tay   ; put nr-of-lines into y register
+        
+        lda VERA_DATA1   ; this will increment x1 and x2 and the fill_length value will be calculated (= x2 - x1). Also: ADDR1 will be updated with ADDR0 + x1
 
-    phy
-; FIXME: temp solution for color!
-    ldy TMP_COLOR
-    jsr draw_polygon_part_using_polygon_filler_slow
-    ply
+        lda #%00001010           ; DCSEL=5, ADDRSEL=0
+        sta VERA_CTRL
+        ldx VERA_FX_POLY_FILL_L  ; This contains: FILL_LENGTH >= 16, X1[1:0], FILL_LENGTH[3:0], 0
+    
+        jsr draw_polygon_part_using_polygon_filler_and_jump_tables
+
+        ply   ; restore y (byte offset into data)
+    .else
+        ; -- nr of lines --
+        lda (LOAD_ADDRESS), y
+        iny
+        sta NUMBER_OF_ROWS
+
+        phy
+    ; FIXME: temp solution for color!
+        ldy TMP_COLOR
+        jsr draw_polygon_part_using_polygon_filler_slow
+        ply
+    .endif
     
     
 draw_next_part:
@@ -537,16 +595,36 @@ left_increment_is_ok:
 
 right_increment_is_ok:
     
-    ; -- nr of lines --
-    lda (LOAD_ADDRESS), y
-    iny
-    sta NUMBER_OF_ROWS
+    .if(USE_JUMP_TABLE)
+        ; -- nr of lines --
+        lda (LOAD_ADDRESS), y
+        iny
+        
+        phy   ; backup y (byte offset into data)
+        
+        tay   ; put nr-of-lines into y register
+        
+        lda VERA_DATA1   ; this will increment x1 and x2 and the fill_length value will be calculated (= x2 - x1). Also: ADDR1 will be updated with ADDR0 + x1
 
-    phy
-; FIXME: temp solution for color!
-    ldy TMP_COLOR
-    jsr draw_polygon_part_using_polygon_filler_slow
-    ply
+        lda #%00001010           ; DCSEL=5, ADDRSEL=0
+        sta VERA_CTRL
+        ldx VERA_FX_POLY_FILL_L  ; This contains: FILL_LENGTH >= 16, X1[1:0], FILL_LENGTH[3:0], 0
+    
+        jsr draw_polygon_part_using_polygon_filler_and_jump_tables
+
+        ply   ; restore y (byte offset into data)
+    .else
+        ; -- nr of lines --
+        lda (LOAD_ADDRESS), y
+        iny
+        sta NUMBER_OF_ROWS
+
+        phy
+    ; FIXME: temp solution for color!
+        ldy TMP_COLOR
+        jsr draw_polygon_part_using_polygon_filler_slow
+        ply
+    .endif
     
     bra draw_next_part
     
@@ -558,7 +636,8 @@ done_drawing_polygon:
     rts
     
     
-    
+draw_polygon_part_using_polygon_filler_and_jump_tables:
+    jmp (FILL_LINE_START_JUMP,x)
     
     
 ; Routine to draw a triangle part
@@ -818,6 +897,10 @@ add_code_byte:
     inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
 done_adding_code_byte:
     rts
+
+
+    .include "fx_polygon_fill_jump_tables.s"
+    .include "fx_polygon_fill_jump_tables_8bit.s"
 
 
 palette_data:
