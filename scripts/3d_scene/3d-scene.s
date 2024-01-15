@@ -64,6 +64,7 @@ VERA_L0_CONFIG    = $9F2D
 VERA_L0_TILEBASE  = $9F2F
 
 VERA_PALETTE      = $1FA00
+VERA_SPRITES      = $1FC00
 
 
 ; === Zero page addresses ===
@@ -97,6 +98,8 @@ TMP_POLYGON_TYPE          = $44
 NEXT_STEP                 = $45
 NR_OF_POLYGONS            = $46
 NR_OF_FRAMES              = $47 ; 48
+BUFFER_NR                 = $49
+SPRITE_X                  = $4A ; 4B
 
 VRAM_ADDRESS              = $50 ; 51 ; 52
 
@@ -137,16 +140,20 @@ FILL_LINE_END_CODE_1     = $6A00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta 
 FILL_LINE_END_CODE_2     = $6C00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
 FILL_LINE_END_CODE_3     = $6E00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
 
-Y_TO_ADDRESS_LOW         = $8100
-Y_TO_ADDRESS_HIGH        = $8200
-Y_TO_ADDRESS_BANK        = $8300
+Y_TO_ADDRESS_LOW_0       = $8100
+Y_TO_ADDRESS_HIGH_0      = $8200
+Y_TO_ADDRESS_BANK_0      = $8300
 
+Y_TO_ADDRESS_LOW_1       = $8400
+Y_TO_ADDRESS_HIGH_1      = $8500
+Y_TO_ADDRESS_BANK_1      = $8600
 
 ; === Other constants ===
 
 NR_OF_BYTES_PER_LINE = 320
 
 BACKGROUND_COLOR = 0
+BLACK_COLOR = 254     ; this is a non-transparant black color
 
 USE_JUMP_TABLE = 1
 DEBUG = 0
@@ -178,11 +185,16 @@ start:
         jsr generate_fill_line_start_code_and_jump
     .endif
     
-    jsr generate_y_to_address_table
+    jsr generate_y_to_address_table_0
+    jsr generate_y_to_address_table_1
+    
+    jsr setup_covering_sprites
     
     jsr setup_vera_for_layer0_bitmap_general
     
-    jsr setup_vera_for_layer0_bitmap_buffer_0
+    ; We start with showing buffer 1 while filling buffer 0
+    jsr setup_vera_for_layer0_bitmap_buffer_1
+    stz BUFFER_NR
 
 tmp_loop:
     
@@ -197,7 +209,6 @@ tmp_loop:
     
 draw_next_frame:
     
-    jsr setup_vera_for_layer0_bitmap_buffer_1
 
     ldy #0
     
@@ -244,7 +255,24 @@ draw_next_polygon:
 ; FIXME: replace this with something proper!
     jsr dumb_wait_for_vsync
     
-;    jsr switch_to_other_buffer
+
+    ; Every frame we switch to which buffer we write to and which one we show
+; FIXME!
+;    stp
+ 
+; FIXME: switching turned off! 
+    lda #1
+    eor BUFFER_NR
+    sta BUFFER_NR
+
+    ; If we are going to fill buffer 1 (not 0) then we show buffer 0
+    bne show_buffer_0
+show_buffer_1:
+    jsr setup_vera_for_layer0_bitmap_buffer_1
+    bra done_switching_buffer
+show_buffer_0:
+    jsr setup_vera_for_layer0_bitmap_buffer_0
+done_switching_buffer:
 
 
 ; FIXME: this should be a 16-bit number!!
@@ -410,17 +438,39 @@ single_top_free_form:
     .endif
     
     ; -- Y-start --
+    
+; FIXME: we can do this more efficiently!
+    lda BUFFER_NR
+    bne do_y_to_address_1
+    
+do_y_to_address_0:
     lda (LOAD_ADDRESS), y
     iny
-; FIXME: expensive!?
+    
     tax
-; FIXME: how do we do DOUBLE BUFFERING here? (two sets of generated code??)
-    lda Y_TO_ADDRESS_LOW, x
+    lda Y_TO_ADDRESS_LOW_0, x
     sta VERA_ADDR_LOW
-    lda Y_TO_ADDRESS_HIGH, x
+    lda Y_TO_ADDRESS_HIGH_0, x
     sta VERA_ADDR_HIGH
-    lda Y_TO_ADDRESS_BANK, x
+    lda Y_TO_ADDRESS_BANK_0, x
     sta VERA_ADDR_BANK
+    
+    bra y_to_address_done
+
+do_y_to_address_1:
+    lda (LOAD_ADDRESS), y
+    iny
+    
+    tax
+    lda Y_TO_ADDRESS_LOW_1, x
+    sta VERA_ADDR_LOW
+    lda Y_TO_ADDRESS_HIGH_1, x
+    sta VERA_ADDR_HIGH
+    lda Y_TO_ADDRESS_BANK_1, x
+    sta VERA_ADDR_BANK
+
+y_to_address_done:
+
 
     lda #%00001000           ; DCSEL=4, ADDRSEL=0
     sta VERA_CTRL
@@ -686,10 +736,9 @@ polygon_fill_triangle_row_done:
     
     
     
-generate_y_to_address_table:
+generate_y_to_address_table_0:
 
-; FIXME: for now, we assume the base address is 0 here!
-; FIXME: this does not take into account DOUBLE BUFFERING yet!
+    ; Buffer 0 starts at $00000
     stz VRAM_ADDRESS
     stz VRAM_ADDRESS+1
     stz VRAM_ADDRESS+2
@@ -697,39 +746,175 @@ generate_y_to_address_table:
     ; First entry
     ldy #0
     lda VRAM_ADDRESS
-    sta Y_TO_ADDRESS_LOW, y
+    sta Y_TO_ADDRESS_LOW_0, y
     lda VRAM_ADDRESS+1
-    sta Y_TO_ADDRESS_HIGH, y
+    sta Y_TO_ADDRESS_HIGH_0, y
     lda VRAM_ADDRESS+2
     ora #%11100000           ; +320 byte increment (=%1110)
-    sta Y_TO_ADDRESS_BANK, y
+    sta Y_TO_ADDRESS_BANK_0, y
 
     ; Entries 1-255
     ldy #1
-generate_next_y_to_address_entry:
+generate_next_y_to_address_entry_0:
     clc
     lda VRAM_ADDRESS
     adc #<320
     sta VRAM_ADDRESS
-    sta Y_TO_ADDRESS_LOW, y
+    sta Y_TO_ADDRESS_LOW_0, y
 
     lda VRAM_ADDRESS+1
     adc #>320
     sta VRAM_ADDRESS+1
-    sta Y_TO_ADDRESS_HIGH, y
+    sta Y_TO_ADDRESS_HIGH_0, y
 
     lda VRAM_ADDRESS+2
     adc #0
     sta VRAM_ADDRESS+2
     ora #%11100000           ; +320 byte increment (=%1110)
-    sta Y_TO_ADDRESS_BANK, y
+    sta Y_TO_ADDRESS_BANK_0, y
 
     iny
-    bne generate_next_y_to_address_entry
+    bne generate_next_y_to_address_entry_0
 
     rts
     
+    
+generate_y_to_address_table_1:
 
+    ; Buffer 1 starts at 31*2048 + 640 = 64128 = $0FA80
+    
+    lda #$80
+    sta VRAM_ADDRESS
+    lda #$FA
+    sta VRAM_ADDRESS+1
+    stz VRAM_ADDRESS+2
+
+    ; First entry
+    ldy #0
+    lda VRAM_ADDRESS
+    sta Y_TO_ADDRESS_LOW_1, y
+    lda VRAM_ADDRESS+1
+    sta Y_TO_ADDRESS_HIGH_1, y
+    lda VRAM_ADDRESS+2
+    ora #%11100000           ; +320 byte increment (=%1110)
+    sta Y_TO_ADDRESS_BANK_1, y
+
+    ; Entries 1-255
+    ldy #1
+generate_next_y_to_address_entry_1:
+    clc
+    lda VRAM_ADDRESS
+    adc #<320
+    sta VRAM_ADDRESS
+    sta Y_TO_ADDRESS_LOW_1, y
+
+    lda VRAM_ADDRESS+1
+    adc #>320
+    sta VRAM_ADDRESS+1
+    sta Y_TO_ADDRESS_HIGH_1, y
+
+    lda VRAM_ADDRESS+2
+    adc #0
+    sta VRAM_ADDRESS+2
+    ora #%11100000           ; +320 byte increment (=%1110)
+    sta Y_TO_ADDRESS_BANK_1, y
+
+    iny
+    bne generate_next_y_to_address_entry_1
+
+    rts
+
+
+
+setup_covering_sprites:
+    ; We setup 5 covering 64x64 sprites that contain 2 rows of black pixels at the bottom (actually we flip the sprite vertically, so its at the top of their buffer)
+    ; We can use the 128 bytes available between the two bitmap buffer for these black pixels. Note: these pixels cannot be 0, since that would make them transparant!
+
+    ; We first fill these 128 with a non-transparant black color
+    ; The buffer of these sprites is at 320*200 (right after the end of the first buffer) = 64000 = $0FA00
+    
+    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to 1
+    sta VERA_ADDR_BANK
+    lda #<($FA00)
+    sta VERA_ADDR_LOW
+    lda #>($FA00)
+    sta VERA_ADDR_HIGH
+
+    lda #BLACK_COLOR
+    ldx #128
+next_black_pixel:
+    sta VERA_DATA0
+    dex
+    bne next_black_pixel
+    
+    ; We then setup the actual 5 sprites
+
+    lda #%00010001      ; setting bit 16 of vram address to 1, setting auto-increment value to 1
+    sta VERA_ADDR_BANK
+
+    lda #<(VERA_SPRITES)
+    sta VERA_ADDR_LOW
+    lda #>(VERA_SPRITES)
+    sta VERA_ADDR_HIGH
+
+    ldx #0
+    
+    stz SPRITE_X
+    stz SPRITE_X+1
+
+setup_next_sprite:
+
+    ; The buffer of these sprites is at 320*200 (right after the end of the first buffer) = 64000 = $0FA00
+
+    ; Address (12:5)
+    lda #<($FA00>>5)
+    sta VERA_DATA0
+
+    ; Mode,	-	, Address (16:13)
+    lda #<($FA00>>13)
+    ora #%10000000 ; 8bpp
+    sta VERA_DATA0
+    
+    ; X (7:0)
+    lda SPRITE_X
+    sta VERA_DATA0
+    
+    ; X (9:8)
+    lda SPRITE_X+1
+    sta VERA_DATA0
+
+    ; Y (7:0)
+    lda #<(-62)
+    sta VERA_DATA0
+
+    ; Y (9:8)
+    lda #>(-64)
+    sta VERA_DATA0
+    
+    ; Collision mask	Z-depth	V-flip	H-flip
+    lda #%00001110   ; Z-depth = in front of all layers, v-flip = 1
+    sta VERA_DATA0
+
+    ; Sprite height,	Sprite width,	Palette offset
+    lda #%11110000 ; 64x64, 0 palette offset
+    sta VERA_DATA0
+
+    clc
+    lda SPRITE_X
+    adc #64
+    sta SPRITE_X
+    lda SPRITE_X+1
+    adc #0
+    sta SPRITE_X+1
+    
+    inx
+    
+    cpx #5
+    bne setup_next_sprite
+
+
+
+    rts
 
 setup_vera_for_layer0_bitmap_general:
 
@@ -749,19 +934,19 @@ setup_vera_for_layer0_bitmap_general:
     rts
     
     
-; FIXME: this can be done more efficiantly!    
+; FIXME: this can be done more efficiently!    
 setup_vera_for_layer0_bitmap_buffer_0:
-
-    lda VERA_DC_VIDEO
-    ora #%00010000           ; Enable Layer 0
-    and #%10011111           ; Disable Layer 1 and sprites
-    sta VERA_DC_VIDEO
 
     ; -- Setup Layer 0 --
     
     lda #%00000000           ; DCSEL=0, ADDRSEL=0
     sta VERA_CTRL
     
+    lda VERA_DC_VIDEO
+    ora #%00010000           ; Enable Layer 0
+    and #%10011111           ; Disable Layer 1 and sprites
+    sta VERA_DC_VIDEO
+
     ; Set layer0 tilebase to 0x00000 and tile width to 320 px
     lda #0
     sta VERA_L0_TILEBASE
@@ -778,19 +963,19 @@ setup_vera_for_layer0_bitmap_buffer_0:
     
     rts
     
-; FIXME: this can be done more efficiantly!    
+; FIXME: this can be done more efficiently!    
 setup_vera_for_layer0_bitmap_buffer_1:
-
-    lda VERA_DC_VIDEO
-    ora #%01010000           ; Enable Layer 0 and sprites
-    and #%11011111           ; Disable Layer 1
-    sta VERA_DC_VIDEO
 
     ; -- Setup Layer 0 --
     
     lda #%00000000           ; DCSEL=0, ADDRSEL=0
     sta VERA_CTRL
     
+    lda VERA_DC_VIDEO
+    ora #%01010000           ; Enable Layer 0 and sprites
+    and #%11011111           ; Disable Layer 1
+    sta VERA_DC_VIDEO
+
     ; Buffer 1 starts at: (320*200-512) = 31*2048
     
     ; Set layer0 tilebase to 0x0F800 and tile width to 320 px
