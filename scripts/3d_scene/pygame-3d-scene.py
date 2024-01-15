@@ -1951,6 +1951,9 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
 # FIXME: do we need to this this for each frame?
     reset_fx_state(fx_state)
     
+    frame_bytes = []
+    nr_of_polygons_in_frame = 0
+    
     frame_buffer.fill((0,0,0))
     for face_index, face in enumerate(sorted_faces):
  
@@ -1990,9 +1993,11 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
                 if polygon_bytes is None:
                     print(face)
                 else:
+                    nr_of_polygons_in_frame += 1
+                    frame_bytes += polygon_bytes
 # FIXME!
-                    print(polygon_bytes)
-                    pass
+#                    print(polygon_bytes)
+#                    pass
             else:
                 pygame.draw.polygon(frame_buffer, colors[color_idx], [screen_vertices[i] for i in face_vertex_indices], 0)
             
@@ -2041,8 +2046,14 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
 #            output to FILE! Here?
 
 # FIXME: what should we do here?
-    tris_seen = True
-    return tris_seen
+#    tris_seen = True
+#    return tris_seen
+
+    # We add the number actual drawn polygons to the beginning of the frame_bytes
+    frame_bytes.insert(0, nr_of_polygons_in_frame)
+    
+    return frame_bytes
+    
     
 
 # Main game loop
@@ -2474,13 +2485,15 @@ while running:
         #print(json.dumps(merged_faces, indent=4))
         
         if PRINT_PROGRESS: print("Draw and export")
-        tris_seen = draw_and_export(screen_vertices, merged_faces, polygon_type_stats)
+        frame_bytes = draw_and_export(screen_vertices, merged_faces, polygon_type_stats)
+        
+        print(frame_bytes)
         
         if (PRINT_FRAME_TRIANGLES):
             print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces))+':'+str(len(merged_faces)))
     else:   
         if PRINT_PROGRESS: print("Draw and export")
-        tris_seen = draw_and_export(screen_vertices, visible_sorted_faces, polygon_type_stats)
+        frame_bytes = draw_and_export(screen_vertices, visible_sorted_faces, polygon_type_stats)
         
         if (PRINT_FRAME_TRIANGLES):
             print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces)))
