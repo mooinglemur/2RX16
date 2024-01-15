@@ -22,6 +22,11 @@ VERA_DATA0        = $9F23
 VERA_DATA1        = $9F24
 VERA_CTRL         = $9F25
 
+VERA_IEN          = $9F26
+VERA_ISR          = $9F27
+VERA_IRQLINE_L    = $9F28
+VERA_SCANLINE_L   = $9F28
+
 VERA_DC_VIDEO     = $9F29  ; DCSEL=0
 VERA_DC_HSCALE    = $9F2A  ; DCSEL=0
 VERA_DC_VSCALE    = $9F2B  ; DCSEL=0
@@ -163,8 +168,8 @@ start:
     sta VERA_DC_VIDEO
 
     jsr copy_palette_from_index_0
-; FIXME: use a fast clear screen!
-    jsr clear_screen_slow
+; FIXME: use a fast clear buffers/vram!
+    jsr clear_vram_slow
     
 ; FIXME: generate these tables *offline* (in Python!)
     .if(USE_JUMP_TABLE)
@@ -175,7 +180,11 @@ start:
     
     jsr generate_y_to_address_table
     
-    jsr setup_vera_for_layer0_bitmap
+    jsr setup_vera_for_layer0_bitmap_general
+    
+    jsr setup_vera_for_layer0_bitmap_buffer_0
+
+tmp_loop:
     
     jsr setup_polygon_filler
     jsr setup_polygon_data_address
@@ -188,6 +197,7 @@ start:
     
 draw_next_frame:
     
+    jsr setup_vera_for_layer0_bitmap_buffer_1
 
     ldy #0
     
@@ -229,6 +239,14 @@ draw_next_polygon:
     dec NR_OF_POLYGONS
     bne draw_next_polygon
 
+
+
+; FIXME: replace this with something proper!
+    jsr dumb_wait_for_vsync
+    
+;    jsr switch_to_other_buffer
+
+
 ; FIXME: this should be a 16-bit number!!
     dec NR_OF_FRAMES
     bne draw_next_frame
@@ -236,13 +254,33 @@ draw_next_polygon:
 
     jsr unset_polygon_filler
     
+; FIXME: HACK now looping!
+    jmp tmp_loop
+    
     
     ; We are not returning to BASIC here...
 infinite_loop:
     jmp infinite_loop
     
     rts
+
     
+; This is just a dumb verison of a proper vsync-wait
+dumb_wait_for_vsync:
+
+    ; We wait until SCANLINE == $1FF (indicating the beam is off screen, lines 512-524)
+wait_for_scanline_bit8:
+    lda VERA_IEN
+    and #%01000000
+    beq wait_for_scanline_bit8
+    
+wait_for_scanline_low:
+    lda VERA_SCANLINE_L
+    cmp #$FF
+    bne wait_for_scanline_low
+
+    rts
+
     
 polygon_data:
     .byte 87, 0, 254, 93, 237, 0, 192, 68, 0, 10, 1, 2, 64, 66, 3, 1, 0, 0, 1, 0, 0, 254, 103, 98, 0, 0, 79, 128, 2, 2, 3, 0, 0, 171, 93, 3, 0, 0, 254, 123, 0, 0, 0, 0, 85, 1, 6, 0, 0, 254, 97, 41, 0, 0, 102, 136, 0, 1, 1, 114, 127, 27, 1, 0, 0, 75, 0, 0, 17, 96, 140, 0, 216, 252, 42, 5, 1, 1, 109, 0, 5, 2, 252, 253, 2, 0, 128, 17, 98, 0, 0, 17, 0, 0, 0, 147, 127, 7, 0, 128, 17, 107, 0, 0, 13, 0, 0, 0, 144, 127, 16, 0, 128, 17, 128, 0, 0, 4, 0, 0, 0, 143, 127, 9, 0, 0, 17, 104, 179, 0, 171, 82, 112, 3, 3, 1, 115, 0, 38, 2, 0, 0, 55, 0, 128, 203, 0, 0, 0, 50, 0, 0, 0, 5, 0, 95, 2, 0, 76, 1, 0, 128, 66, 0, 45, 0, 48, 0, 2, 0, 2, 0, 98, 1, 153, 0, 5, 0, 128, 75, 0, 48, 0, 109, 0, 2, 0, 121, 0, 101, 2, 0, 74, 2, 0, 128, 209, 106, 27, 0, 37, 0, 0, 0, 0, 0, 1, 0, 0, 208, 106, 27, 0, 205, 127, 0, 0, 1, 2, 192, 127, 4, 0, 128, 210, 107, 27, 0, 37, 0, 192, 127, 64, 0, 4, 0, 128, 213, 111, 26, 0, 38, 0, 0, 0, 0, 0, 2, 0, 128, 2, 0, 74, 0, 134, 0, 2, 0, 92, 0, 47, 2, 197, 127, 39, 2, 245, 124, 22, 0, 0, 2, 86, 142, 0, 245, 124, 0, 0, 22, 1, 80, 1, 51, 0, 128, 2, 0, 134, 0, 185, 0, 92, 0, 250, 127, 41, 2, 128, 122, 6, 0, 0, 11, 85, 64, 1, 112, 250, 0, 0, 1, 1, 45, 3, 56, 0, 0, 11, 86, 142, 0, 0, 0, 222, 2, 62, 2, 210, 111, 11, 0, 0, 13, 47, 151, 0, 197, 127, 85, 56, 3, 2, 0, 0, 35, 2, 112, 250, 1, 0, 0, 13, 41, 184, 0, 128, 122, 28, 15, 6, 1, 85, 56, 3, 0, 128, 2, 0, 185, 0, 203, 0, 250, 127, 0, 0, 41, 1, 93, 0, 52, 0, 0, 209, 82, 94, 0, 11, 0, 0, 4, 1, 2, 0, 0, 21, 1, 128, 1, 2, 0, 0, 209, 36, 97, 0, 128, 126, 0, 0, 2, 1, 0, 0, 22, 0, 128, 209, 0, 94, 0, 97, 0, 0, 0, 0, 0, 13, 2, 0, 127, 3, 0, 0, 209, 83, 101, 0, 10, 0, 0, 4, 1, 2, 10, 0, 24, 1, 0, 4, 1, 0, 0, 209, 32, 105, 0, 0, 126, 0, 0, 2, 1, 0, 0, 24, 2, 0, 124, 1, 0, 128, 209, 0, 101, 0, 105, 0, 0, 0, 0, 0, 6, 2, 171, 126, 3, 0, 128, 209, 85, 111, 0, 116, 0, 0, 0, 0, 0, 27, 1, 128, 2, 2, 0, 0, 209, 27, 116, 0, 0, 125, 0, 0, 2, 1, 9, 0, 27, 2, 0, 123, 1, 0, 128, 209, 0, 110, 0, 112, 0, 0, 0, 0, 126, 1, 0, 0, 209, 86, 122, 0, 0, 0, 0, 7, 1, 2, 0, 0, 30, 1, 85, 2, 3, 0, 0, 209, 20, 129, 0, 171, 125, 0, 0, 3, 1, 0, 0, 31, 2, 0, 121, 1, 0, 0, 204, 91, 172, 0, 192, 127, 0, 9, 1, 2, 0, 0, 3, 0, 0, 205, 85, 174, 0, 171, 127, 0, 3, 3, 2, 128, 127, 3, 1, 0, 9, 1, 0, 0, 205, 89, 156, 0, 0, 0, 0, 8, 2, 2, 192, 127, 3, 1, 0, 15, 1, 0, 0, 203, 94, 156, 0, 0, 0, 0, 15, 1, 2, 36, 0, 7, 2, 0, 112, 1, 0, 0, 205, 81, 159, 0, 160, 127, 192, 3, 4, 2, 171, 127, 4, 1, 0, 8, 2, 0, 128, 205, 94, 146, 0, 156, 0, 28, 0, 0, 0, 9, 0, 128, 206, 89, 147, 0, 156, 0, 205, 127, 0, 0, 5, 0, 128, 206, 81, 149, 0, 159, 0, 192, 127, 160, 127, 8, 0, 128, 197, 90, 146, 0, 151, 0, 102, 1, 51, 1, 5, 0, 0, 205, 94, 146, 0, 0, 124, 28, 0, 1, 1, 0, 0, 8, 2, 0, 123, 1, 0, 0, 206, 89, 147, 0, 0, 123, 205, 127, 1, 1, 0, 0, 4, 2, 0, 124, 1, 0, 0, 198, 91, 145, 0, 0, 0, 153, 1, 3, 1, 170, 2, 2, 2, 0, 0, 1, 0, 0, 207, 81, 149, 0, 128, 125, 192, 127, 2, 1, 183, 127, 6, 2, 0, 123, 1, 0, 0, 195, 90, 146, 0, 0, 127, 102, 1, 1, 1, 153, 1, 4, 2, 0, 0, 1, 0, 0, 10, 92, 165, 0, 128, 2, 192, 2, 4, 1, 0, 3, 4, 0, 0, 206, 95, 142, 0, 0, 125, 0, 0, 1, 1, 0, 0, 8, 0, 0, 206, 90, 142, 0, 0, 127, 0, 0, 2, 1, 192, 127, 3, 2, 0, 125, 1, 0, 0, 8, 93, 153, 0, 205, 127, 64, 0, 4, 2, 0, 0, 1, 1, 0, 2, 1, 0, 0, 207, 83, 144, 0, 128, 126, 183, 127, 2, 1, 220, 127, 5, 2, 0, 127, 2, 0, 0, 207, 111, 203, 0, 0, 126, 0, 127, 2, 2, 52, 126, 2, 1, 0, 127, 3, 0, 128, 10, 92, 158, 0, 165, 0, 51, 2, 128, 2, 4, 2, 0, 122, 1, 0, 0, 11, 98, 152, 0, 64, 1, 0, 2, 1, 2, 0, 1, 2, 2, 0, 1, 1, 0, 0, 193, 92, 158, 0, 0, 123, 192, 127, 1, 1, 64, 0, 3, 2, 0, 125, 1, 0, 0, 202, 94, 195, 0, 128, 0, 0, 8, 1, 2, 128, 0, 3, 1, 0, 8, 1, 0, 0, 207, 107, 205, 0, 86, 125, 128, 127, 3, 1, 154, 127, 1, 2, 0, 126, 4, 0, 0, 196, 87, 140, 0, 192, 127, 241, 127, 4, 1, 205, 127, 5, 1, 0, 0, 4, 1, 64, 0, 4, 0, 0, 204, 98, 197, 0, 36, 0, 0, 8, 1, 2, 64, 0, 4, 2, 0, 124, 2, 0, 0, 196, 85, 141, 0, 128, 127, 220, 127, 2, 1, 228, 127, 5, 2, 192, 127, 4, 0, 0, 13, 101, 156, 0, 0, 1, 0, 2, 1, 1, 51, 2, 1, 2, 0, 2, 4, 0, 0, 9, 92, 158, 0, 192, 127, 51, 2, 4, 1, 0, 2, 1, 2, 0, 120, 1, 0, 0, 164, 96, 157, 0, 0, 125, 0, 2, 1, 1, 0, 0, 1, 2, 0, 1, 1, 1, 0, 1, 1, 2, 0, 0, 1, 1, 0, 2, 2, 0, 0, 7, 105, 198, 0, 205, 127, 128, 3, 2, 2, 86, 125, 3, 0, 128, 13, 103, 160, 0, 163, 0, 0, 2, 85, 3, 3, 2, 0, 123, 1, 0, 0, 197, 97, 169, 0, 0, 120, 64, 1, 1, 1, 0, 1, 2, 1, 0, 11, 1, 0, 0, 207, 115, 195, 0, 0, 119, 0, 127, 1, 1, 128, 126, 2, 0, 0, 12, 100, 163, 0, 0, 0, 0, 11, 1, 2, 205, 127, 2, 1, 85, 3, 3, 0, 128, 202, 94, 186, 0, 195, 0, 128, 0, 128, 0, 4, 0, 0, 207, 110, 197, 0, 0, 119, 154, 127, 1, 1, 154, 127, 4, 2, 0, 119, 1, 0, 128, 204, 98, 188, 0, 197, 0, 36, 0, 36, 0, 7, 0, 128, 7, 105, 189, 0, 198, 0, 214, 127, 205, 127, 5, 2, 0, 119, 1, 0, 0, 205, 113, 174, 0, 0, 127, 0, 4, 3, 3, 0, 6, 128, 126, 2, 0, 128, 200, 94, 174, 0, 186, 0, 128, 0, 128, 0, 4, 0, 0, 205, 109, 176, 0, 128, 127, 0, 6, 2, 2, 154, 127, 2, 1, 0, 4, 3, 0, 128, 202, 98, 176, 0, 188, 0, 42, 0, 36, 0, 6, 1, 0, 12, 1, 0, 0, 6, 104, 177, 0, 205, 127, 0, 12, 1, 2, 214, 127, 4, 1, 0, 6, 2, 0, 0, 205, 112, 166, 0, 0, 127, 0, 8, 1, 2, 0, 127, 1, 1, 128, 3, 2, 0, 0, 204, 107, 167, 0, 205, 127, 128, 4, 2, 2, 128, 127, 3, 1, 0, 8, 1, 0, 0, 197, 94, 167, 0, 224, 127, 0, 0, 4, 2, 0, 0, 4, 1, 214, 127, 1, 2, 0, 0, 4, 2, 205, 127, 5, 2, 0, 127, 2, 0, 128, 201, 94, 167, 0, 174, 0, 0, 0, 128, 0, 4, 0, 128, 202, 98, 167, 0, 176, 0, 0, 0, 42, 0, 5, 1, 0, 10, 1, 0, 0, 5, 103, 167, 0, 0, 0, 0, 10, 1, 2, 205, 127, 3, 1, 128, 4, 2, 0, 128, 2, 0, 199, 0, 64, 1, 255, 127, 0, 0, 198, 1, 128, 1, 2, 0
@@ -691,14 +729,9 @@ generate_next_y_to_address_entry:
 
     rts
     
-    
-    
-setup_vera_for_layer0_bitmap:
 
-    lda VERA_DC_VIDEO
-    ora #%01010000           ; Enable Layer 0 and sprites
-    and #%11011111           ; Disable Layer 1
-    sta VERA_DC_VIDEO
+
+setup_vera_for_layer0_bitmap_general:
 
     lda #$40                 ; 2:1 scale (320 x 240 pixels on screen)
     sta VERA_DC_HSCALE
@@ -713,6 +746,22 @@ setup_vera_for_layer0_bitmap:
     lda #(4+3)
     sta VERA_L0_CONFIG
 
+    rts
+    
+    
+; FIXME: this can be done more efficiantly!    
+setup_vera_for_layer0_bitmap_buffer_0:
+
+    lda VERA_DC_VIDEO
+    ora #%00010000           ; Enable Layer 0
+    and #%10011111           ; Disable Layer 1 and sprites
+    sta VERA_DC_VIDEO
+
+    ; -- Setup Layer 0 --
+    
+    lda #%00000000           ; DCSEL=0, ADDRSEL=0
+    sta VERA_CTRL
+    
     ; Set layer0 tilebase to 0x00000 and tile width to 320 px
     lda #0
     sta VERA_L0_TILEBASE
@@ -729,8 +778,41 @@ setup_vera_for_layer0_bitmap:
     
     rts
     
+; FIXME: this can be done more efficiantly!    
+setup_vera_for_layer0_bitmap_buffer_1:
 
-clear_screen_slow:
+    lda VERA_DC_VIDEO
+    ora #%01010000           ; Enable Layer 0 and sprites
+    and #%11011111           ; Disable Layer 1
+    sta VERA_DC_VIDEO
+
+    ; -- Setup Layer 0 --
+    
+    lda #%00000000           ; DCSEL=0, ADDRSEL=0
+    sta VERA_CTRL
+    
+    ; Buffer 1 starts at: (320*200-512) = 31*2048
+    
+    ; Set layer0 tilebase to 0x0F800 and tile width to 320 px
+    lda #(31<<2)
+    sta VERA_L0_TILEBASE
+
+    ; Setting VSTART/VSTOP so that we have 202 rows on screen (320x200 pixels on screen)
+
+    lda #%00000010  ; DCSEL=1
+    sta VERA_CTRL
+   
+    lda #20-2  ; we show 2 lines of 'garbage' so the *actual* bitmap starts at 31*2048 + 640  (128 bytes after the *first* buffer ends)
+    ; Note: we cover these 2 garbage-lines with five 64x64 black sprites (of which only the two last lines are actually black and have their sprite data pointed to the 128 bytes mentioned above)
+    sta VERA_DC_VSTART
+    lda #400/2+20-1
+    sta VERA_DC_VSTOP
+    
+    rts
+
+    
+
+clear_vram_slow:
 
     lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to 1
     sta VERA_ADDR_BANK
@@ -742,8 +824,8 @@ clear_screen_slow:
 
     ; FIXME: PERFORMANCE we can do this MUCH faster using CACHE writes and UNROLLING!
     
-    ; We need 320*240 = 76800 bytes to be cleared
-    ; This means we need 300*256 bytes to be cleared (300 = 256+44)
+    ; We need 320*400 + 128 = 128128 bytes to be cleared
+    ; This means we need 501*256 bytes to be cleared (501 = 256+245)
 
     lda #BACKGROUND_COLOR
     
@@ -758,7 +840,7 @@ clear_bitmap_next_1:
     dey
     bne clear_bitmap_next_256
 
-    ldy #44
+    ldy #245
 clear_bitmap_next_256a:
     ldx #0
 clear_bitmap_next_1a:

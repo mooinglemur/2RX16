@@ -31,6 +31,8 @@ SCENE = 'U2E'
 #SCENE = 'U2A'
 
 
+polygon_data_file = SCENE + '-POLYGONS.DAT'
+
 # FIXME!
 # FIXME!
 # FIXME!
@@ -45,12 +47,12 @@ PATCH_COLORS_MANUALLY = True
 USE_FX_POLY_FILLER_SIM = True
 PRINT_PALETTE = False
 
-ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # Important: This disables any output to files!
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False  # When turned on, this will not automatically turn off playback so no output file will be written!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = False
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
@@ -2041,14 +2043,6 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
     screen.fill((0,0,0))
     screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (frame_buffer_on_screen_x, frame_buffer_on_screen_y))
     
-# FIXME!
-#        if (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
-#            output to FILE! Here?
-
-# FIXME: what should we do here?
-#    tris_seen = True
-#    return tris_seen
-
     # We add the number actual drawn polygons to the beginning of the frame_bytes
     frame_bytes.insert(0, nr_of_polygons_in_frame)
     
@@ -2059,13 +2053,10 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
 # Main game loop
 running = True
 
-f = None
-if (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
-    # FIXME: rename this using the scene name!
-    f = open("trilist.bin", "wb")
 
 frame_nr = 1
-increment_frame_by = 1
+# FIXME: we need proper interpolation! (now just dropping every other frame!
+increment_frame_by = 2
 
 if SCENE == 'U2E':
     max_frame_nr = 1802
@@ -2077,7 +2068,9 @@ if DEBUG_SORTING:
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
     frame_nr = 200
-    increment_frame_by = 0
+    max_frame_nr = 220
+# FIXME: we need proper interpolation! (now just dropping every other frame!
+    increment_frame_by = 2
 
 material_info = load_material_info()
 mat_info = material_info['mat_info']
@@ -2228,6 +2221,9 @@ if (PRINT_PALETTE):
     
 
 polygon_type_stats = {}
+
+
+all_frame_bytes = []
 
 while running:
     for event in pygame.event.get():
@@ -2487,7 +2483,8 @@ while running:
         if PRINT_PROGRESS: print("Draw and export")
         frame_bytes = draw_and_export(screen_vertices, merged_faces, polygon_type_stats)
         
-        print(frame_bytes)
+        all_frame_bytes += frame_bytes
+#        print(frame_bytes)
         
         if (PRINT_FRAME_TRIANGLES):
             print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces))+':'+str(len(merged_faces)))
@@ -2497,11 +2494,6 @@ while running:
         
         if (PRINT_FRAME_TRIANGLES):
             print(str(frame_nr) + ":" +str(len(camera_clipped_projected_faces))+':'+str(len(visible_sorted_faces)))
-    # FIXME: enable this again!
-    '''
-    if tris_seen and (not ALLOW_PAUSING_AND_REVERSE_PLAYBACK):
-        f.write(b'\xff') # end of frame
-    '''
     
         
         
@@ -2563,6 +2555,12 @@ while running:
             running = False
     
     clock.tick(60)
+
+
+polygonDataFile = open(polygon_data_file, "wb")
+polygonDataFile.write(bytearray(all_frame_bytes))
+polygonDataFile.close()
+
 
 # Quit Pygame
 pygame.quit()
