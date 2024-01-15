@@ -56,7 +56,7 @@ DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
 DEBUG_COUNT_REDRAWS = False  # VERY slow! -> use R-key to toggle!
 DEBUG_COLORS = False
-DEBUG_SORTING_LIMIT_OBJECTS = True
+DEBUG_SORTING_LIMIT_OBJECTS = False
 DEBUG_COLOR_PER_ORIG_TRIANGLE = False
 DEBUG_CLIP_COLORS = False
 DEBUG_RESERSE_SORTING = False
@@ -1544,8 +1544,7 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         
         if (x2-x1 < 0):
             print("ERROR: NEGATIVE fill length!")
-# FIXME!
-#            return
+            return False
         
 # FIXME: what if x2 and x1 are the same? Wont that result in a draw -of one pixel- IN REVERSE?
         pygame.draw.line(frame_buffer, line_color, (x1, y_screen), (x2-1, y_screen), 1)
@@ -1553,6 +1552,8 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         # This is 'equivalent' of what happens when reading from DATA0 (this (effectively) also increments y_in_part)
         fx_state['x1_pos'] += fx_state['x1_incr']
         fx_state['x2_pos'] += fx_state['x2_incr']
+        
+    return True
 
 
 def print_vertices(vertex_indices, screen_vertices):
@@ -1798,7 +1799,9 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
 
         polygon_bytes.append(nr_of_lines_to_draw)
 
-        draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)
+        if (not draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)):
+            print("ERROR: not adding polygon to polygon stream since it encountered an error during drawing!")
+            return []
         current_y_position += nr_of_lines_to_draw
         
         if ((current_right_index+1 == len(right_vertices)-1) and (current_left_index+1 == len(left_vertices)-1)):
@@ -1817,8 +1820,13 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             #print(current_right_vertex)
             #print(next_right_vertex)
+
+            polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
+            if (polygon_part_height <= 0):
+                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                return []
             
-            right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
+            right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (polygon_part_height) * 256)
             
             (x2_incr, x2_incr_low, x2_incr_high) = convert_increment_to_incr_components(right_half_slope)
             fx_state['x2_incr'] = x2_incr
@@ -1838,7 +1846,12 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             next_left_vertex = left_vertices[current_left_index+1]
             current_left_vertex = left_vertices[current_left_index]
             
-            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
+            polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
+            if (polygon_part_height <= 0):
+                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                return []
+                
+            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (polygon_part_height) * 256)
             
             (x1_incr, x1_incr_low, x1_incr_high) = convert_increment_to_incr_components(left_half_slope)
             fx_state['x1_incr'] = x1_incr
@@ -1858,7 +1871,12 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             next_left_vertex = left_vertices[current_left_index+1]
             current_left_vertex = left_vertices[current_left_index]
 
-            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (next_left_vertex[1] - current_left_vertex[1]) * 256)
+            polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
+            if (polygon_part_height <= 0):
+                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                return []
+                
+            left_half_slope = int((next_left_vertex[0] - current_left_vertex[0]) / (polygon_part_height) * 256)
             
             (x1_incr, x1_incr_low, x1_incr_high) = convert_increment_to_incr_components(left_half_slope)
             fx_state['x1_incr'] = x1_incr
@@ -1875,7 +1893,12 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             next_right_vertex = right_vertices[current_right_index+1]
             current_right_vertex = right_vertices[current_right_index]
             
-            right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (next_right_vertex[1] - current_right_vertex[1]) * 256)
+            polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
+            if (polygon_part_height <= 0):
+                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                return []
+                
+            right_half_slope = int((next_right_vertex[0] - current_right_vertex[0]) / (polygon_part_height) * 256)
             
             (x2_incr, x2_incr_low, x2_incr_high) = convert_increment_to_incr_components(right_half_slope)
             fx_state['x2_incr'] = x2_incr
