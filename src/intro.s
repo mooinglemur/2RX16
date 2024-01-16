@@ -506,6 +506,53 @@ tile2bmploop:
 	
 	stz Vera::Reg::Ctrl
 
+	; do ship stuff here
+
+	; end ship stuff
+
+	; now transition 4bpp bitmap to 8bpp bitmap
+
+	VERA_SET_ADDR $00000, 1
+	
+	lda #1
+	sta Vera::Reg::Ctrl
+
+	VERA_SET_ADDR TEMP_4BPP_BMP_ADDR, 1
+
+	stz Vera::Reg::Ctrl
+
+	ldy #>32000
+	ldx #<32000
+bmp4to8loop:
+	lda Vera::Reg::Data1
+	pha
+	lsr
+	lsr
+	lsr
+	lsr
+	sta Vera::Reg::Data0
+	pla
+	and #$0f
+	sta Vera::Reg::Data0
+	dex
+	bne bmp4to8loop
+	dey
+	bne bmp4to8loop
+
+	WAITVSYNC
+
+	; let's repoint layers to the 8bpp bitmap
+
+	lda #%00000111 ; 8bpp
+	sta Vera::Reg::L0Config
+	lda #(($00000 >> 11) << 2) | 0 ; 320
+	sta Vera::Reg::L0TileBase
+	lda #0
+	sta Vera::Reg::L0HScrollH ; palette offset
+
+	MUSIC_SYNC $0d
+
+
 	MUSIC_SYNC $0e
 synce:
 	; write all Fs to first 64 of palette
@@ -550,6 +597,10 @@ FW = * - 1
 	sta Vera::Reg::DCVStop
 	
 	stz Vera::Reg::Ctrl
+
+	; XXX this can go away after we set up an 8bpp fade to white
+	lda #%00000110 ; 4bpp
+	sta Vera::Reg::L0Config
 
 	MUSIC_SYNC $0F
 syncf:
