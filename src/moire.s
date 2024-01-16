@@ -30,7 +30,7 @@ entry:
 	dex
 	bne :-
 
-	; set bitmap mode for layer 1
+	; set bitmap mode for layer 0
 	lda #%00000110 ; 4bpp
 	sta Vera::Reg::L0Config
 	lda #(($00000 >> 11) << 2) | 0 ; 320

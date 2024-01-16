@@ -12,6 +12,9 @@
 .macpack longbranch
 .feature string_escapes
 
+TEMP_4BPP_BMP_ADDR = $18000
+TILE_MAPBASE = $0D000
+
 .segment "INTRO"
 entry:
 	jmp titlecard
@@ -53,9 +56,9 @@ blackpal:
 	; letterbox for 320x~200
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #21
+	lda #20
 	sta Vera::Reg::DCVStart
-	lda #($f0 - 20)
+	lda #($f0 - 20 - 1)
 	sta Vera::Reg::DCVStop
 	stz Vera::Reg::DCHStart
 	lda #$a0
@@ -68,11 +71,11 @@ blackpal:
 	lda #%00000011 ; $00000 16x16
 	sta Vera::Reg::L0TileBase
 	; mapbase is at $0D000
-	lda #($0D000 >> 9)
+	lda #(TILE_MAPBASE >> 9)
 	sta Vera::Reg::L0MapBase
 
 	; put the tiles in place
-	VERA_SET_ADDR $D000, 1
+	VERA_SET_ADDR TILE_MAPBASE, 1
 
 	ldy #64
 tbgtloopi:
@@ -249,7 +252,9 @@ nopal:
 	beq doscroll
 	lda Vera::Reg::L0HScrollL
 	cmp #<320
-	bcs noscroll
+	bcc doscroll
+	; we scroll-stopped, shuffle tiles around to high VRAM
+	jmp prepare_for_ship
 doscroll:
 	inc Vera::Reg::L0HScrollL
 	bne noscroll
@@ -348,7 +353,160 @@ text_fadeout1:
 	jsr setup_palette_fade
 
 	jmp tbgscrollloop
+prepare_for_ship:
+	; we're done with the text sprites entirely
+	; but in case we're out of sync, disable the sprites
+	; explicitly here
+	DISABLE_SPRITES
+	
+	; copy the tile data for what is visible on screen now to a 4bpp bitmap
+	; which can fit in just under 32k
+	; We have plenty of time, so we can afford for this to take a few frames
 
+	; point DATA1 to our destination
+	lda #1
+	sta Vera::Reg::Ctrl
+	
+	VERA_SET_ADDR TEMP_4BPP_BMP_ADDR, 3 ; we'll take advantage of cache writes
+
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl ; DCSEL=2
+
+	lda #$60
+	sta Vera::Reg::FXCtrl
+	stz $9f2c ; reset cache index
+
+	stz Vera::Reg::Ctrl
+
+	stz bmprow
+	stz tileno ; repurposing this: which tile are we on in this row
+tile2bmploop:
+	lda bmprow
+	; divide by 16 to get tile row
+	; then multiply by 64 to get tile index
+	; this is collapsed to
+	; - drop low nibble
+	; - multiply by 4
+	; multiply by 2 to get index
+	and #$f0
+	stz tiletmp+1
+.repeat 3
+	asl
+	rol tiletmp+1
+.endrepeat
+	adc #38 ; first tile is 19 tiles (38 bytes) in on this row
+	sta tiletmp
+	lda tiletmp+1
+	adc #0
+	sta tiletmp+1
+
+	; add this row's tile index
+	lda tileno
+	asl ; account for each tile idx taking two bytes
+	adc tiletmp
+	sta tiletmp
+	lda tiletmp+1
+	adc #0
+	sta tiletmp+1
+
+	; point to tilemap
+	lda #<TILE_MAPBASE
+	; no carry expected
+	adc tiletmp
+	sta Vera::Reg::AddrL
+	lda #>TILE_MAPBASE
+	adc tiletmp+1
+	sta Vera::Reg::AddrM
+	lda #(^TILE_MAPBASE | $10)
+	sta Vera::Reg::AddrH
+
+	; find the offset within the tile
+	; which is bmprow mod 16
+	; multiplied by 8
+	lda bmprow
+	and #$0f
+	asl
+	asl
+	asl
+	sta tiletmp+1
+
+	; two dummy reads to realign the FX cache index
+	lda Vera::Reg::Data0
+	lda Vera::Reg::Data0
+
+	; extract the tile index
+	lda Vera::Reg::Data0
+	sta tiletmp
+	lda Vera::Reg::Data0
+	and #$03
+
+	; multiply the tile index by 128 (8 bytes per row x 16 rows)
+	; which means we can instead divide by 2
+	lsr
+	ror tiletmp
+	lda #0
+	ror
+	
+	; .A contains either $80 or $00
+	; tile data source is $00000
+	; add the offset within the tile
+	adc tiletmp+1
+	sta Vera::Reg::AddrL
+	lda tiletmp
+	; no carry expected
+	sta Vera::Reg::AddrM
+	lda #$10
+	sta Vera::Reg::AddrH
+
+	; copy the data
+.repeat 2
+	lda Vera::Reg::Data0
+	lda Vera::Reg::Data0
+	lda Vera::Reg::Data0
+	lda Vera::Reg::Data0
+	stz Vera::Reg::Data1
+.endrepeat
+
+	inc tileno
+	lda tileno
+	cmp #20
+	jcc tile2bmploop
+	stz tileno
+	inc bmprow
+	lda bmprow
+	cmp #196
+	jcc tile2bmploop
+
+	; turn off FX
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl ; DCSEL=2
+
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	; we're done with the tile -> bitmap conversion
+	WAITVSYNC
+
+	; let's repoint layer 0 to the bitmap
+	lda #%00000110 ; 4bpp
+	sta Vera::Reg::L0Config
+	lda #((TEMP_4BPP_BMP_ADDR >> 11) << 2) | 0 ; 320
+	sta Vera::Reg::L0TileBase
+	lda #0
+	sta Vera::Reg::L0HScrollH ; palette offset
+
+	; also let's set VSTOP earlier so we're clear of the registar area of VRAM
+	lda #%00000010  ; DCSEL=1
+	sta Vera::Reg::Ctrl
+   
+	lda #20
+	sta Vera::Reg::DCVStart
+	lda #192+20-1
+	sta Vera::Reg::DCVStop
+	
+	stz Vera::Reg::Ctrl
+
+	MUSIC_SYNC $0e
 synce:
 	; write all Fs to first 64 of palette
 	ldx #128
@@ -381,6 +539,17 @@ fadetowhite:
 	lda #$ff
 FW = * - 1
 	bne fadetowhite
+
+	; set VSTOP for 200px
+	lda #%00000010  ; DCSEL=1
+	sta Vera::Reg::Ctrl
+   
+	lda #20
+	sta Vera::Reg::DCVStart
+	lda #200+20-1
+	sta Vera::Reg::DCVStop
+	
+	stz Vera::Reg::Ctrl
 
 	MUSIC_SYNC $0F
 syncf:
@@ -416,4 +585,8 @@ lastsync:
 	.res 1
 text_linger:
 	.res 1
+bmprow:
+	.res 1
+tiletmp:
+	.res 2
 .endproc
