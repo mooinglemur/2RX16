@@ -783,6 +783,16 @@ if (scene_name == 'U2E'):
         ],
     },
     {
+        'name' : '__1st_north_road',
+        'type' : 'ground',
+        'vertices_raw' : [
+            (-25000,  -5000),  # 0: NE
+            (-26000,  -5000),  # 1: NW
+            (-26000, -13000),  # 2: SW
+            (-25000, -13000),  # 3: SE
+        ],
+    },
+    {
         'name' : '__2nd_south_road',
         'type' : 'ground',
         'vertices_raw' : [
@@ -970,6 +980,19 @@ if (scene_name == 'U2E'):
             ( 15500, -17000),  # 1: NW
             ( 15500, -19000),  # 2: SW
             ( 16500, -19000),  # 3: SE
+        ],
+    },
+# FIXME: this one is VERY LAZY and can be done more effciently!
+# FIXME: this one is VERY LAZY and can be done more effciently!
+# FIXME: this one is VERY LAZY and can be done more effciently!
+    {
+        'name' : '__east_lazy_floor',
+        'type' : 'free',
+        'vertices_raw' : [
+            (  56500,  10000, -1000),  # 0: NE
+            (  16500,  10000, -1000),  # 1: NW
+            (  16500, -30000, -1000),  # 2: SW
+            (  56500, -30000, -1000),  # 3: SE
         ],
     },
     {
