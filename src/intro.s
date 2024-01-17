@@ -4,10 +4,24 @@
 .include "flow.inc"
 
 .import setup_palette_fade
+.import setup_palette_fade2
+.import setup_palette_fade3
+.import setup_palette_fade4
+
 .import apply_palette_fade_step
+.import apply_palette_fade_step2
+.import apply_palette_fade_step3
+.import apply_palette_fade_step4
+
 .import flush_palette
+.import flush_palette2
+.import flush_palette3
+.import flush_palette4
 
 .import target_palette
+.import target_palette2
+.import target_palette3
+.import target_palette4
 
 .macpack longbranch
 .feature string_escapes
@@ -552,6 +566,77 @@ bmp4to8loop:
 
 	MUSIC_SYNC $0d
 
+	WAITVSYNC
+
+	; set palette to $ddd
+	VERA_SET_ADDR (Vera::VRAM_palette), 1
+	ldx #64
+	ldy #$0d
+	lda #$dd
+:	sta Vera::Reg::Data0
+	sty Vera::Reg::Data0
+	sta Vera::Reg::Data0
+	sty Vera::Reg::Data0
+	dex
+	bne :-	
+
+	WAITVSYNC
+
+	; set palette to $fff
+	VERA_SET_ADDR (Vera::VRAM_palette), 1
+	ldx #64
+	ldy #$0f
+	lda #$ff
+:	sta Vera::Reg::Data0
+	sty Vera::Reg::Data0
+	sta Vera::Reg::Data0
+	sty Vera::Reg::Data0
+	dex
+	bne :-	
+
+	; let's copy the palette into the target
+	ldx #0
+pal1:
+	lda titlepal,x
+	sta target_palette,x
+	inx
+	bne pal1
+pal2:
+	lda titlepal+256,x
+	sta target_palette3,x
+	inx
+	bne pal2
+
+	; for fading back in
+
+	lda #0
+	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
+	lda #128
+	jsr setup_palette_fade3
+	lda #192
+	jsr setup_palette_fade4
+
+	ldx #16
+temploop:
+	phx
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+	jsr apply_palette_fade_step3
+	jsr apply_palette_fade_step4
+
+	WAITVSYNC
+
+	jsr flush_palette
+	jsr flush_palette2
+	jsr flush_palette3
+	jsr flush_palette4
+
+	plx
+	dex
+	bne temploop
+
 
 	MUSIC_SYNC $0e
 synce:
@@ -641,3 +726,22 @@ bmprow:
 tiletmp:
 	.res 2
 .endproc
+
+
+titlepal:
+	.word $0000,$0001,$0101,$0102,$0202,$0111,$0112,$0222,$0223,$0234,$0333,$0335,$0346,$0454,$0456,$0457
+	.word $0000,$0111,$0222,$0333,$0444,$0555,$0666,$0777,$0000,$0100,$0200,$0300,$0410,$0521,$0643,$0765
+	.word $0222,$0223,$0323,$0323,$0323,$0333,$0333,$0333,$0334,$0345,$0444,$0446,$0457,$0565,$0567,$0568
+	.word $0222,$0333,$0333,$0444,$0555,$0666,$0777,$0888,$0222,$0322,$0322,$0422,$0532,$0633,$0754,$0876
+	.word $0333,$0334,$0434,$0435,$0535,$0444,$0445,$0555,$0556,$0566,$0666,$0667,$0668,$0676,$0678,$0679
+	.word $0333,$0444,$0555,$0666,$0666,$0777,$0888,$0999,$0333,$0433,$0533,$0633,$0643,$0754,$0866,$0987
+	.word $0555,$0556,$0656,$0656,$0656,$0666,$0666,$0666,$0667,$0677,$0777,$0778,$0779,$0787,$0789,$0789
+	.word $0555,$0666,$0666,$0777,$0777,$0888,$0999,$0999,$0555,$0655,$0655,$0755,$0765,$0866,$0977,$0998
+	.word $0777,$0777,$0777,$0778,$0878,$0777,$0778,$0888,$0888,$0889,$0888,$0889,$089a,$0999,$099a,$099a
+	.word $0777,$0777,$0888,$0888,$0999,$0999,$0aaa,$0aaa,$0777,$0777,$0877,$0877,$0977,$0987,$0a98,$0aa9
+	.word $0888,$0889,$0989,$0989,$0989,$0999,$0999,$0999,$0999,$099a,$0999,$099a,$09aa,$0aaa,$0aaa,$0aab
+	.word $0888,$0999,$0999,$0999,$0aaa,$0aaa,$0aaa,$0bbb,$0888,$0988,$0988,$0988,$0a98,$0a99,$0aa9,$0baa
+	.word $0aaa,$0aaa,$0aaa,$0aaa,$0aaa,$0aaa,$0aaa,$0aaa,$0aab,$0abb,$0bbb,$0bbb,$0bbb,$0bbb,$0bbb,$0bbc
+	.word $0aaa,$0aaa,$0aaa,$0bbb,$0bbb,$0bbb,$0bbb,$0ccc,$0aaa,$0aaa,$0aaa,$0baa,$0baa,$0baa,$0bbb,$0cbb
+	.word $0bbb,$0bbc,$0cbc,$0cbc,$0cbc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc
+	.word $0bbb,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0ccc,$0bbb,$0cbb,$0cbb,$0cbb,$0ccb,$0ccc,$0ccc,$0ccc
