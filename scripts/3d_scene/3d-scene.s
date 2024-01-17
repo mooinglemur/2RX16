@@ -30,6 +30,7 @@ VERA_SCANLINE_L   = $9F28
 VERA_DC_VIDEO     = $9F29  ; DCSEL=0
 VERA_DC_HSCALE    = $9F2A  ; DCSEL=0
 VERA_DC_VSCALE    = $9F2B  ; DCSEL=0
+VERA_DC_BORDER    = $9F2C  ; DCSEL=0
 
 VERA_DC_VSTART    = $9F2B  ; DCSEL=1
 VERA_DC_VSTOP     = $9F2C  ; DCSEL=1
@@ -181,6 +182,7 @@ TEST_JUMP_TABLE = 0   ; This turns off the iteration in-between the jump-table c
 USE_SOFT_FILL_LEN = 0 ; This turns off reading from 9F2B and 9F2C (for fill length data) and instead reads from USE_SOFT_FILL_LEN-variables
 DO_4BIT = 0
 DO_2BIT = 0
+DEBUG_SHOW_THREE_FRAMES_MISSES = 1
 
 VSYNC_BIT         = $01
 
@@ -189,14 +191,6 @@ VSYNC_BIT         = $01
 start:
 
     sei
-    
-; FIXME: this should be REMOVED/REPLACED!
-; FIXME: this should be REMOVED/REPLACED!
-; FIXME: this should be REMOVED/REPLACED!
-    jsr backup_default_irq_handler
-    jsr enable_vsync_handler
-    
-    
     
 ; FIXME: do this a cleaner/nicer way!
     lda VERA_DC_VIDEO
@@ -228,6 +222,12 @@ start:
     jsr setup_vera_for_layer0_bitmap_buffer_1
     stz BUFFER_NR
 
+; FIXME: this should be REMOVED/REPLACED!
+; FIXME: this should be REMOVED/REPLACED!
+; FIXME: this should be REMOVED/REPLACED!
+    jsr backup_default_irq_handler
+    jsr enable_vsync_handler
+
 tmp_loop:
     
     lda #POLYGON_DATA_RAM_BANK
@@ -244,6 +244,9 @@ tmp_loop:
     sta NR_OF_FRAMES
     lda #>(1029)
     sta NR_OF_FRAMES+1
+
+; FIXME: replace this with something proper!
+    jsr dumb_wait_for_vsync_and_three_frames
 
 draw_next_frame:
     
@@ -362,20 +365,29 @@ wait_for_scanline_low:
     lda VERA_SCANLINE_L
     cmp #$FF
     bne wait_for_scanline_low
-    
-; FIXME!
-; FIXME!
-; FIXME!
-;    bra done_waiting
-
-;    stp
-    
+       
 wait_until_three_frames_have_passed:
     ; We should be (just) past the VSYNC-IRQ now, so the vsync counter is not going to increment any time soon. We read it and wait until its 3. When it is we reset it and move on.
     
     lda VSYNC_FRAME_COUNTER
     cmp #3
     bcc wait_until_three_frames_have_passed
+    
+    .if(DEBUG_SHOW_THREE_FRAMES_MISSES)
+        beq reset_frame_counter
+        
+        ; FIXME: The counter exceeded 3 frames so we missed a frame (or more) we mark this (for now) by changing the border color!
+        
+        lda #%00000000           ; DCSEL=0, ADDRSEL=0
+        sta VERA_CTRL
+
+        ; FIXME: quick and dirty way of showing that we missed a frame
+        lda VERA_DC_BORDER
+        eor #40
+        sta VERA_DC_BORDER
+    .endif
+
+reset_frame_counter:
     stz VSYNC_FRAME_COUNTER
 done_waiting:
     
