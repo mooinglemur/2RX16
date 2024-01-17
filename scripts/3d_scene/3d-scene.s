@@ -109,6 +109,12 @@ CURRENT_RAM_BANK          = $4C
 
 VRAM_ADDRESS              = $50 ; 51 ; 52
 
+; FIXME: these are TEMPORARY variables and should be REMOVE or REPLACED!
+; FIXME: these are TEMPORARY variables and should be REMOVE or REPLACED!
+; FIXME: these are TEMPORARY variables and should be REMOVE or REPLACED!
+VSYNC_FRAME_COUNTER       = $53 ; 54
+DEFAULT_IRQ_VECTOR        = $55 ; 56
+
 
 ; Used to generate jump-tables
 LEFT_OVER_PIXELS         = $B6 ; B7
@@ -130,6 +136,8 @@ GEN_FILL_LINE_CODE_INDEX = $C3
 
 
 ; === RAM addresses ===
+
+IRQ_VECTOR               = $0314
 
 FILL_LINE_START_JUMP     = $2F00   ; 256 bytes
 FILL_LINE_START_CODE     = $3000   ; 128 different (start of) fill line code patterns -> safe: takes $0D00 bytes
@@ -174,10 +182,21 @@ USE_SOFT_FILL_LEN = 0 ; This turns off reading from 9F2B and 9F2C (for fill leng
 DO_4BIT = 0
 DO_2BIT = 0
 
+VSYNC_BIT         = $01
+
+
 
 start:
 
     sei
+    
+; FIXME: this should be REMOVED/REPLACED!
+; FIXME: this should be REMOVED/REPLACED!
+; FIXME: this should be REMOVED/REPLACED!
+    jsr backup_default_irq_handler
+    jsr enable_vsync_handler
+    
+    
     
 ; FIXME: do this a cleaner/nicer way!
     lda VERA_DC_VIDEO
@@ -284,7 +303,7 @@ draw_next_polygon:
 
 
 ; FIXME: replace this with something proper!
-    jsr dumb_wait_for_vsync
+    jsr dumb_wait_for_vsync_and_three_frames
     
 
     ; Every frame we switch to which buffer we write to and which one we show
@@ -331,7 +350,7 @@ infinite_loop:
 
     
 ; This is just a dumb verison of a proper vsync-wait
-dumb_wait_for_vsync:
+dumb_wait_for_vsync_and_three_frames:
 
     ; We wait until SCANLINE == $1FF (indicating the beam is off screen, lines 512-524)
 wait_for_scanline_bit8:
@@ -343,8 +362,96 @@ wait_for_scanline_low:
     lda VERA_SCANLINE_L
     cmp #$FF
     bne wait_for_scanline_low
+    
+; FIXME!
+; FIXME!
+; FIXME!
+;    bra done_waiting
+
+;    stp
+    
+wait_until_three_frames_have_passed:
+    ; We should be (just) past the VSYNC-IRQ now, so the vsync counter is not going to increment any time soon. We read it and wait until its 3. When it is we reset it and move on.
+    
+    lda VSYNC_FRAME_COUNTER
+    cmp #3
+    bcc wait_until_three_frames_have_passed
+    stz VSYNC_FRAME_COUNTER
+done_waiting:
+    
+    rts
+
+
+
+
+
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+backup_default_irq_handler:
+
+    ; backup default RAM IRQ vector
+    lda IRQ_VECTOR
+    sta DEFAULT_IRQ_VECTOR
+    lda IRQ_VECTOR+1
+    sta DEFAULT_IRQ_VECTOR+1
 
     rts
+
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+enable_vsync_handler:
+
+    ; overwrite RAM IRQ vector with custom handler address
+    sei ; disable IRQ while vector is changing
+    lda #<vsync_irq_handler
+    sta IRQ_VECTOR
+    lda #>vsync_irq_handler
+    sta IRQ_VECTOR+1
+
+    lda #VSYNC_BIT ; make VERA generate VSYNC IRQs
+    sta VERA_IEN
+    
+    stz VSYNC_FRAME_COUNTER
+    stz VSYNC_FRAME_COUNTER+1
+    
+    cli ; enable IRQ now that vector is properly set
+
+    rts
+    
+    
+vsync_irq_handler:
+
+    pha                     ; save accumulator
+    txa
+    pha                     ; save X-register
+    tya
+    pha                     ; save Y-register
+    
+    lda VERA_ISR
+    and #VSYNC_BIT
+    beq continue_to_default_irq_hanndler  ; non-VSYNC IRQ, skip incrementing the vsync-frame-counter
+    stz VERA_ISR
+    
+    ; Increment vsync frame counter
+    inc VSYNC_FRAME_COUNTER
+    bne vsync_counter_is_incremented
+    inc VSYNC_FRAME_COUNTER+1
+vsync_counter_is_incremented:
+    
+continue_to_default_irq_hanndler:
+
+    pla
+    tay                     ; restore Y-register
+    pla
+    tax                     ; restore X-register
+    pla                     ; restore accumulator
+    
+    jmp (DEFAULT_IRQ_VECTOR) ; continue to default IRQ handler
+
+    
+
 
 
     .if(0)
