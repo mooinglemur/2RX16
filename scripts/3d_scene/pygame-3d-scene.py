@@ -33,9 +33,6 @@ SCENE = 'U2E'
 
 polygon_data_file = 'scripts/3d_scene/' + SCENE + '-POLYGONS.DAT'
 
-# FIXME!
-# FIXME!
-# FIXME!
 COLOR_IDX_SKY_BLACK = 254
 
 random.seed(10)
@@ -47,11 +44,15 @@ PATCH_COLORS_MANUALLY = True
 USE_FX_POLY_FILLER_SIM = True
 PRINT_PALETTE = False
 
-ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False  # When turned on, this will not automatically turn off playback so no output file will be written!
+# FIXME!
+# FIXME!
+# FIXME!
+# FIXME!
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # When turned on, this will not automatically turn off playback so no output file will be written!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
-DRAW_BLACK_PIXELS = False
+DRAW_BLACK_PIXELS = True
 DEBUG_SORTING = True
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
@@ -2075,9 +2076,11 @@ if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
-    frame_nr = 1      # ALWAYS *ODD*!!
+#    frame_nr = 1      # ALWAYS *ODD*!!
+    frame_nr = 1001*4      # ALWAYS *ODD*!!
     # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
     max_frame_nr = 1802*4
+#    max_frame_nr = 1802*4
     increment_frame_by = 7
 
 material_info = load_material_info()
