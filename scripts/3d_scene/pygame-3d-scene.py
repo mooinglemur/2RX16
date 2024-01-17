@@ -48,12 +48,12 @@ PRINT_PALETTE = False
 # FIXME!
 # FIXME!
 # FIXME!
-ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True  # When turned on, this will not automatically turn off playback so no output file will be written!
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False # When turned on, this will not automatically turn off playback so no output file will be written!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
 DRAW_BLACK_PIXELS = True
-DEBUG_SORTING = True
+DEBUG_SORTING = False
 DEBUG_DRAW_TRIANGLE_BOUNDARIES = False # Very informative!
 DEBUG_SHOW_MERGED_FACES = False
 DEBUG_SHOW_VERTEX_NRS = False
