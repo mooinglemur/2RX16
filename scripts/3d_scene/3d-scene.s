@@ -220,9 +220,10 @@ tmp_loop:
    
 ; FIXME: HARDCODED!
 ; FIXME when the 16-bit number goes negative we have detect the end, BUT this means the NR_OF_FRAMES should be initially filled with nr_of_frames-1 !
-    lda #<(900)
+; FIXME: shoulnt this be 1030?
+    lda #<(1029)
     sta NR_OF_FRAMES
-    lda #>(900)
+    lda #>(1029)
     sta NR_OF_FRAMES+1
 
 draw_next_frame:

@@ -2063,9 +2063,12 @@ frame_nr = 1
 # FIXME: we need proper interpolation! (now just dropping every other frame!
 increment_frame_by = 2
 
+# IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
 if SCENE == 'U2E':
-    max_frame_nr = 1802
+    max_frame_nr = 1802*4
+    increment_frame_by = 7
 else:
+# FIXME: still do the CONVERSION to 20fps!
     max_frame_nr = 522
 
 if DEBUG_SORTING:
@@ -2073,9 +2076,9 @@ if DEBUG_SORTING:
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
     frame_nr = 1      # ALWAYS *ODD*!!
-    max_frame_nr = 1000
-# FIXME: we need proper interpolation! (now just dropping every other frame!
-    increment_frame_by = 1
+    # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
+    max_frame_nr = 1802*4
+    increment_frame_by = 7
 
 material_info = load_material_info()
 mat_info = material_info['mat_info']

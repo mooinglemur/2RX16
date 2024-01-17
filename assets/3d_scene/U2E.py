@@ -109,9 +109,11 @@ def load_animation_file():
 
 def create_animation_frames():
     nr_of_frames = 1802
-    bpy.context.scene.frame_end = nr_of_frames
+    nr_of_frames_in_blender = nr_of_frames * 4
+    bpy.context.scene.frame_end = nr_of_frames_in_blender
 
     for frame_nr in range(1,nr_of_frames+1):
+        frame_nr_in_blender = (frame_nr-1)*4 + 1
         
         # Camera
         object_nr = 0
@@ -158,8 +160,8 @@ def create_animation_frames():
             #    break
 
                     
-            obj.keyframe_insert(data_path="location", frame=frame_nr)
-            obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr)
+            obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender)
+            obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender)
             
 
         # All other objects
@@ -193,9 +195,9 @@ def create_animation_frames():
             else:
                 obj.hide_viewport = True
                 
-            obj.keyframe_insert('hide_viewport', frame=frame_nr)
-            obj.keyframe_insert(data_path="location", frame=frame_nr)
-            obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr)
+            obj.keyframe_insert('hide_viewport', frame=frame_nr_in_blender)
+            obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender)
+            obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender)
 
 
 
