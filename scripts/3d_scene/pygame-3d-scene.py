@@ -2068,8 +2068,8 @@ if SCENE == 'U2E':
     max_frame_nr = 1802*4
     increment_frame_by = 7
 else:
-# FIXME: still do the CONVERSION to 20fps!
-    max_frame_nr = 522
+    max_frame_nr = 522*4
+    increment_frame_by = 7
 
 if DEBUG_SORTING:
     #frame_nr = 1000
