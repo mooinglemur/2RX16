@@ -239,7 +239,12 @@ text_fadeout:
 
 
 sync6:
-	LOADFILE "TITLEBG.PAL", 0, target_palette
+	ldx #32
+:	lda titlepal-1,x
+	sta target_palette-1,x
+	dex
+	bne :-
+
 	lda #0
 	jsr setup_palette_fade
 
@@ -597,12 +602,12 @@ bmp4to8loop:
 	; let's copy the palette into the target
 	ldx #0
 pal1:
-	lda titlepal,x
+	lda praxispal,x
 	sta target_palette,x
 	inx
 	bne pal1
 pal2:
-	lda titlepal+256,x
+	lda praxispal+256,x
 	sta target_palette3,x
 	inx
 	bne pal2
@@ -729,6 +734,8 @@ tiletmp:
 
 
 titlepal:
+	.word $0000,$0002,$0202,$0203,$0303,$0222,$0223,$0333,$0334,$0345,$0444,$0446,$0457,$0565,$0457,$0568
+praxispal:
 	.word $0000,$0001,$0101,$0102,$0202,$0111,$0112,$0222,$0223,$0234,$0333,$0335,$0346,$0454,$0456,$0457
 	.word $0000,$0111,$0222,$0333,$0444,$0555,$0666,$0777,$0000,$0100,$0200,$0300,$0410,$0521,$0643,$0765
 	.word $0222,$0223,$0323,$0323,$0323,$0333,$0333,$0333,$0334,$0345,$0444,$0446,$0457,$0565,$0567,$0568
