@@ -29,13 +29,40 @@
 TEMP_4BPP_BMP_ADDR = $18000
 TILE_MAPBASE = $0D000
 
+.segment "INTRO_BSS"
+tileno:
+	.res 2
+frameno:
+	.res 1
+lastsync:
+	.res 1
+text_linger:
+	.res 1
+bmprow:
+	.res 1
+tiletmp:
+	.res 2
+
 .segment "INTRO"
 entry:
+	jsr setup_vera_and_tiles
+.ifdef SKIP_SONG1
+	bra dotitilecard ; jump ahead to song 2 if set in main
+.endif
+	jsr opening_text
+	jsr bgscroller_with_text
+	jsr prepare_for_ship
+	; do 3D ship stuff
+	jsr prepare_for_praxis
+	MUSIC_SYNC $0d
+	jsr praxis_explosion
+
+	MUSIC_SYNC $0F
+dotitilecard:
 	jmp titlecard
+	; tail call
 
-
-.proc titlecard
-
+.proc setup_vera_and_tiles
 	ldx #128
 blackpal:
 	stz target_palette-128,x
@@ -147,9 +174,10 @@ tbgtloop4:
 	ora #$50
 	sta Vera::Reg::DCVideo
 
-.ifdef SKIP_SONG1
-	jmp syncf ; jump ahead to song 2 if set in main
-.endif
+	rts
+.endproc
+
+.proc opening_text
 	; first few text cards go here
 
 	lda syncval
@@ -169,8 +197,8 @@ prebgloop:
 	cmp #5
 	jeq card3
 	cmp #6
-	jeq sync6
-	jmp nosync
+	jne nosync
+	rts
 card1:
 	SPRITE_TEXT 1, 40, 80, 1, "A Commander X16"
 	SPRITE_TEXT 18, 70, 100, 1, "and VERA FX"
@@ -236,9 +264,9 @@ text_fadeout:
 	jsr setup_palette_fade
 
 	jmp prebgloop
+.endproc
 
-
-sync6:
+.proc bgscroller_with_text
 	ldx #32
 :	lda titlepal-1,x
 	sta target_palette-1,x
@@ -272,8 +300,8 @@ nopal:
 	lda Vera::Reg::L0HScrollL
 	cmp #<320
 	bcc doscroll
-	; we scroll-stopped, shuffle tiles around to high VRAM
-	jmp prepare_for_ship
+	; we scroll-stopped, next sub to shuffle tiles around to high VRAM
+	rts
 doscroll:
 	inc Vera::Reg::L0HScrollL
 	bne noscroll
@@ -295,7 +323,7 @@ noscroll:
 	jeq card7
 	cmp #$0e
 	bne tbgscrollloop
-	jmp synce
+	rts
 card4:
 	SPRITE_TEXT 1, 110, 50, 1,  "VERA FX"
 	SPRITE_TEXT 18, 110, 80, 1, "JeffreyH"
@@ -372,7 +400,9 @@ text_fadeout1:
 	jsr setup_palette_fade
 
 	jmp tbgscrollloop
-prepare_for_ship:
+.endproc
+
+.proc prepare_for_ship
 	; we're done with the text sprites entirely
 	; but in case we're out of sync, disable the sprites
 	; explicitly here
@@ -525,10 +555,10 @@ tile2bmploop:
 	
 	stz Vera::Reg::Ctrl
 
-	; do ship stuff here
+	rts
+.endproc
 
-	; end ship stuff
-
+.proc prepare_for_praxis
 	; now transition 4bpp bitmap to 8bpp bitmap
 
 	VERA_SET_ADDR $00000, 1
@@ -569,8 +599,10 @@ bmp4to8loop:
 	lda #0
 	sta Vera::Reg::L0HScrollH ; palette offset
 
-	MUSIC_SYNC $0d
+	rts
+.endproc
 
+.proc praxis_explosion
 	WAITVSYNC
 
 	; set palette to $ddd
@@ -692,7 +724,10 @@ FW = * - 1
 	lda #%00000110 ; 4bpp
 	sta Vera::Reg::L0Config
 
-	MUSIC_SYNC $0F
+	rts
+.endproc
+
+.proc titlecard
 syncf:
 	; set bitmap mode for layer 1
 	lda #%00000110 ; 4bpp
@@ -718,18 +753,6 @@ syncf:
 	PALETTE_FADE 5
 
 	rts
-tileno:
-	.res 2
-frameno:
-	.res 1
-lastsync:
-	.res 1
-text_linger:
-	.res 1
-bmprow:
-	.res 1
-tiletmp:
-	.res 2
 .endproc
 
 
