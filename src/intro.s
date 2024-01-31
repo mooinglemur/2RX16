@@ -28,12 +28,24 @@
 
 TEMP_4BPP_BMP_ADDR = $18000
 TILE_MAPBASE = $0D000
+SHOCKWAVE_FX_TILEBASE = $19000
+SHOCKWAVE_FX_TILEMAP = $18000
+SCRATCH_BANK = $20
+
+.segment "INTRO_ZP": zeropage
+frameno:
+	.res 1
+tmpptr:
+	.res 2
+scratch:
+	.res 1
+fx_y_val:
+	.res 2
+
 
 .segment "INTRO_BSS"
 tileno:
 	.res 2
-frameno:
-	.res 1
 lastsync:
 	.res 1
 text_linger:
@@ -45,6 +57,9 @@ tiletmp:
 
 .segment "INTRO"
 entry:
+	; memory init
+	stz frameno
+
 	jsr setup_vera_and_tiles
 .ifdef SKIP_SONG1
 	bra dotitilecard ; jump ahead to song 2 if set in main
@@ -599,6 +614,67 @@ bmp4to8loop:
 	lda #0
 	sta Vera::Reg::L0HScrollH ; palette offset
 
+	; now we can load the shockwave FX tiles (uncooked)
+	LOADFILE "INTRO-SHOCK.VTS", SCRATCH_BANK, $A000
+
+	; now cook the tiles
+	lda #SCRATCH_BANK
+	sta X16::Reg::RAMBank
+
+	lda #<$a000
+	sta tmpptr
+
+	lda #>$a000
+	sta tmpptr+1
+
+	VERA_SET_ADDR SHOCKWAVE_FX_TILEBASE, 1
+cookloop:
+	lda (tmpptr)
+	and #$70
+	asl
+	sta scratch
+	lsr
+	lsr
+	lsr
+	lsr
+	ora scratch
+	sta Vera::Reg::Data0
+
+	lda (tmpptr)
+	and #$07
+	asl
+	sta scratch
+	asl
+	asl
+	asl
+	asl
+	ora scratch
+	sta Vera::Reg::Data0
+
+	inc tmpptr
+	bne cookloop
+	inc tmpptr+1
+	lda tmpptr+1
+	cmp #$b0
+	bcc cookloop
+
+	; create the 32x4 tile map (fill out the rest of the 32x32 map with zeroes)
+	VERA_SET_ADDR SHOCKWAVE_FX_TILEMAP, 1
+
+	ldx #0
+shockmap_loop:
+	stx Vera::Reg::Data0
+	inx
+	bne shockmap_loop
+
+	ldx #0
+shockmap_zeroes:
+.repeat 3
+	stz Vera::Reg::Data0
+.endrepeat
+	inx
+	bne shockmap_zeroes
+
 	rts
 .endproc
 
@@ -655,13 +731,49 @@ pal2:
 	lda #192
 	jsr setup_palette_fade4
 
-	ldx #16
+	stz frameno
 temploop:
-	phx
 	jsr apply_palette_fade_step
 	jsr apply_palette_fade_step2
 	jsr apply_palette_fade_step3
 	jsr apply_palette_fade_step4
+
+	; set up FX affine stuff for next frame
+	; but leave FX itself disabled
+	lda #(2 << 1) ; DCSEL = 2
+	sta Vera::Reg::Ctrl
+
+	lda #((SHOCKWAVE_FX_TILEBASE >> 11) << 2) | $02 ; affine clip enable
+	sta Vera::Reg::FXTileBase
+
+	lda #((SHOCKWAVE_FX_TILEMAP >> 11) << 2) | $02 ; 32x32
+	sta Vera::Reg::FXMapBase
+
+
+	; XXX
+	lda #(3 << 1) ; DCSEL = 3
+	sta Vera::Reg::Ctrl
+	ldy frameno
+	lda shockzoom_l,y
+	sta $9f29
+	lda shockzoom_h,y
+	sta $9f2a
+	stz $9f2b
+	stz $9f2c
+
+	stz fx_y_val
+	stz fx_y_val+1
+
+	lda #(4 << 1) ; DCSEL = 4
+	sta Vera::Reg::Ctrl
+	; XXX
+	stz $9f29
+	stz $9f2a
+	stz $9f2b
+	stz $9f2c
+
+	stz Vera::Reg::Ctrl
+
 
 	WAITVSYNC
 
@@ -670,12 +782,76 @@ temploop:
 	jsr flush_palette3
 	jsr flush_palette4
 
-	plx
-	dex
-	bne temploop
+
+	; enable affine helper
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	; reset cache index
+	stz Vera::Reg::FXMult
+
+	lda #%01100011 ; cache fill/write, affine helper mode
+	sta Vera::Reg::FXCtrl
 
 
-	MUSIC_SYNC $0e
+	ldx #80
+	POS_ADDR_ROW_8BIT
+	lda #$30
+	sta Vera::Reg::AddrH
+outerloop:
+	; set DCSEL=4 to return to beginning of row 
+	lda #(4 << 1)
+	sta Vera::Reg::Ctrl
+	stz $9f29
+	stz $9f2a
+	lda fx_y_val+1
+	sta $9f2b
+	
+	; set DCSEL=5 to return to beginning of row (subpixels) 
+	lda #(5 << 1)
+	sta Vera::Reg::Ctrl
+	stz $9f29
+	; set DCSEL=2 to reset cache index
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	stz Vera::Reg::FXMult
+
+	ldy #80
+	lda #$55
+innerloop:
+	bit Vera::Reg::Data1
+	bit Vera::Reg::Data1
+	bit Vera::Reg::Data1
+	bit Vera::Reg::Data1
+	sta Vera::Reg::Data0
+	dey
+	bne innerloop
+
+	ldy frameno
+	lda ypos_incr_l,y
+	clc
+	adc fx_y_val
+	sta fx_y_val
+	lda ypos_incr_h,y
+	adc fx_y_val+1
+	sta fx_y_val+1
+
+	inx
+	cpx #120
+	bne outerloop
+
+	; disable FX
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::FXMult
+	stz Vera::Reg::Ctrl
+
+	inc frameno
+
+	lda syncval
+	cmp #$0e
+	jne temploop
 synce:
 	; write all Fs to first 64 of palette
 	ldx #128
@@ -695,9 +871,6 @@ whitepal:
 	lda #16
 	sta FW
 
-	; this doesn't fade correctly in current ROM (R44)
-	; if it's the beginning of the demo because
-	; the VERA palette and backing VRAM are divergent
 fadetowhite:
 	WAITVSYNC
 	WAITVSYNC
@@ -755,6 +928,74 @@ syncf:
 	rts
 .endproc
 
+shockzoom_l:
+	.byte $28,$94,$b8,$ca,$08,$dc,$05,$65,$e8,$84,$32,$ee,$b4,$82,$58,$32
+	.byte $11,$f4,$d9,$c2,$ac,$99,$87,$77,$68,$5a,$4d,$41,$36,$2c,$22,$19
+	.byte $10,$08,$01,$fa,$f3,$ec,$e6,$e1,$db,$d6,$d1,$cc,$c8,$c3,$bf,$bb
+	.byte $b7,$b4,$b0,$ad,$a9,$a6,$a3,$a0,$9d,$9b,$98,$96,$93,$91,$8e,$8c
+	.byte $8a,$88,$86,$84,$82,$80,$7e,$7d,$7b,$79,$78,$76,$74,$73,$71,$70
+	.byte $6f,$6d,$6c,$6b,$69,$68,$67,$66,$65,$64,$62,$61,$60,$5f,$5e,$5d
+	.byte $5c,$5b,$5a,$5a,$59,$58,$57,$56,$55,$54,$54,$53,$52,$51,$51,$50
+	.byte $4f,$4e,$4e,$4d,$4c,$4c,$4b,$4b,$4a,$49,$49,$48,$48,$47,$46,$46
+	.byte $45,$45,$44,$44,$43,$43,$42,$42,$41,$41,$40,$40,$3f,$3f,$3e,$3e
+	.byte $3e,$3d,$3d,$3c,$3c,$3c,$3b,$3b,$3a,$3a,$3a,$39,$39,$38,$38,$38
+	.byte $37,$37,$37,$36,$36,$36,$35,$35,$35,$34,$34,$34,$34,$33,$33,$33
+	.byte $32,$32,$32,$32,$31,$31,$31,$30,$30,$30,$30,$2f,$2f,$2f,$2f,$2e
+	.byte $2e,$2e,$2e,$2d,$2d,$2d,$2d,$2d,$2c,$2c,$2c,$2c,$2b,$2b,$2b,$2b
+	.byte $2b,$2a,$2a,$2a,$2a,$2a,$29,$29,$29,$29,$29,$28,$28,$28,$28,$28
+	.byte $28,$27,$27,$27,$27,$27,$26,$26,$26,$26,$26,$26,$25,$25,$25,$25
+	.byte $25,$25,$25,$24,$24,$24,$24,$24,$24,$24,$23,$23,$23,$23,$23,$23
+shockzoom_h:
+	.byte $23,$11,$0b,$08,$07,$05,$05,$04,$03,$03,$03,$02,$02,$02,$02,$02
+	.byte $02,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01
+	.byte $01,$01,$01,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+ypos_incr_l:
+	.byte $94,$ca,$dc,$65,$84,$ee,$82,$32,$f4,$c2,$99,$77,$5a,$41,$2c,$19
+	.byte $08,$fa,$ec,$e1,$d6,$cc,$c3,$bb,$b4,$ad,$a6,$a0,$9b,$96,$91,$8c
+	.byte $88,$84,$80,$7d,$79,$76,$73,$70,$6d,$6b,$68,$66,$64,$61,$5f,$5d
+	.byte $5b,$5a,$58,$56,$54,$53,$51,$50,$4e,$4d,$4c,$4b,$49,$48,$47,$46
+	.byte $45,$44,$43,$42,$41,$40,$3f,$3e,$3d,$3c,$3c,$3b,$3a,$39,$38,$38
+	.byte $37,$36,$36,$35,$34,$34,$33,$33,$32,$32,$31,$30,$30,$2f,$2f,$2e
+	.byte $2e,$2d,$2d,$2d,$2c,$2c,$2b,$2b,$2a,$2a,$2a,$29,$29,$28,$28,$28
+	.byte $27,$27,$27,$26,$26,$26,$25,$25,$25,$24,$24,$24,$24,$23,$23,$23
+	.byte $22,$22,$22,$22,$21,$21,$21,$21,$20,$20,$20,$20,$1f,$1f,$1f,$1f
+	.byte $1f,$1e,$1e,$1e,$1e,$1e,$1d,$1d,$1d,$1d,$1d,$1c,$1c,$1c,$1c,$1c
+	.byte $1b,$1b,$1b,$1b,$1b,$1b,$1a,$1a,$1a,$1a,$1a,$1a,$1a,$19,$19,$19
+	.byte $19,$19,$19,$19,$18,$18,$18,$18,$18,$18,$18,$17,$17,$17,$17,$17
+	.byte $17,$17,$17,$16,$16,$16,$16,$16,$16,$16,$16,$16,$15,$15,$15,$15
+	.byte $15,$15,$15,$15,$15,$15,$14,$14,$14,$14,$14,$14,$14,$14,$14,$14
+	.byte $14,$13,$13,$13,$13,$13,$13,$13,$13,$13,$13,$13,$12,$12,$12,$12
+	.byte $12,$12,$12,$12,$12,$12,$12,$12,$12,$12,$11,$11,$11,$11,$11,$11
+ypos_incr_h:
+	.byte $11,$08,$05,$04,$03,$02,$02,$02,$01,$01,$01,$01,$01,$01,$01,$01
+	.byte $01,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
 titlepal:
 	.word $0000,$0002,$0202,$0203,$0303,$0222,$0223,$0333,$0334,$0345,$0444,$0446,$0457,$0565,$0457,$0568

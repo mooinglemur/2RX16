@@ -22,6 +22,8 @@ x16_inc = 1
         DCBorder   = $9F2C    ; DCSEL=0
         DCVStop    = $9F2C    ; DCSEL=1
         FXCtrl     = $9F29    ; DCSEL=2
+        FXTileBase = $9F2A    ; DCSEL=2
+        FXMapBase  = $9F2B    ; DCSEL=2
         FXMult     = $9F2C    ; DCSEL=2
         L0Config   = $9F2D
         L0MapBase  = $9F2E
