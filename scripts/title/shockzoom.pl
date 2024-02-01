@@ -9,7 +9,7 @@ my @posincr_l;
 my @posincr_h;
 
 for my $i (0..255) {
-    my $incr = 1000/($i+1);
+    my $incr = 4000/($i+1);
     $incr *= 9;
     if ($incr > 0x7fff) {
         $incr = 0x7fff;
