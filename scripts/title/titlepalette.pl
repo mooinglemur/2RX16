@@ -16,9 +16,9 @@ for my $rgb (@pal) {
     my $g = ($rgb >> 4) & 0x0f;
     my $b = ($rgb) & 0x0f;
 
-    my $rdiff = (0xd - $r) / 20;
-    my $gdiff = (0xd - $g) / 20;
-    my $bdiff = (0xd - $b) / 20;
+    my $rdiff = (0xd - $r) / 18;
+    my $gdiff = (0xd - $g) / 18;
+    my $bdiff = (0xf - $b) / 18;
 
     push @paldiff_r, $rdiff;
     push @paldiff_g, $gdiff;

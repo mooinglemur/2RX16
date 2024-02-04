@@ -153,28 +153,28 @@ clearloop:
 	lda #0
 	jsr setup_palette_fade
 
-	WAITVSYNC
 .repeat 4
 	jsr apply_palette_fade_step
 .endrepeat    
+	WAITVSYNC
 	jsr flush_palette
 
-	WAITVSYNC
 .repeat 4
 	jsr apply_palette_fade_step
 .endrepeat    
+	WAITVSYNC
 	jsr flush_palette
 
-	WAITVSYNC
 .repeat 4
 	jsr apply_palette_fade_step
 .endrepeat    
+	WAITVSYNC
 	jsr flush_palette
 
-	WAITVSYNC
 .repeat 4
 	jsr apply_palette_fade_step
 .endrepeat    
+	WAITVSYNC
 	jsr flush_palette
 
 	; skyblue
@@ -193,10 +193,10 @@ clearloop:
 	lda #12
 	sta rowto
 fadeoutloop:
-	WAITVSYNC
 .repeat 2
 	jsr apply_palette_fade_step
 .endrepeat
+	WAITVSYNC
 	jsr flush_palette
 
 	lda rowto

@@ -235,7 +235,7 @@ fade_in:
 fade_out:
 	.byte 16
 hold:
-	.byte 108
+	.byte 68
 .endproc
 
 
