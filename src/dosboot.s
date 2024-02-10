@@ -1,3 +1,5 @@
+.import graceful_fail
+
 .import setup_palette_fade
 .import apply_palette_fade_step
 .import flush_palette
@@ -170,7 +172,19 @@ finalramtest:
 	BIOS_WRITE_TEXT " KB HIGH RAM OK \n\n\n"
 
 	BIOS_WRITE_TEXT "VGA: VERA with 128KB VRAM\n"
+
+	sec
+	.byte $c2,$03 ; REP #3 (65C816 detect)
+	; will either do a NOP #3 on real 65C02 and modern "fixed" emulators
+	; or a NOP NOP on older "broken" emulators
+	bcc c816
+
 	BIOS_WRITE_TEXT "CPU: Western Design Center 65C02\n"
+	bra soundchip
+	
+c816:
+	BIOS_WRITE_TEXT "CPU: Western Design Center 65C816\n"
+soundchip:
 
 	JSRFAR ym_get_chip_type, $0A
 

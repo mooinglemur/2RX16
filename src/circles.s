@@ -4,6 +4,7 @@
 .import cycle_palette
 
 .import target_palette
+.import graceful_fail
 
 .macpack longbranch
 

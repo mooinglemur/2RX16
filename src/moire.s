@@ -1,3 +1,5 @@
+.import graceful_fail
+
 .import setup_palette_fade
 .import apply_palette_fade_step
 .import flush_palette

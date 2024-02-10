@@ -1,36 +1,43 @@
+.import graceful_fail
+
 .import setup_palette_fade
 .import apply_palette_fade_step
 .import flush_palette
 
 .import target_palette
 
-.importzp tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp, tmp10zp, ptr1, ptr2
-tunczp = ptr1
-MADDRM = tmp1zp
-minlevel = tmp2zp
-leveltime = tmp3zp
-time = tmp4zp
-level = tmp5zp
-point = tmp6zp
-xcoordzp = tmp7zp
-jdelta = tmp8zp
-ycoordzp = tmp9zp
-maxlevel = tmp10zp
-
-
 .macpack longbranch
 
-
-.include "x16.inc"
-.include "macros.inc"
-
-.include "tunnel.inc"
-.include "flow.inc"
+.segment "TUNNEL_ZP": zeropage
+tunczp:
+	.res 2
+MADDRM:
+	.res 1
+minlevel:
+	.res 1
+leveltime:
+	.res 1
+time:
+	.res 1
+level:
+	.res 1
+point:
+	.res 1
+xcoordzp:
+	.res 1
+jdelta:
+	.res 1
+ycoordzp:
+	.res 1
+maxlevel:
+	.res 1
 
 .segment "TUNNEL"
+.include "macros.inc"
+.include "x16.inc"
+.include "flow.inc"
+
 entry:
-
-
 	LOADFILE "TUNCOORDS.BIN", $20, $a000
 
 	stz MADDRM
@@ -43,6 +50,7 @@ entry:
 
 	rts
 
+.include "tunnel.inc"
 
 LEVELS=128
 POINTS=64

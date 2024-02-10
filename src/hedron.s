@@ -1,32 +1,47 @@
+.import graceful_fail
+
 .import setup_palette_fade
 .import apply_palette_fade_step
 .import flush_palette
 
 .import target_palette
 
-.importzp ptr1, ptr2, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp
-.importzp pstart, pend
-
 .macpack longbranch
 
-MADDRM = tmp1zp
-SPRX = tmp2zp ; with tmp3zp
-SPRY = tmp4zp ; with tmp5zp
-SPRADDR = tmp6zp
-P1BANK = tmp7zp
-P2BANK = tmp8zp
-SPRPG = tmp9zp
+.segment "HEDRON_ZP": zeropage
+MADDRM:
+	.res 1
+SPRX:
+	.res 2
+SPRY:
+	.res 2
+SPRADDR:
+	.res 1
+P1BANK:
+	.res 1
+P2BANK:
+	.res 1
+SPRPG:
+	.res 1
+pstart:
+	.res 1
+pend:
+	.res 1
+ptr1:
+	.res 2
+ptr2:
+	.res 2
 
 POLY1TRILISTBANK = $16
 SPRITETRILISTBANK = $1F
 REDTRILIST1BANK = $24
 REDTRILIST2BANK = $2A
 
+.segment "HEDRON"
 .include "flow.inc"
 .include "x16.inc"
 .include "macros.inc"
 
-.segment "HEDRON"
 entry:
 	jsr chessboard_in
 	jsr chessboard_to_tiles

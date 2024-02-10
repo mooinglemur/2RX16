@@ -1,5 +1,4 @@
 .export syncval
-.exportzp ptr1, ptr2, pstart, pend, tmp1zp, tmp2zp, tmp3zp, tmp4zp, tmp5zp, tmp6zp, tmp7zp, tmp8zp, tmp9zp, tmp10zp
 .exportzp blob_to_read, blob_target_ptr
 
 .export scenevector
@@ -35,38 +34,12 @@ syncval:
 	.res 1
 
 .segment "ZEROPAGE"
-ptr1:
-	.res 2
-ptr2:
-	.res 2
-pstart:
-	.res 1
-pend:
-	.res 1
-tmp1zp:
-	.res 1
-tmp2zp:
-	.res 1
-tmp3zp:
-	.res 1
-tmp4zp:
-	.res 1
-tmp5zp:
-	.res 1
-tmp6zp:
-	.res 1
-tmp7zp:
-	.res 1
-tmp8zp:
-	.res 1
-tmp9zp:
-	.res 1
-tmp10zp:
-	.res 1
 blob_to_read:
 	.res 3
 blob_target_ptr:
 	.res 2
+music_interrupt_type:
+	.res 1
 
 .segment "CODE"
 
@@ -98,10 +71,10 @@ SCENE = $4800
 	jsr setup_zsmkit
 	jsr setup_irq_handler
 
-	; set up 60 Hz VIA timer
-	lda #60
-	jsr setup_via_timer
+	; set up music for ~60 Hz VERA timer
+	jsr clear_via_timer
 	; tell ZSMKit about the 60 Hz timer
+	stz music_interrupt_type
 	lda #60
 	ldy #0
 	jsr zsmkit::zsm_set_int_rate
@@ -125,6 +98,8 @@ SCENE = $4800
 	lda #50
 	jsr setup_via_timer
 	; tell ZSMKit about the 50 Hz timer
+	lda #1
+	sta music_interrupt_type
 	lda #50
 	ldy #0
 	jsr zsmkit::zsm_set_int_rate
@@ -146,6 +121,8 @@ SCENE = $4800
 	lda #52
 	jsr setup_via_timer
 	; tell ZSMKit about the 52 Hz timer
+	lda #1
+	sta music_interrupt_type
 	lda #52
 	ldy #0
 	jsr zsmkit::zsm_set_int_rate
@@ -180,6 +157,7 @@ SCENE = $4800
 	jsr SCENE
 	LOADFILE "PLASMA.BIN", 0, SCENE
 	jsr SCENE
+;	jmp XXXEND
 	LOADFILE "CUBE.BIN", 0, SCENE
 	jsr SCENE
 	LOADFILE "BALLS.BIN", 0, SCENE
@@ -215,6 +193,8 @@ SCENE = $4800
 	lda #50
 	jsr setup_via_timer
 	; tell ZSMKit about the 50 Hz timer
+	lda #1
+	sta music_interrupt_type
 	lda #50
 	ldy #0
 	jsr zsmkit::zsm_set_int_rate
@@ -229,6 +209,7 @@ SCENE = $4800
 	LOADFILE "CREDITS.BIN", 0, SCENE
 	jsr SCENE
 
+XXXEND:
 	; fade out song
 	ldy #0
 :	phy
@@ -391,11 +372,29 @@ handler:
     and #$40
     bne via
 
+	; preserve FX
+	lda Vera::Reg::Ctrl
+	pha
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	lda Vera::Reg::FXCtrl
+	pha
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
 	; do this one first
 	jsr scenevector
 
-	lda #1
+	lda music_interrupt_type ; 0 for vblank, 1 for via
 	jsr zsmkit::zsm_tick
+
+	; restore FX
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	pla
+	sta Vera::Reg::FXCtrl
+	pla
+	sta Vera::Reg::Ctrl	
 
     pla
     sta X16::Reg::RAMBank

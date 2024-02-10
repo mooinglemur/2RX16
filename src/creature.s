@@ -1,4 +1,5 @@
 ; this module contains the lens and rotazoom scenes
+.import graceful_fail
 
 .import setup_palette_fade
 .import setup_palette_fade2
@@ -49,6 +50,7 @@ VERA_DC_VSTOP     = $9F2C  ; DCSEL=1
 VERA_FX_CTRL      = $9F29  ; DCSEL=2
 VERA_FX_TILEBASE  = $9F2A  ; DCSEL=2
 VERA_FX_MAPBASE   = $9F2B  ; DCSEL=2
+VERA_FX_MULT      = $9F2C  ; DCSEL=2
 
 VERA_FX_X_INCR_L  = $9F29  ; DCSEL=3
 VERA_FX_X_INCR_H  = $9F2A  ; DCSEL=3
@@ -1598,6 +1600,8 @@ rota_vsync:
 
 	lda #%01100011
 	sta VERA_FX_CTRL
+
+	stz VERA_FX_MULT
 
 	jsr draw_rotated_tilemap
 	

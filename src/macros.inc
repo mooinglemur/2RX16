@@ -48,7 +48,8 @@ macros_inc = 1
 	lda #0
 .endif
 	jsr X16::Kernal::LOAD
-	bra cont
+	bcc cont
+	jmp graceful_fail
 fn:
 	.byte name
 FNLEN = * - fn
