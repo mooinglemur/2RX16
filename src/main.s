@@ -269,7 +269,7 @@ XXXEND:
 	stz Vera::Reg::L1VScrollL
 	stz Vera::Reg::L1VScrollH
 
-	; clear screen when full
+	; clear screen when full res
 	jsr X16::Kernal::PRIMM
 	.byte $90,$01,$1c,$93,0
 
@@ -660,7 +660,15 @@ delta1:
     ; disable T1 interrupts
     lda #%01000000
     sta VIA1::Reg::IER
-    
+
+	; delay to make sure VIA gets a chance to de-assert before returning
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+
     plp
     rts
 .endproc

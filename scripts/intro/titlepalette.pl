@@ -43,8 +43,14 @@ for my $mult (0..15) {
     }
 }
 
+# Copy index 1 to 0 in the high palettes
+
+for my $i (1..15) {
+    $pallist[$i*16] = $pallist[$i*16+1];
+}
+
 while (@pallist) {
-    print(".word ");
+    print("\t.word ");
     my @x = splice(@pallist,0,16);
     print(join(",",@x));
     print("\n");

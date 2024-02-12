@@ -15,8 +15,13 @@ my @ypos_s;
 my @ypos_l;
 my @ypos_h;
 
+my $incr = 0x17ff;
+
 for my $i (0..255) {
-    my $incr = 36000/($i+5);
+
+    if ($i > 20) { 
+        $incr = 24000/($i-15);
+    }
 
     if ($incr > 0x7fff) {
         $incr = 0x7fff;
