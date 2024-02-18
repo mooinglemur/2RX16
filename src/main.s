@@ -162,17 +162,22 @@ SCENE = $4800
 	jsr SCENE
 	LOADFILE "BALLS.BIN", 0, SCENE
 	jsr SCENE
-	
+	; overwrites the currently-playing song!
+	; but the cursor is past the end of the
+	; new song's length, so it can coast
+	; to the end of the old song's data
+	LOADFILE "MUSIC4.ZSM", SONG_BANK, $a000
 	MUSIC_SYNC $A0
-
-	; stop song
-	ldx #0
-	jsr zsmkit::zsm_close
+	jsr play_song_1 ; priority 1 to avoid audible gap
 .endif
 .ifndef SKIP_SONG4
+.ifdef SKIP_SONG3
 	LOADFILE "MUSIC4.ZSM", SONG_BANK, $a000
+.endif
 	LOADFILE "SWORD.BIN", 0, SCENE
-	jsr play_song
+.ifdef SKIP_SONG3
+	jsr play_song_1
+.endif
 	jsr SCENE
 
 	LOADFILE "WATER.BIN", 0, SCENE
@@ -184,7 +189,7 @@ SCENE = $4800
 	jsr SCENE ; exits at sync $CC
 
 	; stop song
-	ldx #0
+	ldx #1
 	jsr zsmkit::zsm_close
 .endif
 	LOADFILE "MUSIC5.ZSM", SONG_BANK, $a000
@@ -301,6 +306,20 @@ XXXEND:
 	rts
 .endproc
 
+.proc play_song_1
+	ldx #1
+	jsr zsmkit::zsm_close
+	lda #SONG_BANK
+	sta X16::Reg::RAMBank
+	ldx #1
+	lda #<$a000
+	ldy #>$a000
+	jsr zsmkit::zsm_setmem
+	ldx #1
+	jsr zsmkit::zsm_play
+	rts
+.endproc
+
 .proc sync_handler
 	cpy #2
 	bne end
@@ -316,6 +335,10 @@ end:
 	lda #2
 	sta X16::Reg::RAMBank ; for setcb
 	ldx #0
+	lda #<sync_handler
+	ldy #>sync_handler
+	jsr zsmkit::zsm_setcb
+	ldx #1
 	lda #<sync_handler
 	ldy #>sync_handler
 	jsr zsmkit::zsm_setcb
