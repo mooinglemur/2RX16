@@ -157,10 +157,168 @@ panicpal_set:
 
 	jsr slide_on
 
-	MUSIC_SYNC $50
+	MUSIC_SYNC $4E
+
+	WAITVSYNC
+
+	; first frame of CRT-off effect
+	; flash it to grey
+	VERA_SET_ADDR Vera::VRAM_palette, 1
+	lda #$bb
+	sta Vera::Reg::Data0
+	lda #$0b
+	sta Vera::Reg::Data0
+	; squish it
+	lda #(1 << 1) ; DCSEL=1
+	sta Vera::Reg::Ctrl
+	lda #71
+	sta Vera::Reg::DCVStart
+	lda #240-70
+	sta Vera::Reg::DCVStop
+	stz Vera::Reg::Ctrl
+	lda #$80
+	sta Vera::Reg::DCVScale
+
+	; set up fade to white (for non-background)
+	ldx #0
+creature_crt_fadeout:
+	lda #$ff
+	sta target_palette,x
+	inx
+	lda #$0f
+	sta target_palette,x
+	inx
+	bne creature_crt_fadeout
+
+	lda #2
+	jsr setup_palette_fade
+	lda #66
+	jsr setup_palette_fade2
+
+.repeat 4
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+.endrepeat
+
+	WAITVSYNC
+	; second frame, more squish, slightly whiter
+	; background back to black
+	VERA_SET_ADDR Vera::VRAM_palette, 1
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	jsr flush_palette
+	jsr flush_palette2
+
+	lda #(1 << 1) ; DCSEL=1
+	sta Vera::Reg::Ctrl
+	lda #96
+	sta Vera::Reg::DCVStart
+	lda #240-95
+	sta Vera::Reg::DCVStop
+	stz Vera::Reg::Ctrl
+	lda #$c0
+	sta Vera::Reg::DCVScale
+
+.repeat 3
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+.endrepeat
+
+	WAITVSYNC
+	; third frame, more squish, slightly whiter
+	jsr flush_palette
+	jsr flush_palette2
+
+	lda #(1 << 1) ; DCSEL=1
+	sta Vera::Reg::Ctrl
+	lda #108
+	sta Vera::Reg::DCVStart
+	lda #240-108
+	sta Vera::Reg::DCVStop
+	stz Vera::Reg::Ctrl
+	lda #$e0
+	sta Vera::Reg::DCVScale
+
+.repeat 3
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+.endrepeat
+
+	WAITVSYNC
+	; fourth frame, more squish, slightly whiter
+	jsr flush_palette
+	jsr flush_palette2
+
+	lda #(1 << 1) ; DCSEL=1
+	sta Vera::Reg::Ctrl
+	lda #114
+	sta Vera::Reg::DCVStart
+	lda #240-114
+	sta Vera::Reg::DCVStop
+	stz Vera::Reg::Ctrl
+	lda #$ff
+	sta Vera::Reg::DCVScale
+
+	WAITVSYNC
+	; now do the CRT line thing
+	lda #(1 << 1) ; DCSEL=1
+	sta Vera::Reg::Ctrl
+	lda #120
+	sta Vera::Reg::DCVStart
+	lda #121
+	sta Vera::Reg::DCVStop
+	stz Vera::Reg::DCHStart
+	lda #$a0
+	sta Vera::Reg::DCHStop
+	stz Vera::Reg::Ctrl
+	lda #$80
+	sta Vera::Reg::DCVScale
+	lda #$20
+	sta Vera::Reg::DCHScale
+
+	VERA_SET_ADDR Vera::VRAM_palette, 1
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+
+	lda #$ff
+	sta Vera::Reg::Data0
+	lda #$0f
+	sta Vera::Reg::Data0
+
+	lda #$44
+	sta Vera::Reg::Data0
+	lda #$04
+	sta Vera::Reg::Data0
+
+	jsr do_crt_line
+
+	; fade dot out, in, out
+
+	ldx #128
+:	stz target_palette-1,x
+	dex
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+
+	PALETTE_FADE 1
+
+	lda #$ff
+	sta target_palette+2
+	sta target_palette+4
+	lda #$0f
+	sta target_palette+3
+	sta target_palette+5
+
+	lda #0
+	jsr setup_palette_fade
+
+	PALETTE_FADE 1
 
 	ldx #0
-:   stz target_palette,x
+:	stz target_palette,x
+	stz target_palette3,x
 	inx
 	bne :-
 
@@ -168,16 +326,155 @@ panicpal_set:
 	jsr setup_palette_fade
 	lda #64
 	jsr setup_palette_fade2
+	lda #128
+	jsr setup_palette_fade3
+	lda #192
+	jsr setup_palette_fade4
 
+	PALETTE_FADE_FULL 3
 
-	PALETTE_FADE_1_2 1
+	MUSIC_SYNC $50
 
+	; reset all letterboxing
 	lda #(1 << 1) ; DCSEL=1
 	sta Vera::Reg::Ctrl
 	stz Vera::Reg::DCHStart
+	lda #$a0
+	sta Vera::Reg::DCHStop
+	lda #21
+	sta Vera::Reg::DCVStart
+	lda #($f0 - 20)
+	sta Vera::Reg::DCVStop
 	stz Vera::Reg::Ctrl
 
 	rts
+
+.proc do_crt_line
+	ldx #0
+crt_line_loop:
+	phx
+	WAITVSYNC
+	plx
+	VERA_SET_ADDR $00000, 1
+	jsr line1_4
+	jsr line2_3
+	jsr line2_3
+	jsr line1_4
+
+	inx
+	cpx #42
+	bcc crt_line_loop
+
+	VERA_SET_ADDR $00000, 1
+	ldx #4
+dot:
+	ldy #79
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+
+	lda #1
+	sta Vera::Reg::Data0
+
+	ldy #240
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+
+	dex
+	bne dot
+
+	rts
+line1_4:
+	lda white_indent,x
+	tay
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+	lda #160
+	sec
+	sbc white_indent,x
+	sbc white_indent,x
+	tay
+	lda #1
+:	sta Vera::Reg::Data0
+	dey
+	bne :-
+	lda white_indent,x
+	tay
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+
+	ldy #160
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+	rts
+
+line2_3:
+	lda gray_indent,x
+	tay
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+	lda white_indent,x
+	sec
+	sbc gray_indent,x
+	beq white
+	tay
+	lda #2
+:	sta Vera::Reg::Data0
+	dey
+	bne :-
+white:
+	lda #160
+	sec
+	sbc white_indent,x
+	sbc white_indent,x
+	tay
+	lda #1
+:	sta Vera::Reg::Data0
+	dey
+	bne :-
+	lda white_indent,x
+	sec
+	sbc gray_indent,x
+	beq black
+	tay
+	lda #2
+:	sta Vera::Reg::Data0
+	dey
+	bne :-
+black:
+	lda gray_indent,x
+	tay
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+
+	ldy #160
+:	stz Vera::Reg::Data0
+	dey
+	bne :-
+	rts
+
+white_indent:
+	.byte 9,9,9,9,9,9,10,12
+	.byte 14,16,18,20,22,24,26,28
+	.byte 30,32,34,36,38,40,42,44
+	.byte 46,48,50,52,54,56,58,60
+	.byte 62,64,66,68,70,72,74,76
+	.byte 78,80
+gray_indent:
+	.byte 9,9,9,9,9,9,9,10
+	.byte 12,14,16,18,20,22,24,26
+	.byte 28,30,32,34,36,38,40,42
+	.byte 44,46,48,50,52,54,56,58
+	.byte 60,62,64,66,68,70,72,74
+	.byte 76,78
+
+.endproc
 
 .proc slide_on
 	ldx #0
@@ -230,7 +527,7 @@ slide_on_hstart:
 	.byte $3a,$36,$32,$2d
 	.byte $29,$25,$21,$1c
 	.byte $18,$14,$12,$14
-	.byte $18,$1c,$1a,$18
+	.byte $16,$17,$18,$17
 	.byte $16,$14,$12,$13
 	.byte $14,$15,$14,$14
 .endproc
