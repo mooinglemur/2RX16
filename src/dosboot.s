@@ -215,7 +215,7 @@ opm:
 endsoundchk:
 	MUSIC_SYNC $FC
 
-	BIOS_WRITE_TEXT "\nRemovable storage: 1\xab\x22 SD card: "
+	BIOS_WRITE_TEXT "\nRemovable storage: 1\xac\x22 SD card: "
 
 	WAITVSYNC 60
 

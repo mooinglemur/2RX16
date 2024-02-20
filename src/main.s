@@ -82,7 +82,7 @@ SCENE = $4800
 	jsr zero_entire_target
 	lda #0
 	jsr setup_palette_fade
-	
+
 	PALETTE_FADE 2
 .ifndef SKIP_SONG0
 	LOADFILE "MUSIC0.ZSM", SONG_BANK, $a000
