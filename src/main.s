@@ -230,11 +230,11 @@ XXXEND:
 	iny
 	cpy #64
 	bne :-
-	
+
 	; stop song
 	ldx #0
 	jsr zsmkit::zsm_close
-	
+
 	jsr clear_irq_handler
 	jsr X16::Kernal::SCINIT
 
@@ -382,18 +382,19 @@ setup_irq_handler:
 	rts
 handler:
 
-    lda X16::Reg::ROMBank
-    pha
-    lda #$0A
-    sta X16::Reg::ROMBank
-    lda X16::Reg::RAMBank
-    pha
+	lda X16::Reg::ROMBank
+	pha
+	lda #$0A
+	sta X16::Reg::ROMBank
+	lda X16::Reg::RAMBank
+	pha
 
 	; check for IRQ type
-    ; is it a via timer?
-    lda VIA1::Reg::IFR
-    and #$40
-    bne via
+	; is it a via timer?
+	lda VIA1::Reg::IFR
+	and VIA1::Reg::IER
+	and #$40
+	bne via
 
 	; preserve FX
 	lda Vera::Reg::Ctrl
@@ -417,13 +418,13 @@ handler:
 	pla
 	sta Vera::Reg::FXCtrl
 	pla
-	sta Vera::Reg::Ctrl	
+	sta Vera::Reg::Ctrl
 
-    pla
-    sta X16::Reg::RAMBank
+	pla
+	sta X16::Reg::RAMBank
 
-    pla
-    sta X16::Reg::ROMBank
+	pla
+	sta X16::Reg::ROMBank
 	jmp $ffff
 OLDIRQ = * - 2
 via:
@@ -457,11 +458,11 @@ via_timer_loops = * - 1
 	pla
 	sta Vera::Reg::Ctrl	
 endirq:
-    pla
-    sta X16::Reg::RAMBank
+	pla
+	sta X16::Reg::RAMBank
 
-    pla
-    sta X16::Reg::ROMBank
+	pla
+	sta X16::Reg::ROMBank
 
 	ply
 	plx
@@ -472,17 +473,17 @@ via_timer_iter:
 
 ; .A = Hz
 .proc setup_via_timer: near
-    ; tmp1 = remainder
-    ; tmp2 = dividend
-    ; tmp3 = divisor
+	; tmp1 = remainder
+	; tmp2 = dividend
+	; tmp3 = divisor
 
-    sta IR
+	sta IR
 
 	; initialize remainder to 0
 	stz tmp1
 	stz tmp1+1
-	
-    lda machine_speed
+
+	lda machine_speed
 	sta tmp2
 	lda machine_speed+1
 	sta tmp2+1
@@ -517,56 +518,56 @@ l2:
 	dex
 	bne l1
 
-    lda #1
-    sta via_timer_loops
+	lda #1
+	sta via_timer_loops
 	lda tmp2+2
-    beq l4    
+	beq l4    
 l3:
 	lda tmp2+2
-    beq l4
-    asl via_timer_loops
+	beq l4
+	asl via_timer_loops
 l3a:
-    lsr tmp2+2
-    ror tmp2+1
-    ror tmp2
-    bra l3
+	lsr tmp2+2
+	ror tmp2+1
+	ror tmp2
+	bra l3
 l4:
-    lda tmp2
-    sta via_timer_latch_l
+	lda tmp2
+	sta via_timer_latch_l
 	lda tmp2+1
 	sta via_timer_latch_h
 
-    lda via_timer_loops
-    sta via_timer_iter
-    ; set up the via
-    php
-    sei
+	lda via_timer_loops
+	sta via_timer_iter
+	; set up the via
+	php
+	sei
 
-    ; set T1 to freerunning mode
-    lda #%01000000 
-    sta VIA1::Reg::ACR
+	; set T1 to freerunning mode
+	lda #%01000000 
+	sta VIA1::Reg::ACR
 
-    ; enable T1 interrupts
-    lda #%11000000
-    sta VIA1::Reg::IER
-    
-    ; fill the timer (start it)
-    lda #$00
+	; enable T1 interrupts
+	lda #%11000000
+	sta VIA1::Reg::IER
+
+	; fill the timer (start it)
+	lda #$00
 	via_timer_latch_l = * - 1
-    sta VIA1::Reg::T1CL
+	sta VIA1::Reg::T1CL
 	lda #$00
 	via_timer_latch_h = * - 1
-    sta VIA1::Reg::T1CH
+	sta VIA1::Reg::T1CH
 
-    plp
+	plp
 
 	rts
 tmp1:
-    .byte 0,0,0
+	.byte 0,0,0
 tmp2:
-    .byte 0,0,0
+	.byte 0,0,0
 tmp3:
-    .byte 0,0,0
+	.byte 0,0,0
 
 .endproc
 
@@ -677,12 +678,12 @@ delta1:
 .endproc
 
 .proc clear_via_timer: near
-    php
-    sei
+	php
+	sei
 
-    ; disable T1 interrupts
-    lda #%01000000
-    sta VIA1::Reg::IER
+	; disable T1 interrupts
+	lda #%01000000
+	sta VIA1::Reg::IER
 
 	; delay to make sure VIA gets a chance to de-assert before returning
 	nop
@@ -692,8 +693,8 @@ delta1:
 	nop
 	nop
 
-    plp
-    rts
+	plp
+	rts
 .endproc
 
 machine_speed:
