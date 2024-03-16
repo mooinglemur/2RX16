@@ -83,6 +83,23 @@ SCENE = $4800
 	lda #0
 	jsr setup_palette_fade
 
+	; set auto_tx if available (fast SD card reads!)
+	lda #5
+	ldx #<auto_tx
+	ldy #>auto_tx
+	jsr X16::Kernal::SETNAM
+
+	lda #15
+	ldx #8
+	ldy #15
+	jsr X16::Kernal::SETLFS
+
+	jsr X16::Kernal::OPEN
+
+	lda #15
+	jsr X16::Kernal::CLOSE
+
+
 	PALETTE_FADE 2
 .ifndef SKIP_SONG0
 	LOADFILE "MUSIC0.ZSM", SONG_BANK, $a000
@@ -699,3 +716,6 @@ delta1:
 
 machine_speed:
 	.dword 8000000
+
+auto_tx:
+	.byte "U0>B",1

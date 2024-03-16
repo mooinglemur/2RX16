@@ -1601,7 +1601,11 @@ rota_vsync:
 	lda #%01100011
 	sta VERA_FX_CTRL
 
-	stz VERA_FX_MULT
+;	This was added to debug a problem MooingLemur was having w/ 65C816 hardware
+;	where it was losing writes to the VERA, but it turned out to be a problem
+;	related to the U16 bodge for dev boards that hadn't been done yet
+;
+;	stz VERA_FX_MULT
 
 	jsr draw_rotated_tilemap
 	
