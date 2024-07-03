@@ -10,7 +10,7 @@ PRESS_KEY_TO_START = True
 ROT_ORIGIN = -(2*16)
 
 screen_width = 320
-screen_height = 200
+screen_height = 256
 
 scale = 4
 
@@ -246,9 +246,9 @@ def run():
 
                 if saved_tiles_cnt >= 8: # save the map now too
                     with open("TECHNOMAP.DAT", mode="wb") as file:
-                        for y in range(25):
+                        for y in range(32):
                             for x in range(32):
-                                p = y + (25*(x % 3))
+                                p = y + (32*(x % 3))
                                 file.write(bytes([p]))
                     keep_animating = False
                     do_choreo = True
@@ -256,30 +256,43 @@ def run():
         if do_choreo:
             with open("TECHNOCHOREO.DAT", mode="wb") as file:
                 for s in range(2048):
-                    r = 60
-                    a = s/1024 * math.pi * 2
-                    # We're gonna do 160x100, so we're going to center the map on such a frame
-                    x = round((160 + math.cos(a)*r)*256)
-                    y = round((100 - math.sin(a)*r)*256)
-                    sinstep = round(math.sin(a)*256)
-                    cosstep = round(-math.cos(a)*256)
+                    r = 90
+                    a = -s/768 * math.pi * 2
+                    o = a+math.atan2(10,-16)
+                    print(s)
+                    print(a)
+                    print(o)
+
+                    sc = 1
+
+                    bu = 1 + math.sin(s/5)
+
+                    sinstep = round(sc*math.sin(a)*-256)
+                    cosstep = round(sc*math.cos(a)*256*bu)
+
+                    hy = math.sqrt(((80*sc)*bu)**2 + (50*sc)**2)
+
+                    x = round((128*256*bu)/sc + (hy*math.cos(o)*256))
+                    y = round((128*256)/sc + (hy*math.sin(o)*-256))
+
                     if sinstep < 0:
                         sinstep += 65536
                     if cosstep < 0:
                         cosstep += 65536
+                    if x < 0:
+                        x += 65536
+                    if y < 0:
+                        y += 65536
 
                     # Low cos, high cos, low sin, high sin, x (sub low high), y (sub low high)
                     st = [cosstep % 256, cosstep // 256, sinstep % 256, sinstep // 256]
 
                     st.append(x % 256)
                     st.append(x//256 % 256)
-                    st.append(x//256//256)
 
                     st.append(y % 256)
                     st.append(y//256 % 256)
-                    st.append(y//256//256)
 
-                    st = [round(v)  for v in st]
                     print(st)
                     file.write(bytes(st))
             running = False

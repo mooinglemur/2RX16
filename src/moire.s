@@ -35,13 +35,13 @@ sin_slope:
 cos_slope:
 	.res 2
 aff_x:
-	.res 3
+	.res 2
 aff_y:
-	.res 3
+	.res 2
 ptr:
 	.res 2
 choreo_frames:
-	.res 2
+	.res 1
 old_syncval:
 	.res 1
 
@@ -170,6 +170,11 @@ panicpal_set:
 	sta Vera::Reg::Data0
 	inx
 	bne panicpal_set
+
+	lda #0
+	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
 
 	; set bitmap mode for layer 0
 	lda #%00000111 ; 8bpp
@@ -375,7 +380,6 @@ creature_crt_fadeout:
 .proc techno
 	; initialize choreography
 	stz choreo_frames
-	stz choreo_frames+1
 
 	stz old_syncval
 
@@ -429,7 +433,6 @@ creature_crt_fadeout:
 
 	; mainly for reset of cache index
 	stz Vera::Reg::FXMult
-
 	stz Vera::Reg::Ctrl
 
 	ldy #0
@@ -437,12 +440,8 @@ newframe:
 	; load the starting point and angles for this frame
 	jsr load_aff_parms
 
-	; set up cache fill/write, 4 bit mode, and affine
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
-
-	lda #%01100111
-	sta Vera::Reg::FXCtrl
 
 	; Set up FX TileBase, tile set changes every frame and loops every 8
 	lda choreo_frames
@@ -452,9 +451,6 @@ newframe:
 	asl
 	adc #((TECHNO_TILEBASE >> 9) & $FC)
 	sta Vera::Reg::FXTileBase
-
-	; point data 0 to top of screen
-	VERA_SET_ADDR $00000, 3 ; incr 4
 
 	lda #(3 << 1)
 	sta Vera::Reg::Ctrl
@@ -479,6 +475,32 @@ newframe:
 
 	phy
 	WAITVSYNC
+
+	; clear FX
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	lda syncval
+	cmp old_syncval
+	beq :+
+	jsr flashit
+:	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step
+	jsr flush_palette
+
+	; point data 0 to top of screen
+	VERA_SET_ADDR $00000, 3 ; incr 4
+
+	; set up cache fill/write, 4 bit mode, and affine
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	lda #%01100111
+	sta Vera::Reg::FXCtrl
+
 	ply
 
 	ldx #100 ; row count
@@ -490,14 +512,12 @@ newline:
 	lda aff_x+1
 	sta Vera::Reg::FXXPosL
 
-	lda aff_x+2
-	sta Vera::Reg::FXXPosH
+	stz Vera::Reg::FXXPosH
 
 	lda aff_y+1
 	sta Vera::Reg::FXYPosL
 
-	lda aff_y+2
-	sta Vera::Reg::FXYPosH
+	stz Vera::Reg::FXYPosH
 
 	; set pixel subpositions
 	lda #(5 << 1)
@@ -547,13 +567,9 @@ newline:
 	jne newline
 
 	inc choreo_frames
-	bne :+
-	inc choreo_frames+1
-:	lda choreo_frames+1
-	cmp #(>2000)
-	jcc newframe
-	lda choreo_frames
-	cmp #(<2000)
+
+	lda syncval
+	cmp #$4A
 	jcc newframe
 
 	; done with everything
@@ -563,6 +579,22 @@ newline:
 	stz Vera::Reg::Ctrl
 
 	rts
+flashit:
+	sta old_syncval
+
+	VERA_SET_ADDR ((Vera::VRAM_palette)+31), -1
+
+	ldx #32
+:	lda technopal_bright-1,x
+	sta Vera::Reg::Data0
+	lda technopal_dim-1,x
+	sta target_palette-1,x
+	dex
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+	rts
 .endproc
 
 .proc load_aff_parms
@@ -571,6 +603,12 @@ newline:
 	iny
 	lda (ptr),y
 	sta cos_slope+1
+	iny
+	lda (ptr),y
+	sta sin_slope
+	iny
+	lda (ptr),y
+	sta sin_slope+1
 	iny
 	bne cnt1
 	lda ptr+1
@@ -582,10 +620,16 @@ newline:
 :	sta ptr+1
 cnt1:
 	lda (ptr),y
-	sta sin_slope
+	sta aff_x
 	iny
 	lda (ptr),y
-	sta sin_slope+1
+	sta aff_x+1
+	iny
+	lda (ptr),y
+	sta aff_y
+	iny
+	lda (ptr),y
+	sta aff_y+1
 	iny
 	bne cnt2
 	lda ptr+1
@@ -596,51 +640,6 @@ cnt1:
 	inc X16::Reg::RAMBank
 :	sta ptr+1
 cnt2:
-	lda (ptr),y
-	sta aff_x
-	iny
-	lda (ptr),y
-	sta aff_x+1
-	iny
-	bne cnt3
-	lda ptr+1
-	inc
-	cmp #$c0
-	bcc :+
-	sbc #$20
-	inc X16::Reg::RAMBank
-:	sta ptr+1
-cnt3:
-	lda (ptr),y
-	sta aff_x+2
-	iny
-	lda (ptr),y
-	sta aff_y
-	iny
-	bne cnt4
-	lda ptr+1
-	inc
-	cmp #$c0
-	bcc :+
-	sbc #$20
-	inc X16::Reg::RAMBank
-:	sta ptr+1
-cnt4:
-	lda (ptr),y
-	sta aff_y+1
-	iny
-	lda (ptr),y
-	sta aff_y+2
-	iny
-	bne cnt5
-	lda ptr+1
-	inc
-	cmp #$c0
-	bcc :+
-	sbc #$20
-	inc X16::Reg::RAMBank
-:	sta ptr+1
-cnt5:
 	rts
 .endproc
 
@@ -975,3 +974,26 @@ xoff:
 row:
 	.byte 0
 .endproc
+
+BLACK = $0000
+DARK = $0d9b
+MED = $0fce
+LIGHT = $0fff
+WHITE = $0fff
+
+DIMDARK = $0545
+DIMMED = $0667
+DIMLIGHT = $0788
+DIMWHITE = $0888
+
+technopal_bright:
+	.word BLACK, DARK, DARK, MED
+	.word DARK, MED, MED, LIGHT
+	.word DARK, MED, MED, LIGHT
+	.word MED, LIGHT, LIGHT, WHITE
+
+technopal_dim:
+	.word BLACK, DIMDARK, DIMDARK, DIMMED
+	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
+	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
+	.word DIMMED, DIMLIGHT, DIMLIGHT, DIMWHITE
