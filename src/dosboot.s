@@ -108,7 +108,7 @@ entry:
 	jsr bios_output_number
 
 
-	BIOS_WRITE_TEXT "\n     Copyright (C) 2023, Frank van den Hoef\n\n\n"
+	BIOS_WRITE_TEXT "\n     Copyright (C) 2019-2024\n\n\n"
 
 	jsr place_estar_and_bfly
 

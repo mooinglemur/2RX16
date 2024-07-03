@@ -20,6 +20,9 @@ entry:
 	jsr circles_init
 
 	LOADFILE "CIRCLES1.VTS", 0, $0000, 0 ; $00000 VRAM
+	; strategic preloading for later
+	LOADFILE "TECHNOMAP.DAT", 0, $0000, 1 ; $10000 VRAM
+	LOADFILE "TECHNOTILE0.DAT", 0, $1000, 1 ; $11000 VRAM
 
 	MUSIC_SYNC $32
 
@@ -266,7 +269,7 @@ hold:
 	inx
 	bpl :-
 
-	VERA_SET_ADDR $18000, 1
+	VERA_SET_ADDR $1E000, 1
 	
 	; populate tile maps
 	ldx #0
@@ -294,7 +297,7 @@ MAPTBL = * - 2
 	lda #(($00000 >> 11) << 2) | 3
 	sta Vera::Reg::L0TileBase
 
-	lda #(($18000 >> 9))
+	lda #(($1E000 >> 9))
 	sta Vera::Reg::L0MapBase
 
 	lda #96 ; H scroll to center
@@ -311,7 +314,7 @@ MAPTBL = * - 2
 	lda #(($08000 >> 11) << 2) | 3
 	sta Vera::Reg::L1TileBase
 
-	lda #(($18800 >> 9))
+	lda #(($1E800 >> 9))
 	sta Vera::Reg::L1MapBase
 
 	stz Vera::Reg::L1HScrollL

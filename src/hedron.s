@@ -45,6 +45,8 @@ REDTRILIST2BANK = $2A
 entry:
 	jsr chessboard_in
 	jsr chessboard_to_tiles
+	; strategic preloading for later
+	LOADFILE "TECHNOTILE3.DAT", 0, $4000, 1 ; $14000 VRAM
 	jsr polyhedron_palette1
 	jsr polyhedron
 	jsr waitfornext
@@ -67,7 +69,11 @@ fill_grey:
 	; set up
 	lda #0
 	jsr setup_palette_fade
-
+	; strategic preloading for later
+	LOADFILE "TECHNOTILE4.DAT", 0, $5000, 1 ; $15000 VRAM
+	LOADFILE "TECHNOTILE5.DAT", 0, $6000, 1 ; $16000 VRAM
+	LOADFILE "TECHNOTILE6.DAT", 0, $7000, 1 ; $17000 VRAM
+	LOADFILE "TECHNOTILE7.DAT", 0, $8000, 1 ; $18000 VRAM
 	; wait for syncval to hit #$10
 	MUSIC_SYNC $10
 

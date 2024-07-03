@@ -21,9 +21,27 @@
 
 .macpack longbranch
 
+CHOREO_BANK = $20
 
 .include "x16.inc"
 .include "macros.inc"
+
+.segment "MOIRE_ZP": zeropage
+
+sin_slope:
+	.res 2
+cos_slope:
+	.res 2
+aff_x:
+	.res 3
+aff_y:
+	.res 3
+ptr:
+	.res 2
+choreo_frames:
+	.res 2
+old_syncval:
+	.res 1
 
 .segment "MOIRE"
 entry:
@@ -97,6 +115,10 @@ clearloop:
 	stz Vera::Reg::FXCtrl
 	stz Vera::Reg::Ctrl
 
+	LOADFILE "TECHNOCHOREO.DAT", CHOREO_BANK, $A000
+	LOADFILE "TECHNOTILE1.DAT", 0, $2000, 1 ; $12000 VRAM
+	LOADFILE "TECHNOTILE2.DAT", 0, $3000, 1 ; $13000 VRAM
+
 	MUSIC_SYNC $41
 
 	; do wipe 1
@@ -121,18 +143,9 @@ clearloop:
 	lda #240
 	jsr wipe
 
-
-
-	LOADFILE "PLACEHOLDER_MOIRE.VBM", 0, $0000, 0 ; $00000 VRAM
-
 	MUSIC_SYNC $45
 
-	LOADFILE "PLACEHOLDER_MOIRE.PAL", 0, target_palette
-
-	lda #0
-	jsr setup_palette_fade
-
-	PALETTE_FADE 1
+	jsr techno
 
 	MUSIC_SYNC $4A
 
@@ -348,6 +361,143 @@ creature_crt_fadeout:
 	stz Vera::Reg::Ctrl
 
 	rts
+
+
+.proc techno
+	; initialize choreography
+	stz choreo_frames
+	stz choreo_frames+1
+
+	stz old_syncval
+
+	lda #CHOREO_BANK
+	sta X16::Reg::RAMBank
+
+	stz ptr
+	lda #$a0
+	sta ptr+1
+
+	; set up screen
+	; set VERA layers up
+	; show layer 0
+	stz Vera::Reg::Ctrl
+	lda Vera::Reg::DCVideo
+	and #$0f
+	ora #$10
+	sta Vera::Reg::DCVideo
+
+	; border = index 0
+	stz Vera::Reg::DCBorder
+
+	; letterbox for 320x~200
+	lda #$02
+	sta Vera::Reg::Ctrl
+	lda #21
+	sta Vera::Reg::DCVStart
+	lda #($f0 - 20)
+	sta Vera::Reg::DCVStop
+	stz Vera::Reg::Ctrl
+
+	; 4:1 scale
+	lda #$20
+	sta Vera::Reg::DCHScale
+	sta Vera::Reg::DCVScale
+
+	; bitmap mode, 4bpp
+	lda #%00000110
+	sta Vera::Reg::L0Config
+
+	; bitmap base, 320x240
+	stz Vera::Reg::L0TileBase
+
+
+	ldy #0
+newframe:
+	lda (ptr),y
+	sta cos_slope
+	iny
+	lda (ptr),y
+	sta cos_slope+1
+	iny
+	bne cnt1
+	lda ptr+1
+	inc
+	cmp #$c0
+	bcc :+
+	sbc #$20
+	inc X16::Reg::RAMBank
+:	sta ptr+1
+cnt1:
+	lda (ptr),y
+	sta sin_slope
+	iny
+	lda (ptr),y
+	sta sin_slope+1
+	iny
+	bne cnt2
+	lda ptr+1
+	inc
+	cmp #$c0
+	bcc :+
+	sbc #$20
+	inc X16::Reg::RAMBank
+:	sta ptr+1
+cnt2:
+	lda (ptr),y
+	sta aff_x
+	iny
+	lda (ptr),y
+	sta aff_x+1
+	iny
+	bne cnt3
+	lda ptr+1
+	inc
+	cmp #$c0
+	bcc :+
+	sbc #$20
+	inc X16::Reg::RAMBank
+:	sta ptr+1
+cnt3:
+	lda (ptr),y
+	sta aff_x+2
+	iny
+	lda (ptr),y
+	sta aff_y
+	iny
+	bne cnt4
+	lda ptr+1
+	inc
+	cmp #$c0
+	bcc :+
+	sbc #$20
+	inc X16::Reg::RAMBank
+:	sta ptr+1
+cnt4:
+	lda (ptr),y
+	sta aff_y+1
+	iny
+	lda (ptr),y
+	sta aff_y+2
+	iny
+	bne cnt5
+	lda ptr+1
+	inc
+	cmp #$c0
+	bcc :+
+	sbc #$20
+	inc X16::Reg::RAMBank
+:	sta ptr+1
+cnt5:
+
+
+	stz Vera::Reg::Ctrl
+	; 2:1 scale
+	lda #$40
+	sta Vera::Reg::DCHScale
+	sta Vera::Reg::DCVScale
+
+	rts
+.endproc
 
 .proc do_crt_line
 	ldx #0
@@ -577,25 +727,25 @@ slide_off_hstart:
 
 .repeat 4
 	jsr apply_palette_fade_step
-.endrepeat    
+.endrepeat
 	WAITVSYNC
 	jsr flush_palette
 
 .repeat 4
 	jsr apply_palette_fade_step
-.endrepeat    
+.endrepeat
 	WAITVSYNC
 	jsr flush_palette
 
 .repeat 4
 	jsr apply_palette_fade_step
-.endrepeat    
+.endrepeat
 	WAITVSYNC
 	jsr flush_palette
 
 .repeat 4
 	jsr apply_palette_fade_step
-.endrepeat    
+.endrepeat
 	WAITVSYNC
 	jsr flush_palette
 
@@ -610,7 +760,7 @@ slide_off_hstart:
 	stz target_palette+4
 
 	lda #0
-	jsr setup_palette_fade  
+	jsr setup_palette_fade
 
 	lda #12
 	sta rowto
