@@ -22,6 +22,8 @@
 .macpack longbranch
 
 CHOREO_BANK = $20
+TECHNO_MAPBASE = $10000
+TECHNO_TILEBASE = $11000 ; (plus $1000 offset for each frame)
 
 .include "x16.inc"
 .include "macros.inc"
@@ -145,11 +147,18 @@ clearloop:
 
 	MUSIC_SYNC $45
 
+	LOADFILE "TECHNOTILE7.DAT", 0, $8000, 1 ; $18000 VRAM
 	jsr techno
 
 	MUSIC_SYNC $4A
 
 	jsr slide_off
+
+	stz Vera::Reg::Ctrl
+	; 2:1 scale
+	lda #$40
+	sta Vera::Reg::DCHScale
+	sta Vera::Reg::DCVScale
 
 	LOADFILE "PANICPIC.VBM", 0, $0000, 0 ; $00000 VRAM
 	LOADFILE "PANICPIC.PAL", 0, target_palette
@@ -410,9 +419,153 @@ creature_crt_fadeout:
 	; bitmap base, 320x240
 	stz Vera::Reg::L0TileBase
 
+	; set up the VERA FX MAPBASE pointer
+	; and other FX state
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	lda #((TECHNO_MAPBASE >> 9) & $FC) | $02
+	sta Vera::Reg::FXMapBase
+
+	; mainly for reset of cache index
+	stz Vera::Reg::FXMult
+
+	stz Vera::Reg::Ctrl
 
 	ldy #0
 newframe:
+	; load the starting point and angles for this frame
+	jsr load_aff_parms
+
+	; set up cache fill/write, 4 bit mode, and affine
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	lda #%01100111
+	sta Vera::Reg::FXCtrl
+
+	; Set up FX TileBase, tile set changes every frame and loops every 8
+	lda choreo_frames
+	and #7
+	asl
+	asl
+	asl
+	adc #((TECHNO_TILEBASE >> 9) & $FC)
+	sta Vera::Reg::FXTileBase
+
+	; point data 0 to top of screen
+	VERA_SET_ADDR $00000, 3 ; incr 4
+
+	lda #(3 << 1)
+	sta Vera::Reg::Ctrl
+
+	; set up affine slope/direction
+	; this will be constant throughout the entire frame
+	lda cos_slope
+	asl
+	sta Vera::Reg::FXXIncrL
+	lda cos_slope+1
+	rol
+	and #$7f
+	sta Vera::Reg::FXXIncrH
+
+	lda sin_slope
+	asl
+	sta Vera::Reg::FXYIncrL
+	lda sin_slope+1
+	rol
+	and #$7f
+	sta Vera::Reg::FXYIncrH
+
+	phy
+	WAITVSYNC
+	ply
+
+	ldx #100 ; row count
+newline:
+	; set pixel positions
+	lda #(4 << 1)
+	sta Vera::Reg::Ctrl
+
+	lda aff_x+1
+	sta Vera::Reg::FXXPosL
+
+	lda aff_x+2
+	sta Vera::Reg::FXXPosH
+
+	lda aff_y+1
+	sta Vera::Reg::FXYPosL
+
+	lda aff_y+2
+	sta Vera::Reg::FXYPosH
+
+	; set pixel subpositions
+	lda #(5 << 1)
+	sta Vera::Reg::Ctrl
+
+	lda aff_x
+	sta Vera::Reg::FXXPosS
+
+	lda aff_y
+	sta Vera::Reg::FXYPosS
+
+	; unrolled code to draw a row
+.repeat 20
+.repeat 8
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+.endrepeat
+
+	; we should still be addrsel = 0
+	; advance to next bitmap line
+	lda Vera::Reg::AddrL
+	clc
+	adc #80
+	sta Vera::Reg::AddrL
+	lda Vera::Reg::AddrM
+	adc #0
+	sta Vera::Reg::AddrM
+
+	clc
+	lda aff_y
+	adc cos_slope
+	sta aff_y
+	lda aff_y+1
+	adc cos_slope+1
+	sta aff_y+1
+
+	sec
+	lda aff_x
+	sbc sin_slope
+	sta aff_x
+	lda aff_x+1
+	sbc sin_slope+1
+	sta aff_x+1
+
+	dex
+	jne newline
+
+	inc choreo_frames
+	bne :+
+	inc choreo_frames+1
+:	lda choreo_frames+1
+	cmp #(>2000)
+	jcc newframe
+	lda choreo_frames
+	cmp #(<2000)
+	jcc newframe
+
+	; done with everything
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	rts
+.endproc
+
+.proc load_aff_parms
 	lda (ptr),y
 	sta cos_slope
 	iny
@@ -488,14 +641,6 @@ cnt4:
 	inc X16::Reg::RAMBank
 :	sta ptr+1
 cnt5:
-
-
-	stz Vera::Reg::Ctrl
-	; 2:1 scale
-	lda #$40
-	sta Vera::Reg::DCHScale
-	sta Vera::Reg::DCVScale
-
 	rts
 .endproc
 

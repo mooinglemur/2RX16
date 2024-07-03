@@ -1663,7 +1663,7 @@ bail_rota:
 .proc draw_rotated_tilemap
 
 	ldy #0
-	
+
 	; cosine_rotate
 	lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_low
 	sta COSINE_OF_ANGLE
@@ -1671,7 +1671,7 @@ bail_rota:
 	lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_high
 	sta COSINE_OF_ANGLE+1
 	iny
-	
+
 	; sine_rotate
 	lda (POS_AND_ROTATE_DATA), y   ; sine_rotate_low
 	sta SINE_OF_ANGLE
@@ -1687,15 +1687,15 @@ bail_rota:
 	lda (POS_AND_ROTATE_DATA), y   ; x_position_sub
 	sta X_SUB_PIXEL
 	iny
-	
+
 	lda (POS_AND_ROTATE_DATA), y   ; x_position_low
 	sta X_SUB_PIXEL+1
 	iny
-	
+
 	lda (POS_AND_ROTATE_DATA), y   ; x_position_high
 	sta X_SUB_PIXEL+2
 	iny
-	
+
 	; starting Y position
 	lda (POS_AND_ROTATE_DATA), y   ; y_position_sub
 	sta Y_SUB_PIXEL
@@ -1704,19 +1704,19 @@ bail_rota:
 	lda (POS_AND_ROTATE_DATA), y   ; y_position_low
 	sta Y_SUB_PIXEL+1
 	iny
-	
+
 	lda (POS_AND_ROTATE_DATA), y   ; y_position_high
 	sta Y_SUB_PIXEL+2
 	iny
-	
+
 	lda COSINE_OF_ANGLE       ; X increment low
 	asl
 	sta VERA_FX_X_INCR_L
 	lda COSINE_OF_ANGLE+1
-	rol                      
+	rol
 	and #%01111111            ; increment is only 15 bits long
 	sta VERA_FX_X_INCR_H
-	
+
 	lda SINE_OF_ANGLE
 	asl
 	sta VERA_FX_Y_INCR_L      ; Y increment low
@@ -1726,7 +1726,7 @@ bail_rota:
 	sta VERA_FX_Y_INCR_H
 
 	ldx #0
-	
+
 rotate_copy_next_row_1:
 	lda #%00000110           ; DCSEL=3, ADDRSEL=0
 	sta VERA_CTRL

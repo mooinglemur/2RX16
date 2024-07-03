@@ -181,7 +181,7 @@ finalramtest:
 
 	BIOS_WRITE_TEXT "CPU: Western Design Center 65C02\n"
 	bra soundchip
-	
+
 c816:
 	BIOS_WRITE_TEXT "CPU: Western Design Center 65C816\n"
 soundchip:
@@ -220,7 +220,7 @@ endsoundchk:
 	WAITVSYNC 60
 
 	BIOS_WRITE_TEXT "OK\n"
-	
+
 
 	MUSIC_SYNC $FD
 

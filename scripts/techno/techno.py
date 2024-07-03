@@ -256,13 +256,13 @@ def run():
         if do_choreo:
             with open("TECHNOCHOREO.DAT", mode="wb") as file:
                 for s in range(2048):
-                    r = 90
+                    r = 60
                     a = s/1024 * math.pi * 2
                     # We're gonna do 160x100, so we're going to center the map on such a frame
                     x = round((160 + math.cos(a)*r)*256)
                     y = round((100 - math.sin(a)*r)*256)
-                    sinstep = round(-math.sin(a)*256)
-                    cosstep = round(math.cos(a)*256)
+                    sinstep = round(math.sin(a)*256)
+                    cosstep = round(-math.cos(a)*256)
                     if sinstep < 0:
                         sinstep += 65536
                     if cosstep < 0:

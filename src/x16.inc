@@ -25,6 +25,16 @@ x16_inc = 1
         FXTileBase = $9F2A    ; DCSEL=2
         FXMapBase  = $9F2B    ; DCSEL=2
         FXMult     = $9F2C    ; DCSEL=2
+        FXXIncrL   = $9F29    ; DCSEL=3
+        FXXIncrH   = $9F2A    ; DCSEL=3
+        FXYIncrL   = $9F2B    ; DCSEL=3
+        FXYIncrH   = $9F2C    ; DCSEL=3
+        FXXPosL    = $9F29    ; DCSEL=4
+        FXXPosH    = $9F2A    ; DCSEL=4
+        FXYPosL    = $9F2B    ; DCSEL=4
+        FXYPosH    = $9F2C    ; DCSEL=4
+        FXXPosS    = $9F29    ; DCSEL=5
+        FXYPosS    = $9F2A    ; DCSEL=5
         L0Config   = $9F2D
         L0MapBase  = $9F2E
         L0TileBase = $9F2F
