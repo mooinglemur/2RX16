@@ -44,6 +44,8 @@ choreo_frames:
 	.res 1
 old_syncval:
 	.res 1
+slide_off_pos:
+	.res 1
 
 .segment "MOIRE"
 entry:
@@ -149,10 +151,6 @@ clearloop:
 
 	LOADFILE "TECHNOTILE7.DAT", 0, $8000, 1 ; $18000 VRAM
 	jsr techno
-
-	MUSIC_SYNC $4A
-
-	jsr slide_off
 
 	stz Vera::Reg::Ctrl
 	; 2:1 scale
@@ -380,6 +378,7 @@ creature_crt_fadeout:
 .proc techno
 	; initialize choreography
 	stz choreo_frames
+	stz slide_off_pos
 
 	stz old_syncval
 
@@ -484,6 +483,10 @@ newframe:
 	stz Vera::Reg::Ctrl
 
 	lda syncval
+	cmp #$4A
+	jcs slide_off
+after_slide:
+	lda syncval
 	cmp old_syncval
 	beq :+
 	jsr flashit
@@ -568,10 +571,22 @@ newline:
 
 	inc choreo_frames
 
-	lda syncval
-	cmp #$4A
-	jcc newframe
+	jmp newframe
+slide_off:
+	inc slide_off_pos
+	ldx slide_off_pos
+	cpx #35
+	bcs plydone
 
+	lda #(1 << 1) ; DCSEL=1
+	sta Vera::Reg::Ctrl
+	lda slide_off_hstart,x
+	sta Vera::Reg::DCHStart
+	stz Vera::Reg::Ctrl
+	jmp after_slide
+plydone:
+	ply
+done:
 	; done with everything
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
@@ -595,6 +610,12 @@ flashit:
 	lda #0
 	jsr setup_palette_fade
 	rts
+slide_off_hstart:
+	.byte 0,1,2,3,4,5,6,8
+	.byte 11,13,16,19,22,26,29,33
+	.byte 38,42,47,52,58,63,69,75
+	.byte 82,88,95,102,110,118,126,134
+	.byte 142,151,160
 .endproc
 
 .proc load_aff_parms
@@ -825,32 +846,6 @@ slide_on_hstart:
 	.byte $16,$14,$12,$13
 	.byte $14,$15,$14,$14
 .endproc
-
-.proc slide_off
-	ldx #0
-slideloop:
-	phx
-	WAITVSYNC
-	plx
-	lda #(1 << 1) ; DCSEL=1
-	sta Vera::Reg::Ctrl
-	lda slide_off_hstart,x
-	sta Vera::Reg::DCHStart
-	stz Vera::Reg::Ctrl
-	inx
-	cpx #35
-	bcc slideloop
-
-	rts
-
-slide_off_hstart:
-	.byte 0,1,2,3,4,5,6,8
-	.byte 11,13,16,19,22,26,29,33
-	.byte 38,42,47,52,58,63,69,75
-	.byte 82,88,95,102,110,118,126,134
-	.byte 142,151,160
-.endproc
-
 
 .proc wipe
 	lsr

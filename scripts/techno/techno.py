@@ -5,7 +5,7 @@ import time
 
 SHOW_OFFLINE_BUFFER = False
 SHOW_FRAME_BUFFERS = False
-PRESS_KEY_TO_START = True
+PRESS_KEY_TO_START = False
 
 ROT_ORIGIN = -(2*16)
 
@@ -257,7 +257,7 @@ def run():
             with open("TECHNOCHOREO.DAT", mode="wb") as file:
                 for s in range(2048):
                     r = 90
-                    a = -s/768 * math.pi * 2
+                    a = -s/512 * math.pi * 2
                     o = a+math.atan2(10,-16)
                     print(s)
                     print(a)
@@ -265,14 +265,14 @@ def run():
 
                     sc = 1
 
-                    bu = 1 + math.sin(s/5)
+                    bu = 1+math.sin(s/5)/5
 
                     sinstep = round(sc*math.sin(a)*-256)
-                    cosstep = round(sc*math.cos(a)*256*bu)
+                    cosstep = round(sc*math.cos(a)*256)
 
-                    hy = math.sqrt(((80*sc)*bu)**2 + (50*sc)**2)
+                    hy = math.sqrt(((80*sc))**2 + (50*sc)**2)
 
-                    x = round((128*256*bu)/sc + (hy*math.cos(o)*256))
+                    x = round((128*200)/sc + (hy*math.cos(o)*256))
                     y = round((128*256)/sc + (hy*math.sin(o)*-256))
 
                     if sinstep < 0:
