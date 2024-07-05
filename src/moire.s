@@ -38,6 +38,10 @@ aff_x:
 	.res 2
 aff_y:
 	.res 2
+aff_line_incr_x:
+	.res 2
+aff_line_incr_y:
+	.res 2
 ptr:
 	.res 2
 choreo_frames:
@@ -457,19 +461,13 @@ newframe:
 	; set up affine slope/direction
 	; this will be constant throughout the entire frame
 	lda cos_slope
-	asl
 	sta Vera::Reg::FXXIncrL
 	lda cos_slope+1
-	rol
-	and #$7f
 	sta Vera::Reg::FXXIncrH
 
 	lda sin_slope
-	asl
 	sta Vera::Reg::FXYIncrL
 	lda sin_slope+1
-	rol
-	and #$7f
 	sta Vera::Reg::FXYIncrH
 
 	phy
@@ -552,18 +550,18 @@ newline:
 
 	clc
 	lda aff_y
-	adc cos_slope
+	adc aff_line_incr_y
 	sta aff_y
 	lda aff_y+1
-	adc cos_slope+1
+	adc aff_line_incr_y+1
 	sta aff_y+1
 
 	sec
 	lda aff_x
-	sbc sin_slope
+	sbc aff_line_incr_x
 	sta aff_x
 	lda aff_x+1
-	sbc sin_slope+1
+	sbc aff_line_incr_x+1
 	sta aff_x+1
 
 	dex
@@ -661,6 +659,27 @@ cnt1:
 	inc X16::Reg::RAMBank
 :	sta ptr+1
 cnt2:
+	lda (ptr),y
+	sta aff_line_incr_x
+	iny
+	lda (ptr),y
+	sta aff_line_incr_x+1
+	iny
+	lda (ptr),y
+	sta aff_line_incr_y
+	iny
+	lda (ptr),y
+	sta aff_line_incr_y+1
+	iny
+	bne cnt3
+	lda ptr+1
+	inc
+	cmp #$c0
+	bcc :+
+	sbc #$20
+	inc X16::Reg::RAMBank
+:	sta ptr+1
+cnt3:
 	rts
 .endproc
 

@@ -257,7 +257,7 @@ def run():
             with open("TECHNOCHOREO.DAT", mode="wb") as file:
                 for s in range(2048):
                     r = 90
-                    a = -s/512 * math.pi * 2
+                    a = -s/768 * math.pi * 2
                     o = a+math.atan2(10,-16)
                     print(s)
                     print(a)
@@ -265,15 +265,46 @@ def run():
 
                     sc = 1
 
-                    bu = 1+math.sin(s/5)/5
+                    #bu = math.sin(s)/20
+                    bu = math.sin(s/20)
+                    bhi = bu*math.cos(a)
+                    if bhi < 0:
+                        bh = -1/(bhi-1)
+                    else:
+                        bh = 1+bhi
+                    bvi = bu*math.sin(a)
+                    if bvi < 0:
+                        bv = -1/(bvi-1)
+                    else:
+                        bv = 1+bvi
 
-                    sinstep = round(sc*math.sin(a)*-256)
-                    cosstep = round(sc*math.cos(a)*256)
+                    qu = math.fmod(a+1024*math.pi,2*math.pi)
+                    if qu < math.pi/2:
+                        pass
+                    elif qu < math.pi*2/2:
+                        pass
+                    elif qu < math.pi*3/2:
+                        pass
+                    else:
+                        pass
+                    # XXX
+                    bh = 1
+                    bv = 1
+
+                    sinstep = round(sc*math.sin(a)*-256) << 1
+                    cosstep = round(bh*sc*math.cos(a)*256) << 1
 
                     hy = math.sqrt(((80*sc))**2 + (50*sc)**2)
+                    hyx = hy*math.cos(o)
+                    hyy = hy*math.sin(o)
 
-                    x = round((128*200)/sc + (hy*math.cos(o)*256))
-                    y = round((128*256)/sc + (hy*math.sin(o)*-256))
+                    #x = round((128*200) + (bh*hyx*256))
+                    #y = round((128*256) + (1/bv*hyy*-256))
+                    x = round((128*320) + (hyx*256))
+                    y = round((128*256) + (hyy*-256))
+
+                    aff_incr_x = round(bv*sc*math.sin(a)*-256)
+                    aff_incr_y = round(sc*math.cos(a)*256)
 
                     if sinstep < 0:
                         sinstep += 65536
@@ -283,15 +314,25 @@ def run():
                         x += 65536
                     if y < 0:
                         y += 65536
+                    if aff_incr_x < 0:
+                        aff_incr_x += 65536
+                    if aff_incr_y < 0:
+                        aff_incr_y += 65536
 
                     # Low cos, high cos, low sin, high sin, x (sub low high), y (sub low high)
-                    st = [cosstep % 256, cosstep // 256, sinstep % 256, sinstep // 256]
+                    st = [cosstep % 256, (cosstep // 256) & 0x7F, sinstep % 256, (sinstep // 256) & 0x7F]
 
                     st.append(x % 256)
                     st.append(x//256 % 256)
 
                     st.append(y % 256)
                     st.append(y//256 % 256)
+
+                    st.append(aff_incr_x % 256)
+                    st.append(aff_incr_x // 256)
+
+                    st.append(aff_incr_y % 256)
+                    st.append(aff_incr_y // 256)
 
                     print(st)
                     file.write(bytes(st))
