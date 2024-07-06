@@ -257,28 +257,24 @@ def run():
             with open("TECHNOCHOREO.DAT", mode="wb") as file:
                 for s in range(2048):
                     r = 90
-                    a = -s/768 * math.pi * 2
+                    a = -s/512 * math.pi * 2
+                    #a = -s/2768 * math.pi * 2
                     o = a+math.atan2(10,-16)
-                    print(s)
-                    print(a)
-                    print(o)
+                    print(f"s {s} a {a} o {o} sin {math.sin(a)} cos {math.cos(a)}")
 
                     sc = 1
 
-                    #bu = math.sin(s)/20
-                    bu = math.sin(s/20)
-                    bhi = bu*math.cos(a)
-                    if bhi < 0:
-                        bh = -1/(bhi-1)
+                    bu = math.sin(s/1.5)/10
+                    #bu = math.sin(s/10)
+                    if bu < 0:
+                        bu = -1/(bu-1)
                     else:
-                        bh = 1+bhi
-                    bvi = bu*math.sin(a)
-                    if bvi < 0:
-                        bv = -1/(bvi-1)
-                    else:
-                        bv = 1+bvi
+                        bu = 1+bu
 
-                    qu = math.fmod(a+1024*math.pi,2*math.pi)
+                    print(f"s {s} a {a} o {o} sin {math.sin(a)} cos {math.cos(a)}")
+
+
+                    qu = math.fmod(a+768*math.pi,2*math.pi)
                     if qu < math.pi/2:
                         pass
                     elif qu < math.pi*2/2:
@@ -287,15 +283,12 @@ def run():
                         pass
                     else:
                         pass
-                    # XXX
-                    bh = 1
-                    bv = 1
 
                     sinstep = round(sc*math.sin(a)*-256) << 1
-                    cosstep = round(bh*sc*math.cos(a)*256) << 1
+                    cosstep = round(bu*sc*math.cos(a)*256) << 1
 
                     hy = math.sqrt(((80*sc))**2 + (50*sc)**2)
-                    hyx = hy*math.cos(o)
+                    hyx = bu*hy*math.cos(o)
                     hyy = hy*math.sin(o)
 
                     #x = round((128*200) + (bh*hyx*256))
@@ -303,7 +296,7 @@ def run():
                     x = round((128*320) + (hyx*256))
                     y = round((128*256) + (hyy*-256))
 
-                    aff_incr_x = round(bv*sc*math.sin(a)*-256)
+                    aff_incr_x = round(bu*sc*math.sin(a)*-256)
                     aff_incr_y = round(sc*math.cos(a)*256)
 
                     if sinstep < 0:
