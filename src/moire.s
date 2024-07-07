@@ -471,7 +471,6 @@ newframe:
 	sta Vera::Reg::FXYIncrH
 
 	phy
-	WAITVSYNC
 
 	; clear FX
 	lda #(2 << 1)
@@ -479,6 +478,11 @@ newframe:
 
 	stz Vera::Reg::FXCtrl
 	stz Vera::Reg::Ctrl
+
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step
+
+	WAITVSYNC
 
 	lda syncval
 	cmp #$4A
@@ -488,9 +492,7 @@ after_slide:
 	cmp old_syncval
 	beq :+
 	jsr flashit
-:	jsr apply_palette_fade_step
-	jsr apply_palette_fade_step
-	jsr flush_palette
+:	jsr flush_palette
 
 	; point data 0 to top of screen
 	VERA_SET_ADDR $00000, 3 ; incr 4

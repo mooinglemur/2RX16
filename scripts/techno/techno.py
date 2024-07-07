@@ -260,9 +260,7 @@ def run():
                     a = -s/512 * math.pi * 2
                     #a = -s/2768 * math.pi * 2
                     o = a+math.atan2(10,-16)
-                    print(f"s {s} a {a} o {o} sin {math.sin(a)} cos {math.cos(a)}")
-
-                    sc = 1
+                    sc = 1.1
 
                     bu = math.sin(s/1.5)/10
                     #bu = math.sin(s/10)
@@ -273,17 +271,6 @@ def run():
 
                     print(f"s {s} a {a} o {o} sin {math.sin(a)} cos {math.cos(a)}")
 
-
-                    qu = math.fmod(a+768*math.pi,2*math.pi)
-                    if qu < math.pi/2:
-                        pass
-                    elif qu < math.pi*2/2:
-                        pass
-                    elif qu < math.pi*3/2:
-                        pass
-                    else:
-                        pass
-
                     sinstep = round(sc*math.sin(a)*-256) << 1
                     cosstep = round(bu*sc*math.cos(a)*256) << 1
 
@@ -291,9 +278,7 @@ def run():
                     hyx = bu*hy*math.cos(o)
                     hyy = hy*math.sin(o)
 
-                    #x = round((128*200) + (bh*hyx*256))
-                    #y = round((128*256) + (1/bv*hyy*-256))
-                    x = round((128*320) + (hyx*256))
+                    x = round((128*256) + (hyx*256))
                     y = round((128*256) + (hyy*-256))
 
                     aff_incr_x = round(bu*sc*math.sin(a)*-256)
@@ -331,14 +316,7 @@ def run():
                     file.write(bytes(st))
             running = False
 
-
-
-
         pygame.display.update()
-
-
-        #time.sleep(0.01)
-
 
 
     pygame.quit()
