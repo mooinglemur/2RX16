@@ -106,6 +106,7 @@ def run():
     running = True
     save_tiles = False
     saved_tiles_cnt = 0
+    do_crosshatch = False
     do_choreo = False
     
     frame_nr = 0
@@ -127,7 +128,7 @@ def run():
     
     while running:
         # TODO: We might want to set this to max?
-        clock.tick(60)
+        clock.tick(10)
         
         for event in pygame.event.get():
 
@@ -231,6 +232,8 @@ def run():
                 frame_pxarray = pygame.PixelArray(frame_buffers[frame_buffer_idx])
 
                 with open(f"TECHNOTILE{saved_tiles_cnt}.DAT", mode="wb") as file:
+                    for b in range(32): # blank tile
+                        file.write(bytes([0x00]))
                     for s in [0, 8, 16]:
                         for y in range(screen_height):
                             for x in range(s,s+8,2):
@@ -248,19 +251,147 @@ def run():
                     with open("TECHNOMAP.DAT", mode="wb") as file:
                         for y in range(32):
                             for x in range(32):
-                                p = y + (32*(x % 3))
+                                p = 1 + (y + (32*(x % 3)))
                                 file.write(bytes([p]))
                     keep_animating = False
-                    do_choreo = True
+                    do_crosshatch = True
+                    saved_tiles_cnt = 0
+                    saved_tiles = False
+
+        if do_crosshatch:
+            for cross_frame in range(8):
+                frame_buffers[0].fill((0,0,0))
+
+                # Vertical
+                mask = 1
+                offline_surface.fill((0,0,0))
+
+                for c in range(0,screen_width*2,32):
+                    x1 = c
+                    y1 = 0
+
+                    x2 = c+16
+                    y2 = 0
+
+                    x4 = c
+                    y4 = screen_height-1
+
+                    x3 = c+16
+                    y3 = screen_height-1
+
+                    pixel_color = (0xFF, 0xFF, 0xFF)
+                    polygon = [(x1,y1),(x2,y2),(x3,y3),(x4,y4)]
+                    pygame.draw.polygon(offline_surface, 255, polygon, 0)
+
+                frame_buffer = frame_buffers[0]
+                combine_offline_with_frame_buffer(offline_surface, frame_buffer, mask)
+
+                if frame_buffer_idx >= 0:
+                    screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (final_on_screen_x, final_on_screen_y))
+
+                # Horizontal
+                mask = 2
+                offline_surface.fill((0,0,0))
+
+                for c in range(0,screen_height*2,32):
+                    x1 = 0
+                    y1 = c
+
+                    x2 = 0
+                    y2 = c+16
+
+                    x4 = screen_width-1
+                    y4 = c
+
+                    x3 = screen_width-1
+                    y3 = c+16
+
+                    pixel_color = (0xFF, 0xFF, 0xFF)
+                    polygon = [(x1,y1),(x2,y2),(x3,y3),(x4,y4)]
+                    pygame.draw.polygon(offline_surface, 255, polygon, 0)
+
+                frame_buffer = frame_buffers[0]
+                combine_offline_with_frame_buffer(offline_surface, frame_buffer, mask)
+
+                if frame_buffer_idx >= 0:
+                    screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (final_on_screen_x, final_on_screen_y))
+
+                # Diagonal forward
+                mask = 4
+                offline_surface.fill((0,0,0))
+
+                for c in range(-screen_width,screen_width*2,32):
+                    x1 = c+(4*cross_frame)
+                    y1 = 0
+
+                    x2 = c+16+(4*cross_frame)
+                    y2 = 0
+
+                    x4 = c+screen_height+(4*cross_frame)
+                    y4 = screen_height-1
+
+                    x3 = c+16+screen_height+(4*cross_frame)
+                    y3 = screen_height-1
+
+                    pixel_color = (0xFF, 0xFF, 0xFF)
+                    polygon = [(x1,y1),(x2,y2),(x3,y3),(x4,y4)]
+                    pygame.draw.polygon(offline_surface, 255, polygon, 0)
+
+                frame_buffer = frame_buffers[0]
+                combine_offline_with_frame_buffer(offline_surface, frame_buffer, mask)
+
+                if frame_buffer_idx >= 0:
+                    screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (final_on_screen_x, final_on_screen_y))
+
+                # Diagonal back
+                mask = 8
+                offline_surface.fill((0,0,0))
+
+                for c in range(-screen_width,screen_width*2,32):
+                    x1 = c+(4*cross_frame)
+                    y1 = screen_height-1
+
+                    x2 = c+16+(4*cross_frame)
+                    y2 = screen_height-1
+
+                    x4 = c+screen_height+(4*cross_frame)
+                    y4 = 0
+
+                    x3 = c+16+screen_height+(4*cross_frame)
+                    y3 = 0
+
+                    pixel_color = (0xFF, 0xFF, 0xFF)
+                    polygon = [(x1,y1),(x2,y2),(x3,y3),(x4,y4)]
+                    pygame.draw.polygon(offline_surface, 255, polygon, 0)
+
+                frame_buffer = frame_buffers[0]
+                combine_offline_with_frame_buffer(offline_surface, frame_buffer, mask)
+
+                if frame_buffer_idx >= 0:
+                    screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (final_on_screen_x, final_on_screen_y))
+
+                pygame.display.update()
+                clock.tick(10)
+                with open(f"TECHNOTILE{cross_frame}.DAT", "ab") as file:
+                    frame_pxarray = pygame.PixelArray(frame_buffers[0])
+                    for s in [0, 8, 16, 24]:
+                        for y in range(32):
+                            for x in range(s,s+8,2):
+                                xx = int(screen_width/2)+x
+                                pidx = frame_pxarray[xx,y]
+                                p = (pidx & 0xf) << 4
+                                pidx = frame_pxarray[xx+1,y]
+                                p = p | (pidx & 0xf)
+                                file.write(bytes([p]))
+                    frame_pxarray.close()
+
+            do_crosshatch = False
+            do_choreo = True
 
         if do_choreo:
             with open("TECHNOCHOREO.DAT", mode="wb") as file:
-                for s in range(2048):
-                    r = 90
-                    a = -s/512 * math.pi * 2
-                    #a = -s/2768 * math.pi * 2
-                    o = a+math.atan2(10,-16)
-                    sc = 1.1
+                for s in range(1700):
+                    a = -s/384 * math.pi * 2
 
                     bu = math.sin(s/1.5)/10
                     #bu = math.sin(s/10)
@@ -268,6 +399,21 @@ def run():
                         bu = -1/(bu-1)
                     else:
                         bu = 1+bu
+
+                    if s > 520:
+                        bu = 1
+                        a = -s/(256-((s-520)/5)) * math.pi * 2
+                    elif s > 420:
+                        sc = 0.01+((s-420)/70)
+                        bu = 1
+                        a = -s/256 * math.pi * 2
+                    elif s > 330:
+                        sc = 1.1-((s-330)/90)
+                    else:
+                        sc = 1.1
+
+                    #a = -s/2768 * math.pi * 2
+                    o = a+math.atan2(10,-16)
 
                     print(f"s {s} a {a} o {o} sin {math.sin(a)} cos {math.cos(a)}")
 

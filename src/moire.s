@@ -45,7 +45,7 @@ aff_line_incr_y:
 ptr:
 	.res 2
 choreo_frames:
-	.res 1
+	.res 2
 old_syncval:
 	.res 1
 slide_off_pos:
@@ -381,7 +381,12 @@ creature_crt_fadeout:
 
 .proc techno
 	; initialize choreography
-	stz choreo_frames
+	; this is when we do the map switch
+	lda #$5c
+	sta choreo_frames
+	lda #$fe
+	sta choreo_frames+1
+
 	stz slide_off_pos
 
 	stz old_syncval
@@ -452,7 +457,7 @@ newframe:
 	asl
 	asl
 	asl
-	adc #((TECHNO_TILEBASE >> 9) & $FC)
+	adc #(((TECHNO_TILEBASE >> 9) & $FC) | $00) ; $00 for wrap, $02 for clip
 	sta Vera::Reg::FXTileBase
 
 	lda #(3 << 1)
@@ -570,8 +575,32 @@ newline:
 	jne newline
 
 	inc choreo_frames
+	bne :+
+	inc choreo_frames+1
+	beq replace_fx_tilemap
+:	jmp newframe
+replace_fx_tilemap:
+	; set up the VERA FX MAPBASE pointer
+	; and other FX state
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
 
+	lda #((TECHNO_MAPBASE >> 9) & $FC) | $01
+	sta Vera::Reg::FXMapBase
+	stz Vera::Reg::FXCtrl ; so we can populate the new map without cache involvement
+
+	stz Vera::Reg::Ctrl
+
+	VERA_SET_ADDR TECHNO_MAPBASE, 1
+	ldx #0
+replace_loop:
+	lda replacement_fx_tilemap,x
+	sta Vera::Reg::Data0
+	inx
+	cpx #64
+	bcc replace_loop
 	jmp newframe
+
 slide_off:
 	inc slide_off_pos
 	ldx slide_off_pos
@@ -1013,3 +1042,12 @@ technopal_dim:
 	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
 	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
 	.word DIMMED, DIMLIGHT, DIMLIGHT, DIMWHITE
+
+replacement_fx_tilemap:
+.repeat 2
+.repeat 4,i
+.repeat 2
+	.byte 97+i,101+i,105+i,109+i
+.endrepeat
+.endrepeat
+.endrepeat
