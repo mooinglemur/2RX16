@@ -108,6 +108,8 @@ def run():
     saved_tiles_cnt = 0
     do_crosshatch = False
     do_choreo = False
+    xoff = 0
+    yoff = 0
     
     frame_nr = 0
        
@@ -128,7 +130,7 @@ def run():
     
     while running:
         # TODO: We might want to set this to max?
-        clock.tick(10)
+        clock.tick(30)
         
         for event in pygame.event.get():
 
@@ -371,7 +373,7 @@ def run():
                     screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (final_on_screen_x, final_on_screen_y))
 
                 pygame.display.update()
-                clock.tick(10)
+                clock.tick(30)
                 with open(f"TECHNOTILE{cross_frame}.DAT", "ab") as file:
                     frame_pxarray = pygame.PixelArray(frame_buffers[0])
                     for s in [0, 8, 16, 24]:
@@ -400,15 +402,19 @@ def run():
                     else:
                         bu = 1+bu
 
-                    if s > 520:
+                    if s > 450:
                         bu = 1
-                        a = -s/(256-((s-520)/5)) * math.pi * 2
-                    elif s > 420:
-                        sc = 0.01+((s-420)/70)
+                        a = -s/(256-((s-450)/5)) * math.pi * 2
+                    elif s > 350:
+#                        sc = 0.01+((s-350)/70)
+                        sc = 1.1
                         bu = 1
-                        a = -s/256 * math.pi * 2
-                    elif s > 330:
-                        sc = 1.1-((s-330)/90)
+                        a = -s/384 * math.pi * 2
+                    elif s > 320:
+                        pass
+                    elif s > 270:
+                        sc = 1.1-((s-270)/45)
+                        xoff += 0.3
                     else:
                         sc = 1.1
 
@@ -424,8 +430,8 @@ def run():
                     hyx = bu*hy*math.cos(o)
                     hyy = hy*math.sin(o)
 
-                    x = round((128*256) + (hyx*256))
-                    y = round((128*256) + (hyy*-256))
+                    x = round((128*256) + (hyx*256) + (xoff*256))
+                    y = round((128*256) + (hyy*-256) + (yoff*256))
 
                     aff_incr_x = round(bu*sc*math.sin(a)*-256)
                     aff_incr_y = round(sc*math.cos(a)*256)

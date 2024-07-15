@@ -227,15 +227,14 @@ prebgloop:
 	jne nosync
 	rts
 card1:
-	SPRITE_TEXT 1, 40, 80, 1, "A Commander X16"
-	SPRITE_TEXT 18, 70, 100, 1, "and VERA FX"
-	SPRITE_TEXT 36, 100, 120, 1, "showcase"
+	SPRITE_TEXT 1, 40, 60, 1, "A Commander X16"
+	SPRITE_TEXT 18, 70, 85, 1, "and VERA FX"
+	SPRITE_TEXT 36, 100, 110, 1, "showcase"
 	jmp docolor
 card2:
-	SPRITE_TEXT 1, 35, 70, 1, "Sneak preview for"
-	SPRITE_TEXT 18, 65, 90, 1, "your exclusive"
-	SPRITE_TEXT 36, 83, 110, 1, "review and"
-	SPRITE_TEXT 54, 93, 130, 1, "enjoyment"
+	SPRITE_TEXT 1, 82, 60, 1, "Presented at"
+	SPRITE_TEXT 18, 60, 85, 1, "VCF Midwest 19"
+	SPRITE_TEXT 36, 60, 110, 1, "September 2024"
 	bra docolor
 card3:
 	SPRITE_TEXT 1, 150, 70, 1, "in"
@@ -441,7 +440,7 @@ text_fadeout1:
 	; point DATA1 to our destination
 	lda #1
 	sta Vera::Reg::Ctrl
-	
+
 	VERA_SET_ADDR TEMP_4BPP_BMP_ADDR, 3 ; we'll take advantage of cache writes
 
 	lda #(2 << 1)
@@ -521,7 +520,7 @@ tile2bmploop:
 	ror tiletmp
 	lda #0
 	ror
-	
+
 	; .A contains either $80 or $00
 	; tile data source is $00000
 	; add the offset within the tile
@@ -573,12 +572,12 @@ tile2bmploop:
 	; also let's set VSTOP earlier so we're clear of the registar area of VRAM
 	lda #%00000010  ; DCSEL=1
 	sta Vera::Reg::Ctrl
-   
+
 	lda #20
 	sta Vera::Reg::DCVStart
 	lda #192+20-1
 	sta Vera::Reg::DCVStop
-	
+
 	stz Vera::Reg::Ctrl
 
 	rts
@@ -588,7 +587,7 @@ tile2bmploop:
 	; now transition 4bpp bitmap to 8bpp bitmap
 
 	VERA_SET_ADDR $00000, 1
-	
+
 	lda #1
 	sta Vera::Reg::Ctrl
 
@@ -1155,12 +1154,12 @@ exit:
 	; set VSTOP for 200px
 	lda #%00000010  ; DCSEL=1
 	sta Vera::Reg::Ctrl
-   
+
 	lda #20
 	sta Vera::Reg::DCVStart
 	lda #200+20-1
 	sta Vera::Reg::DCVStop
-	
+
 	stz Vera::Reg::Ctrl
 
 	DISABLE_SPRITES
@@ -1417,7 +1416,7 @@ ypos_h:
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 	.byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-	
+
 planetzoom_l:
 	.byte $d7,$fd,$6c,$1c,$06,$25,$74,$ed,$8d,$50,$32,$30,$48,$76,$ba,$10
 	.byte $76,$ec,$70,$ff,$02,$04,$06,$08,$0a,$0c,$0e,$10,$12,$14,$16,$18

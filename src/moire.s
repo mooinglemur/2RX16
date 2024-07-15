@@ -382,9 +382,9 @@ creature_crt_fadeout:
 .proc techno
 	; initialize choreography
 	; this is when we do the map switch
-	lda #$5c
+	lda #<($10000-340)
 	sta choreo_frames
-	lda #$fe
+	lda #>($10000-340)
 	sta choreo_frames+1
 
 	stz slide_off_pos
@@ -625,13 +625,31 @@ done:
 	rts
 flashit:
 	sta old_syncval
+	sec
+	sbc #$46
+	bmi :+ ; $45 = no palette change
+	cmp #$04
+	bcs :+ ; out of bounds
+	asl ; $46-$49 = palette change
+	tax
+	lda brightpalsm1,x
+	sta BRIGHTPALm1
+	lda brightpalsm1+1,x
+	sta BRIGHTPALm1+1
+	lda dimpalsm1,x
+	sta DIMPALm1
+	lda dimpalsm1+1,x
+	sta DIMPALm1+1
+:
 
 	VERA_SET_ADDR ((Vera::VRAM_palette)+31), -1
 
 	ldx #32
-:	lda technopal_bright-1,x
+:	lda $ffff,x
+BRIGHTPALm1 = * - 2
 	sta Vera::Reg::Data0
-	lda technopal_dim-1,x
+	lda $ffff,x
+DIMPALm1 = * - 2
 	sta target_palette-1,x
 	dex
 	bne :-
@@ -1031,13 +1049,54 @@ DIMMED = $0667
 DIMLIGHT = $0788
 DIMWHITE = $0888
 
-technopal_bright:
+brightpalsm1:
+	.word technopal_bright0-1, technopal_bright01-1, technopal_bright012-1, technopal_bright0123-1
+dimpalsm1:
+	.word technopal_dim0-1, technopal_dim01-1, technopal_dim012-1, technopal_dim0123-1
+
+technopal_bright0:
+	.word BLACK, DARK, BLACK, DARK
+	.word BLACK, DARK, BLACK, DARK
+	.word BLACK, DARK, BLACK, DARK
+	.word BLACK, DARK, BLACK, DARK
+
+technopal_bright01:
+	.word BLACK, DARK, DARK, MED
+	.word BLACK, DARK, DARK, MED
+	.word BLACK, DARK, DARK, MED
+	.word BLACK, DARK, DARK, MED
+
+technopal_bright012:
+	.word BLACK, DARK, DARK, MED
+	.word DARK, MED, MED, LIGHT
+	.word BLACK, DARK, DARK, MED
+	.word DARK, MED, MED, LIGHT
+
+technopal_bright0123:
 	.word BLACK, DARK, DARK, MED
 	.word DARK, MED, MED, LIGHT
 	.word DARK, MED, MED, LIGHT
 	.word MED, LIGHT, LIGHT, WHITE
 
-technopal_dim:
+technopal_dim0:
+	.word BLACK, DIMDARK, BLACK, DIMDARK
+	.word BLACK, DIMDARK, BLACK, DIMDARK
+	.word BLACK, DIMDARK, BLACK, DIMDARK
+	.word BLACK, DIMDARK, BLACK, DIMDARK
+
+technopal_dim01:
+	.word BLACK, DIMDARK, DIMDARK, DIMMED
+	.word BLACK, DIMDARK, DIMDARK, DIMMED
+	.word BLACK, DIMDARK, DIMDARK, DIMMED
+	.word BLACK, DIMDARK, DIMDARK, DIMMED
+
+technopal_dim012:
+	.word BLACK, DIMDARK, DIMDARK, DIMMED
+	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
+	.word BLACK, DIMDARK, DIMDARK, DIMMED
+	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
+
+technopal_dim0123:
 	.word BLACK, DIMDARK, DIMDARK, DIMMED
 	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
 	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
