@@ -265,7 +265,7 @@ def run():
                 frame_buffers[0].fill((0,0,0))
 
                 # Vertical
-                mask = 1
+                mask = 2
                 offline_surface.fill((0,0,0))
 
                 for c in range(0,screen_width*2,32):
@@ -292,7 +292,7 @@ def run():
                     screen.blit(pygame.transform.scale(frame_buffer, (screen_width*scale, screen_height*scale)), (final_on_screen_x, final_on_screen_y))
 
                 # Horizontal
-                mask = 2
+                mask = 1
                 offline_surface.fill((0,0,0))
 
                 for c in range(0,screen_height*2,32):
@@ -393,7 +393,6 @@ def run():
         if do_choreo:
             with open("TECHNOCHOREO.DAT", mode="wb") as file:
                 for s in range(1700):
-                    a = -s/384 * math.pi * 2
 
                     bu = math.sin(s/1.5)/10
                     #bu = math.sin(s/10)
@@ -402,21 +401,37 @@ def run():
                     else:
                         bu = 1+bu
 
-                    if s > 450:
-                        bu = 1
-                        a = -s/(256-((s-450)/5)) * math.pi * 2
-                    elif s > 350:
-#                        sc = 0.01+((s-350)/70)
-                        sc = 1.1
+                    if s > 900:
                         bu = 1
                         a = -s/384 * math.pi * 2
+                        sp -= math.pi/200
+                    elif s > 450:
+                        sc -= 0.0005
+                        bu = 1
+                        a -= su/256 * math.pi * 2
+                        su *= 1.008
+                        sp -= math.pi/200
+                        if sp < (-3)*math.pi/4:
+                            sp += math.pi
+                    elif s > 350:
+#                        sc = 0.01+((s-350)/70)
+                        sc = 3 - ((s-350)/50)
+                        bu = 1
+                        a = -s/256 * math.pi * 2
+                        xoff = 0
+                        su = 1
+                        sp -= math.pi/200
                     elif s > 320:
-                        pass
+                        sp = -math.pi/2
+                        a = -s/384 * math.pi * 2
                     elif s > 270:
                         sc = 1.1-((s-270)/45)
                         xoff += 0.3
+                        a = -s/384 * math.pi * 2
                     else:
+                        sp = 0
                         sc = 1.1
+                        a = -s/384 * math.pi * 2
 
                     #a = -s/2768 * math.pi * 2
                     o = a+math.atan2(10,-16)
@@ -424,16 +439,16 @@ def run():
                     print(f"s {s} a {a} o {o} sin {math.sin(a)} cos {math.cos(a)}")
 
                     sinstep = round(sc*math.sin(a)*-256) << 1
-                    cosstep = round(bu*sc*math.cos(a)*256) << 1
+                    cosstep = round(bu*sc*math.cos(a+sp)*256) << 1
 
                     hy = math.sqrt(((80*sc))**2 + (50*sc)**2)
-                    hyx = bu*hy*math.cos(o)
+                    hyx = bu*hy*math.cos(o+sp)
                     hyy = hy*math.sin(o)
 
                     x = round((128*256) + (hyx*256) + (xoff*256))
                     y = round((128*256) + (hyy*-256) + (yoff*256))
 
-                    aff_incr_x = round(bu*sc*math.sin(a)*-256)
+                    aff_incr_x = round(bu*sc*math.sin(a+sp)*-256)
                     aff_incr_y = round(sc*math.cos(a)*256)
 
                     if sinstep < 0:

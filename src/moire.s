@@ -382,9 +382,9 @@ creature_crt_fadeout:
 .proc techno
 	; initialize choreography
 	; this is when we do the map switch
-	lda #<($10000-340)
+	lda #<($10000-350)
 	sta choreo_frames
-	lda #>($10000-340)
+	lda #>($10000-350)
 	sta choreo_frames+1
 
 	stz slide_off_pos
@@ -1050,9 +1050,9 @@ DIMLIGHT = $0788
 DIMWHITE = $0888
 
 brightpalsm1:
-	.word technopal_bright0-1, technopal_bright01-1, technopal_bright012-1, technopal_bright0123-1
+	.word technopal_bright0-1, technopal_bright01-1, technopal_bright01-1, technopal_bright01-1
 dimpalsm1:
-	.word technopal_dim0-1, technopal_dim01-1, technopal_dim012-1, technopal_dim0123-1
+	.word technopal_dim0-1, technopal_dim01-1, technopal_dim01-1, technopal_dim01-1
 
 technopal_bright0:
 	.word BLACK, DARK, BLACK, DARK
