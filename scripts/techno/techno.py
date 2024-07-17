@@ -395,34 +395,58 @@ def run():
                 for s in range(1700):
 
                     bu = math.sin(s/1.5)/10
-                    #bu = math.sin(s/10)
+                    bv = math.sin((s+20)/30)/8
+
                     if bu < 0:
                         bu = -1/(bu-1)
                     else:
                         bu = 1+bu
 
-                    if s > 900:
+                    if bv < 0:
+                        bv = -1/(bv-1)
+                    else:
+                        bv = 1+bv
+
+                    if s > 1080:
+                        sc *= 1/(bv**0.2)
                         bu = 1
-                        a = -s/384 * math.pi * 2
-                        sp -= math.pi/200
-                    elif s > 450:
-                        sc -= 0.0005
+                        su *= 1.009
+                        a -= su/384 * math.pi * 2
+                        xoff += 1
+                    elif s > 1079:
+                        xoff = 0
+                        sc = 1.5
+                        bu = 1
+                        a -= su/384 * math.pi * 2
+                        su = 2
+                    elif s > 500:
+                        sc *= 1/(bv**0.18)
                         bu = 1
                         a -= su/256 * math.pi * 2
-                        su *= 1.008
-                        sp -= math.pi/200
-                        if sp < (-3)*math.pi/4:
-                            sp += math.pi
-                    elif s > 350:
+                        su *= 1.003
+                        #sp -= math.pi/120
+                        xoff += 1
+                    elif s > 400:
+                        sc *= 1/(bv**0.18)
+                        bu = 1
+                        a -= su/256 * math.pi * 2
+                        su *= 1.013
+                        sp -= math.pi/140
+                    elif s > 399:
+                        bu = 1
+                        a -= su/256 * math.pi * 2
+                        su = 2
+                        sp -= math.pi/160
+                    elif s > 320:
 #                        sc = 0.01+((s-350)/70)
-                        sc = 3 - ((s-350)/50)
+                        sc = 3 - ((s-320)/50)
                         bu = 1
                         a = -s/256 * math.pi * 2
                         xoff = 0
-                        su = 1
-                        sp -= math.pi/200
-                    elif s > 320:
-                        sp = -math.pi/2
+                        su = 1.5
+                        sp -= math.pi/110
+                    elif s > 319:
+                        sp = (-5)*math.pi/8
                         a = -s/384 * math.pi * 2
                     elif s > 270:
                         sc = 1.1-((s-270)/45)
