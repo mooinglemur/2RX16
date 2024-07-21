@@ -1,14 +1,31 @@
 .import setup_palette_fade
+.import setup_palette_fade2
+.import setup_palette_fade3
+.import setup_palette_fade4
 .import apply_palette_fade_step
+.import apply_palette_fade_step2
+.import apply_palette_fade_step3
+.import apply_palette_fade_step4
 .import flush_palette
+.import flush_palette2
+.import flush_palette3
+.import flush_palette4
+
+.import cancel_fades
 
 .import target_palette
+.import target_palette2
+.import target_palette3
+.import target_palette4
 .import graceful_fail
 
+.export CUBE_CHOREO_ADDR
+.exportzp CUBE_CHOREO_BANK
 
 .macpack longbranch
 
 CUBE_CHOREO_BANK = $20
+CUBE_CHOREO_ADDR = $A000
 
 CUBE_MAPBASE = $1E000
 CUBE_TILEBASE = $18000
@@ -67,30 +84,24 @@ affine_x_pos_int:
 	.res 1
 step:
 	.res 2
+fading_out:
+	.res 1
+slide_up_idx:
+	.res 1
 
 .segment "CUBE"
 entry:
+	jsr cancel_fades
 	jsr setup_initial_vera_state
 	jsr wipe_first_64k_vram
 	jsr setup_fx_tile_map
 
 	LOADFILE "CUBETILES.DAT", 0, .loword(CUBE_TILEBASE), <(.hiword(CUBE_TILEBASE))
 	LOADFILE "CUBETILES.PAL", 0, $FA00, 1 ; direct to palette
-	LOADFILE "CUBECHOREO.DAT", CUBE_CHOREO_BANK, $A000 ; choreography
 
+	MUSIC_SYNC $82
 	jsr do_cube
-
-	MUSIC_SYNC $8C
-
-	ldx #32
-:   stz target_palette-1,x
-	dex
-	bne :-
-
-	lda #0
-	jsr setup_palette_fade
-
-	PALETTE_FADE 1
+	jsr wipe_first_64k_vram
 
 	rts
 
@@ -104,6 +115,11 @@ entry:
 	lda #CUBE_CHOREO_BANK
 	sta X16::Reg::RAMBank
 	stz which_fbuf
+
+	stz fading_out
+
+	lda #64
+	sta slide_up_idx
 
 	stz step
 	stz step+1
@@ -305,7 +321,7 @@ end_line:
 	lda linewise_y_int
 	adc affine_y_pos_int
 	sta affine_y_pos_int
-	tax
+	tay
 
 	lda #(4 << 1)
 	sta Vera::Reg::Ctrl
@@ -334,27 +350,76 @@ buf1:
 	lda (ptr1) ; bottom row used
 	sta bottom_y_buf1
 gowait:
+	jsr apply_palette_fade_step
+	jsr apply_palette_fade_step2
+	jsr apply_palette_fade_step3
+	jsr apply_palette_fade_step4
+
 	WAITVSYNC
 	; flip the buffer
 	lda which_fbuf
 	lsr
 	sta Vera::Reg::L0TileBase
 
+	jsr flush_palette
+	jsr flush_palette2
+	jsr flush_palette3
+	jsr flush_palette4
+
+	ldy slide_up_idx
+	beq noslide
+	dey
+
+	lda #2
+	sta Vera::Reg::Ctrl
+	lda dtau,y
+	sta Vera::Reg::DCVStart
+
+	sty slide_up_idx
+noslide:
 	lda which_fbuf
 	eor #$80
 	sta which_fbuf
 
 	jsr clear_buffer
 
+	lda fading_out
+	beq check_sync
+	dec
+	beq end
+	sta fading_out
+	bra next_step
+check_sync:
 	lda syncval
 	cmp #$8C
-	bcs end
+	bcs startfade
+next_step:
 	inc step
 	bne :+
 	inc step+1
 :	jmp start_frame
 end:
 	rts
+startfade:
+	ldx #0
+:   stz target_palette-1,x
+	stz target_palette3-1,x
+	dex
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
+	lda #128
+	jsr setup_palette_fade3
+	lda #192
+	jsr setup_palette_fade4
+
+	lda #16
+	sta fading_out
+
+	bra next_step
 .endproc
 
 
@@ -523,7 +588,7 @@ end:
 	; letterbox for 320x~200
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #21 ; FIXME start offscreen
+	lda #($f0 - 20) ; offscreen start
 	sta Vera::Reg::DCVStart
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
@@ -556,3 +621,9 @@ end:
 
 	rts
 .endproc
+
+dtau:
+	.byte $15,$15,$15,$15,$15,$16,$16,$17,$17,$18,$19,$1A,$1B,$1C,$1D,$1E
+	.byte $1F,$21,$22,$24,$25,$27,$29,$2B,$2D,$2F,$31,$33,$35,$38,$3A,$3D
+	.byte $40,$42,$45,$48,$4B,$4E,$51,$54,$58,$5B,$5F,$62,$66,$6A,$6D,$71
+	.byte $75,$79,$7D,$82,$86,$8A,$8F,$94,$98,$9D,$A2,$A7,$AC,$B1,$B6,$BB

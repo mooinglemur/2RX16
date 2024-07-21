@@ -105,8 +105,6 @@ entry:
 	sta Vera::Reg::DCVStart
 	stz Vera::Reg::Ctrl
 
-	MUSIC_SYNC $7C
-
 	rts
 
 .proc deregister_drop_handler

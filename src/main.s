@@ -19,6 +19,11 @@
 	.import SCROLL_COPY_CODE_RAM_ADDRESS
 .endscope
 
+.scope CUBE
+	.importzp CUBE_CHOREO_BANK
+	.import CUBE_CHOREO_ADDR
+.endscope
+
 .segment "LOADADDR"
 	.word $0801
 .segment "BASICSTUB"
@@ -172,9 +177,11 @@ SCENE = $4800
 
 	LOADFILE "CREATURE.BIN", 0, SCENE
 	jsr SCENE
+	; load this here because it's timing critical after plasma is done
+	LOADFILE "CUBECHOREO.DAT", CUBE::CUBE_CHOREO_BANK, CUBE::CUBE_CHOREO_ADDR
+	MUSIC_SYNC $6F
 	LOADFILE "PLASMA.BIN", 0, SCENE
 	jsr SCENE
-;	jmp XXXEND
 	LOADFILE "CUBE.BIN", 0, SCENE
 	jsr SCENE
 	LOADFILE "BALLS.BIN", 0, SCENE

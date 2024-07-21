@@ -56,7 +56,7 @@ vertical_offset = 0
 camera = (0, 0, 6)
 
 # Face output
-# - Type or frame terminator (which affine color map?)
+# - Type (which affine color map?, high bit clear)
 # - Raster Y start
 # - Raster X start
 # - Global Affine Y Increment Fractional
@@ -68,7 +68,12 @@ camera = (0, 0, 6)
 # - Affine Y start Integer
 # - Affine X start Integer
 
-# - Section marker
+# - Frame terminator (high bit set)
+# - top_y
+# - bottom_y
+
+# Section
+# - Section marker (high bit clear)
 # - Linewise Affine Y Increment Fractional
 # - Linewise Affine Y Increment Integer
 # - Linewise Affine X Increment Fractional
@@ -81,9 +86,7 @@ camera = (0, 0, 6)
 # - Starting Length Fractional
 # - Starting Length Integer
 
-# - Section marker or terminator
-# - top_y
-# - bottom_y
+# - Section terminator (high bit set)
 
 def calculate_texture_increments(vertices):
     if len(vertices) < 3:
@@ -93,10 +96,16 @@ def calculate_texture_increments(vertices):
     vector_y = vertices[1] - vertices[0]
     vector_x = vertices[2] - vertices[1]
 
-    global_x_inc = vector_x[0]/(scale)
-    global_y_inc = vector_x[1]/(scale)
-    linewise_x_inc = vector_y[0]/(scale)
-    linewise_y_inc = vector_y[1]/(scale)
+    global_x_inc   = -1 * vector_x[0]/(scale)
+    global_y_inc   = -1 * vector_x[1]/(scale)
+    linewise_x_inc =      vector_y[0]/(scale)
+    linewise_y_inc =      vector_y[1]/(scale)
+
+    # XXX
+    global_x_inc = 1
+    global_y_inc = 0
+    linewise_x_inc = 0
+    linewise_y_inc = 1
 
     return [global_x_inc, global_y_inc, linewise_x_inc, linewise_y_inc]
 
@@ -165,15 +174,17 @@ def rotate_cube(step):
     polys = []
     pcolors = []
     increments = []
+    vertex0 = []
 
     for face in sorted_visible_faces:
         polys.append(Polygon([rotated_2d_vertices[i] for i in face[0:4]]))
         pcolors.append(face[4])
         incr = calculate_texture_increments([rotated_3d_vertices[i] for i in face[0:3]])
+        vertex0.append(rotated_2d_vertices[face[0]])
 
         increments.append(incr)
 
-    return polys, pcolors, increments
+    return polys, pcolors, increments, vertex0
 
 
 
@@ -212,13 +223,13 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 running = False
 
         screen.fill(BLACK)
-        polys, pcolors, increments = rotate_cube(step)
+        polys, pcolors, increments, vertex0 = rotate_cube(step)
 
         # set to extremes
         top_y = 100
         bottom_y = 0
 
-        print(f"step {step}")
+        print(f"step {step} {step:04x}")
 
         for p in range(len(polys)):
             poly = polys[p]
@@ -233,16 +244,6 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             x2, y2 = sorted_vertices[1]
             x3, y3 = sorted_vertices[2]
             x4, y4 = sorted_vertices[3]
-
-            x1 += 0.5
-            x2 += 0.5
-            x3 += 0.5
-            x4 += 0.5
-
-            y1 += 0.5
-            y2 += 0.5
-            y3 += 0.5
-            y4 += 0.5
 
             if x3 < x4:
                 xbl = x3
@@ -276,10 +277,10 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             if y1 == y2: # Flat top (x2 > x1)
                 if (x1 > x2):
                     raise RuntimeError("x1 was not expected to be > x2")
-                starting_len = (x2 - x1) + 0.5
+                starting_len = (x2 - x1) + 1
 
             elif x1 < x2: # Top slants like "backslash"
-                starting_len = 0.5
+                starting_len = 1
                 right_slope = (x2 - x1) / (y2 - y1)
                 left_slope = (xbl - x1) / (ybl - y1)
                 lines = y2 - y1 # lines to follow
@@ -289,7 +290,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 starting_len += length_incr * lines
 
             elif x1 > x2: # Top slants like "forward slash"
-                starting_len = 0.5
+                starting_len = 1
                 right_slope = (xbr - x1) / (ybr - y1)
                 left_slope = (x2 - x1) / (y2 - y1)
                 lines = y2 - y1 # lines to follow
@@ -299,7 +300,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 starting_len += length_incr * lines
 
             else: # Top section is a point
-                starting_len = 0.5
+                starting_len = 1
 
             # middle section
 
@@ -382,8 +383,11 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             global_affine_x_incr_frac = int(increments[p][0] * 512) & 0xff
             global_affine_x_incr = int(increments[p][0] * 2) & 0x7f
 
-            affine_y_start = (increments[p][1] * step)
-            affine_x_start = (increments[p][0] * step)
+            #affine_y_start = (increments[p][1] * step)
+            #affine_x_start = (increments[p][0] * step)
+
+            affine_y_start = (y1 - vertex0[p][1]) * (increments[p][3] + increments[p][1]) # + (increments[p][1] * step)
+            affine_x_start = (x1 - vertex0[p][0]) * (increments[p][0] + increments[p][2]) # + (increments[p][0] * step)
 
             while affine_y_start < 0:
                 affine_y_start += 256
@@ -400,7 +404,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             file.write(bytes([global_affine_y_incr_frac, global_affine_y_incr, global_affine_x_incr_frac, global_affine_x_incr]))
             file.write(bytes([affine_y_start_frac, affine_x_start_frac, affine_y_start_int, affine_x_start_int]))
 
-            print(f"{raster_y} {raster_x}")
+            print(f"x: {raster_x} y: {raster_y} aff_x: {increments[p][0]} aff_y: {increments[p][1]}")
 
             for s in sections:
                 file.write(bytes([0x10])) # section begin
@@ -428,7 +432,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
 
         step += 1
 
-        if step > 1600:
+        if step > 1660:
             running = False
 
 

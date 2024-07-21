@@ -434,9 +434,6 @@ bail_lens:
 
 	jsr setup_and_draw_rotated_tilemap
 
-
-	MUSIC_SYNC $6F
-
 	rts
 
 .proc wipe_sprites

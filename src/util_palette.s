@@ -17,6 +17,8 @@
 .export zero_entire_palette_and_target
 .export zero_entire_target
 
+.export cancel_fades
+
 ; only one of these
 .export cycle_palette
 
@@ -716,4 +718,16 @@ end:
 
 	rts
 
+.endproc
+
+.proc cancel_fades
+	stz fade_iter
+	stz fade_iter2
+	stz fade_iter3
+	stz fade_iter4
+	stz flush_flag
+	stz flush_flag2
+	stz flush_flag3
+	stz flush_flag4
+	rts
 .endproc
