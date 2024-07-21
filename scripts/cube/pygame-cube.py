@@ -57,14 +57,16 @@ camera = (0, 0, 6)
 
 # Face output
 # - Type or frame terminator (which affine color map?)
-# - Y
-# - X
+# - Raster Y start
+# - Raster X start
 # - Global Affine Y Increment Fractional
 # - Global Affine Y Increment Integer
 # - Global Affine X Increment Fractional
 # - Global Affine X Increment Integer
-# - Affine Y start
-# - Affine X start
+# - Affine Y start Fractional
+# - Affine X start Fractional
+# - Affine Y start Integer
+# - Affine X start Integer
 
 # - Section marker
 # - Linewise Affine Y Increment Fractional
@@ -75,10 +77,13 @@ camera = (0, 0, 6)
 # - Left slope integer
 # - Length Increment Fractional
 # - Length Increment Integer
-# - Starting Length
 # - Line count
+# - Starting Length Fractional
+# - Starting Length Integer
 
 # - Section marker or terminator
+# - top_y
+# - bottom_y
 
 def calculate_texture_increments(vertices):
     if len(vertices) < 3:
@@ -88,10 +93,10 @@ def calculate_texture_increments(vertices):
     vector_y = vertices[1] - vertices[0]
     vector_x = vertices[2] - vertices[1]
 
-    global_x_inc = (scale*2)/vector_x[0]
-    global_y_inc = vector_x[1]/(scale*2)
-    linewise_x_inc = vector_y[0]/(scale*2)
-    linewise_y_inc = (scale*2)/vector_y[1]
+    global_x_inc = vector_x[0]/(scale)
+    global_y_inc = vector_x[1]/(scale)
+    linewise_x_inc = vector_y[0]/(scale)
+    linewise_y_inc = vector_y[1]/(scale)
 
     return [global_x_inc, global_y_inc, linewise_x_inc, linewise_y_inc]
 
@@ -177,48 +182,139 @@ step = 0
 
 texture_filename = "cube-texture.png"
 with Image.open(texture_filename) as img:
-    texture = img.load()
 
-while running:
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            running = False
+    with open("CUBETILES.DAT", mode="wb") as file:
+        for trow in range(24):
+            for tcol in range(16):
+                for crow in range(8):
+                    for ccol in range(8):
+                        yy = (trow*8)+crow
+                        xx = (tcol*8)+ccol
+                        px = img.getpixel([xx,yy])
+                        file.write(bytes([px]))
 
-    screen.fill(BLACK)
-    polys, pcolors, increments = rotate_cube(step)
+    with open("CUBETILES.PAL", mode="wb") as file:
+        pal = img.getpalette('RGB')
 
-    for p in range(len(polys)):
-        poly = polys[p]
-        # sorted vertically
-        sorted_vertices = sorted(poly.exterior.coords[:-1], key=lambda x: [x[1], x[0]], reverse=False)
-        print(sorted_vertices)
-        top_y = sorted_vertices[0][1]
-        top_x = sorted_vertices[0][0]
-        #global_affine_y_incr_frac = int(increments[1] * 256) & 0xff
-        #global_affine_y_incr = int(increments[1]) & 0xff
-        #global_affine_x_incr_frac = int(increments[0] * 256) & 0xff
-        #global_affine_x_incr = int(increments[0]) & 0xff
-        affine_y_start = 0
-        affine_x_start = 0
+        for idx in range(0, len(pal), 3):
+            r = (pal[idx] * 15 + 135) >> 8
+            g = (pal[idx+1] * 15 + 135) >> 8
+            b = (pal[idx+2] * 15 + 135) >> 8
 
-        sections = []
+            gb = g << 4 | b
+            file.write(bytes([gb, r]))
 
-        x1, y1 = sorted_vertices[0]
-        x2, y2 = sorted_vertices[1]
-        x3, y3 = sorted_vertices[2]
-        x4, y4 = sorted_vertices[3]
+with open("CUBECHOREO.DAT", mode="wb") as file:
+    file.write(bytes([0x69])) # padding by one byte
+    while running:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                running = False
 
-        if y1 == y2: # Flat top (x2 > x1)
-            if (x1 > x2):
-                raise RuntimeError("x1 was not expected to be > x2")
-            starting_len = x2 - x1
-            if x3 > x4: # Right side changes first
-                right_slope = (x3 - x2) / (y3 - y2)
-                left_slope = (x4 - x1) / (y4 - y1)
+        screen.fill(BLACK)
+        polys, pcolors, increments = rotate_cube(step)
+
+        # set to extremes
+        top_y = 100
+        bottom_y = 0
+
+        print(f"step {step}")
+
+        for p in range(len(polys)):
+            poly = polys[p]
+            # sorted vertically
+            sorted_vertices = sorted(poly.exterior.coords[:-1], key=lambda x: [x[1], x[0]], reverse=False)
+
+            print(f"{p} {sorted_vertices}")
+
+            sections = []
+
+            x1, y1 = sorted_vertices[0]
+            x2, y2 = sorted_vertices[1]
+            x3, y3 = sorted_vertices[2]
+            x4, y4 = sorted_vertices[3]
+
+            x1 += 0.5
+            x2 += 0.5
+            x3 += 0.5
+            x4 += 0.5
+
+            y1 += 0.5
+            y2 += 0.5
+            y3 += 0.5
+            y4 += 0.5
+
+            if x3 < x4:
+                xbl = x3
+                ybl = y3
+                xbr = x4
+                ybr = y4
+            else:
+                xbl = x4
+                ybl = y4
+                xbr = x3
+                ybr = y3
+
+            if x1 < x2:
+                xtl = x1
+                ytl = y1
+                xtr = x2
+                ytr = y2
+            else:
+                xtl = x2
+                ytl = y2
+                xtr = x1
+                ytr = y1
+
+            left_at_x2 = x2
+            right_at_x2 = x2
+            left_at_x3 = x3
+            right_at_x3 = x3
+
+            # section above y2, if any
+
+            if y1 == y2: # Flat top (x2 > x1)
+                if (x1 > x2):
+                    raise RuntimeError("x1 was not expected to be > x2")
+                starting_len = (x2 - x1) + 0.5
+
+            elif x1 < x2: # Top slants like "backslash"
+                starting_len = 0.5
+                right_slope = (x2 - x1) / (y2 - y1)
+                left_slope = (xbl - x1) / (ybl - y1)
+                lines = y2 - y1 # lines to follow
+                left_at_x2 = x1 + (left_slope * lines)
+                length_incr = ((x2 - left_at_x2) - starting_len) / lines
+                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                starting_len += length_incr * lines
+
+            elif x1 > x2: # Top slants like "forward slash"
+                starting_len = 0.5
+                right_slope = (xbr - x1) / (ybr - y1)
+                left_slope = (x2 - x1) / (y2 - y1)
+                lines = y2 - y1 # lines to follow
+                right_at_x2 = x1 + (right_slope * lines)
+                length_incr = ((right_at_x2 - x2) - starting_len) / lines
+                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                starting_len += length_incr * lines
+
+            else: # Top section is a point
+                starting_len = 0.5
+
+            # middle section
+
+            if x3 > x4 or (x3 == x4 and x2 < x3) or (x3 == x4 and x1 < x3): # Right side changes first
+                right_slope = (x3 - xtr) / (y3 - ytr)
+                left_slope = (x4 - xtl) / (y4 - ytl)
                 lines = y3 - y2 # lines to follow
-                left_at_x3 = x1 + (left_slope * lines)
-                length_incr = ((x3 - left_at_x3) - starting_len) / lines
-                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines})
+                left_at_x3 = xtl + (left_slope * lines)
+                if lines > 0:
+                    length_incr = ((x3 - left_at_x3) - starting_len) / lines
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    starting_len += length_incr * lines
+                else:
+                    pass # no middle section
+
                 if y3 == y4: # Flat bottom
                     pass
                 else: # Triangular section
@@ -226,14 +322,21 @@ while running:
                     lines = y4 - y3
                     # should this be 0 or 1?
                     length_incr = (0 - (x3 - left_at_x3)) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines})
-            elif x4 > x3: # Left side changes first
-                left_slope = (x3 - x1) / (y3 - y1)
-                right_slope = (x4 - x2) / (y4 - y2)
-                lines = y3 - y1 # lines to follow
-                right_at_x3 = x2 + (right_slope * lines)
-                length_incr = ((right_at_x3 - x3) - starting_len) / lines
-                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines})
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    starting_len += length_incr * lines
+
+            elif x3 < x4 or (x3 == x4 and x2 > x3) or (x3 == x4 and x1 > x3): # Left side changes first
+                left_slope = (x3 - xtl) / (y3 - ytl)
+                right_slope = (x4 - xtr) / (y4 - ytr)
+                lines = y3 - y2 # lines to follow
+                right_at_x3 = xtr + (right_slope * lines)
+                if lines > 0:
+                    length_incr = ((right_at_x3 - x3) - starting_len) / lines
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    starting_len += length_incr * lines
+                else:
+                    pass # no middle section
+
                 if y3 == y4: # Flat bottom
                     pass
                 else: # Triangular section
@@ -241,20 +344,92 @@ while running:
                     lines = y4 - y3
                     # should this be 0 or 1?
                     length_incr = (0 - (right_at_x3 - x3)) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines})
-            else: # Weird vertical arrangement
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    starting_len += length_incr * lines
+
+            else: # Vertical arrangement of bottom points
                 raise RuntimeError("Add code for stacked vertices 3 and 4")
-        elif x1 < x2:
-            
-                
+
+            if y1 < top_y:
+                top_y = y1
+            if y4 > bottom_y:
+                bottom_y = y4
+
+            pygame.draw.polygon(screen, colors[pcolors[p]], poly.exterior.coords, 0)
+
+            for s in sections:
+                linewise_affine_y = increments[p][3]
+                linewise_affine_x = increments[p][2]
+                global_affine_y = increments[p][1]
+                global_affine_x = increments[p][0]
+
+                linewise_affine_y += s['left_slope'] * global_affine_y
+                linewise_affine_x += s['left_slope'] * global_affine_x
+
+                s['linewise_affine_y'] = linewise_affine_y
+                s['linewise_affine_x'] = linewise_affine_x
+
+                print(s)
+
+            # write out face-wise parameters
+            face_type = pcolors[p] # 0-2
+            raster_y = y1
+            raster_x = x1
+
+            # preshifted for VERA FX's registers
+            global_affine_y_incr_frac = int(increments[p][1] * 512) & 0xff
+            global_affine_y_incr = int(increments[p][1] * 2) & 0x7f
+            global_affine_x_incr_frac = int(increments[p][0] * 512) & 0xff
+            global_affine_x_incr = int(increments[p][0] * 2) & 0x7f
+
+            affine_y_start = (increments[p][1] * step)
+            affine_x_start = (increments[p][0] * step)
+
+            while affine_y_start < 0:
+                affine_y_start += 256
+            while affine_x_start < 0:
+                affine_x_start += 256
+
+            affine_y_start_frac = int(affine_y_start * 256) & 0xff
+            affine_y_start_int = int(affine_y_start) & 0xff
+            affine_x_start_frac = int(affine_x_start * 256) & 0xff
+            affine_x_start_int = int(affine_x_start) & 0xff
 
 
+            file.write(bytes([face_type, int(raster_y), int(raster_x)]))
+            file.write(bytes([global_affine_y_incr_frac, global_affine_y_incr, global_affine_x_incr_frac, global_affine_x_incr]))
+            file.write(bytes([affine_y_start_frac, affine_x_start_frac, affine_y_start_int, affine_x_start_int]))
+
+            print(f"{raster_y} {raster_x}")
+
+            for s in sections:
+                file.write(bytes([0x10])) # section begin
+                file.write(bytes([int((256 + s['linewise_affine_y']) * 256) & 0xff]))
+                file.write(bytes([int(256 + s['linewise_affine_y']) & 0xff]))
+                file.write(bytes([int((256 + s['linewise_affine_x']) * 256) & 0xff]))
+                file.write(bytes([int(256 + s['linewise_affine_x']) & 0xff]))
+                file.write(bytes([int((256 + s['left_slope']) * 256) & 0xff]))
+                file.write(bytes([int(256 + s['left_slope']) & 0xff]))
+                file.write(bytes([int((256 + s['length_incr']) * 256) & 0xff]))
+                file.write(bytes([int(256 + s['length_incr']) & 0xff]))
+                file.write(bytes([int(s['lines'])]))
+                file.write(bytes([int((256 + s['starting_len']) * 256) & 0xff]))
+                file.write(bytes([int(256 + s['starting_len']) & 0xff]))
+
+            file.write(bytes([0xfe])) # end poly
+
+        file.write(bytes([0xfd])) # end frame
+        file.write(bytes([int(top_y)]))
+        file.write(bytes([int(bottom_y)]))
+
+        print("")
+        pygame.display.flip()
+#        clock.tick(10)
+
+        step += 1
+
+        if step > 1600:
+            running = False
 
 
-        pygame.draw.polygon(screen, colors[pcolors[p]], poly.exterior.coords, 0)
-
-    pygame.display.flip()
-    clock.tick(1)
-
-    step += 1
 
