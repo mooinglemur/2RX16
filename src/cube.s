@@ -99,7 +99,7 @@ entry:
 	LOADFILE "CUBETILES.DAT", 0, .loword(CUBE_TILEBASE), <(.hiword(CUBE_TILEBASE))
 	LOADFILE "CUBETILES.PAL", 0, $FA00, 1 ; direct to palette
 
-	MUSIC_SYNC $82
+;	MUSIC_SYNC $82 ;XXX
 	jsr do_cube
 	jsr wipe_first_64k_vram
 
@@ -141,7 +141,7 @@ start_face:
 	jmi end_frame
 	cmp #3
 	bcc :+
-	stp
+	rts
 :
 	asl
 	asl
@@ -263,6 +263,10 @@ start_section:
 	sta length_int
 
 start_line:
+	ldy length_int
+	beq end_line
+	bmi end_line
+
 	; set Data0 position
 	lda line_xpos_int
 	ldx line_ypos
@@ -275,12 +279,9 @@ start_line:
 	lda #$10
 	sta Vera::Reg::AddrH
 
-	ldx length_int
-	beq end_line
-	bmi end_line
 :	lda Vera::Reg::Data1
 	sta Vera::Reg::Data0
-	dex
+	dey
 	bne :-
 end_line:
 	lda length_increment_frac
@@ -341,7 +342,7 @@ buf0:
 	INCPTR1
 	lda (ptr1) ; bottom row used
 	sta bottom_y_buf0
-	bra gowait
+	bra gofade
 buf1:
 	INCPTR1
 	lda (ptr1) ; top row used
@@ -349,11 +350,9 @@ buf1:
 	INCPTR1
 	lda (ptr1) ; bottom row used
 	sta bottom_y_buf1
+gofade:
+	jsr fadestep
 gowait:
-	jsr apply_palette_fade_step
-	jsr apply_palette_fade_step2
-	jsr apply_palette_fade_step3
-	jsr apply_palette_fade_step4
 
 	WAITVSYNC
 	; flip the buffer
@@ -361,10 +360,11 @@ gowait:
 	lsr
 	sta Vera::Reg::L0TileBase
 
+:	jsr X16::Kernal::GETIN
+	beq :-
+
 	jsr flush_palette
 	jsr flush_palette2
-	jsr flush_palette3
-	jsr flush_palette4
 
 	ldy slide_up_idx
 	beq noslide
@@ -392,7 +392,7 @@ noslide:
 check_sync:
 	lda syncval
 	cmp #$8C
-	bcs startfade
+;	bcs startfade
 next_step:
 	inc step
 	bne :+
@@ -411,15 +411,23 @@ startfade:
 	jsr setup_palette_fade
 	lda #64
 	jsr setup_palette_fade2
-	lda #128
-	jsr setup_palette_fade3
-	lda #192
-	jsr setup_palette_fade4
 
-	lda #16
+	lda #128
 	sta fading_out
 
 	bra next_step
+fadestep:
+	lda step
+	lsr
+	bcs end
+	lsr
+	bcs end
+	and #1
+	asl
+	tax
+	jmp (fadeprocs,x)
+fadeprocs:
+	.word apply_palette_fade_step,apply_palette_fade_step2
 .endproc
 
 

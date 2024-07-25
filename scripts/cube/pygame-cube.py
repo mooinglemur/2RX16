@@ -93,28 +93,55 @@ def calculate_texture_increments(vertices):
         raise ValueError("At least three vertices are required.")
 
     # Calculate the vectors between adjacent vertices
-    vector_y = vertices[1] - vertices[0]
-    vector_x = vertices[2] - vertices[1]
+    vector_h1 = vertices[1] - vertices[0]
+    vector_h2 = vertices[2] - vertices[3]
 
-    global_x_inc   = -1 * vector_x[0]/(scale)
-    global_y_inc   = -1 * vector_x[1]/(scale)
-    linewise_x_inc =      vector_y[0]/(scale)
-    linewise_y_inc =      vector_y[1]/(scale)
+    vector_v1 = vertices[3] - vertices[0]
+    vector_v2 = vertices[2] - vertices[1]
+
+    # Get the average of each vector in light of the face skew
+    vector_h = (vector_h1 + vector_h2) / 2
+    vector_v = (vector_v1 + vector_v2) / 2
+
+    vector_h_len = math.sqrt(abs(vector_h[0]**2) + abs(vector_h[1]**2))
+    vector_v_len = math.sqrt(abs(vector_v[0]**2) + abs(vector_v[1]**2))
+
+    vector_h_ratio = scale*2/vector_h_len
+    vector_v_ratio = scale*2/vector_v_len
+
+    scale_ratio = 22/scale
+
+    # normalize the two vectors
+    normal_h = (vector_h[0] / vector_h_len, vector_h[1] / vector_h_len)
+    normal_v = (vector_v[0] / vector_v_len, vector_v[1] / vector_v_len)
+
+    global_x_inc = scale_ratio*vector_h_ratio*normal_h[0]
+    global_y_inc = scale_ratio*vector_v_ratio*normal_v[0]
+
+    linewise_x_inc = scale_ratio*vector_h_ratio*normal_h[1]
+    linewise_y_inc = scale_ratio*vector_v_ratio*normal_v[1]
 
     # XXX
-    global_x_inc = 1
-    global_y_inc = 0
-    linewise_x_inc = 0
-    linewise_y_inc = 1
+    #global_x_inc = 1
+    #global_y_inc = 0
+    #linewise_x_inc = 0
+    #linewise_y_inc = 1
 
     return [global_x_inc, global_y_inc, linewise_x_inc, linewise_y_inc]
 
 def rotate_cube(step):
+    global scale
     # Temporary rotation choreography
     # This will eventually determine the entire sequence
     # based on the step (frame) number
     angle_x = step*2*math.pi/360/7
+    angle_x = 0
     angle_y = step*2*math.pi/360
+    angle_y = 0
+    angle_z = step*2*math.pi/360
+#    angle_z = 0
+
+    scale = 26+4*math.sin(step/60)
 
     rotated_2d_vertices = []
     rotated_3d_vertices = []
@@ -130,7 +157,12 @@ def rotate_cube(step):
         new_x = x * math.cos(angle_y) - new_z * math.sin(angle_y)
         new_z = x * math.sin(angle_y) + new_z * math.cos(angle_y)
 
-        z_ratio = (1-camera[2]) / (new_z + camera[2]) # camera position
+        # Rotate around the z-axis
+        tmp_x = new_x * math.cos(angle_z) - new_y * math.sin(angle_z)
+        new_y = new_x * math.sin(angle_z) + new_y * math.cos(angle_z)
+        new_x = tmp_x
+
+        z_ratio = (camera[2]) / (new_z + camera[2]) # camera position
 
         new_x *= z_ratio
         new_y *= z_ratio
@@ -171,21 +203,17 @@ def rotate_cube(step):
 
     sorted_visible_faces = sorted(visible_faces, key=lambda x: zees[x[0]]+zees[x[1]]+zees[x[2]]+zees[x[3]], reverse=True)
 
-    polys = []
+    pfaces = []
     pcolors = []
     increments = []
-    vertex0 = []
 
     for face in sorted_visible_faces:
-        polys.append(Polygon([rotated_2d_vertices[i] for i in face[0:4]]))
+        pfaces.append([rotated_2d_vertices[i] for i in face[0:4]])
         pcolors.append(face[4])
-        incr = calculate_texture_increments([rotated_3d_vertices[i] for i in face[0:3]])
-        vertex0.append(rotated_2d_vertices[face[0]])
-
+        incr = calculate_texture_increments([rotated_3d_vertices[i] for i in face[0:4]])
         increments.append(incr)
 
-    return polys, pcolors, increments, vertex0
-
+    return pfaces, pcolors, increments
 
 
 running = True
@@ -223,7 +251,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 running = False
 
         screen.fill(BLACK)
-        polys, pcolors, increments, vertex0 = rotate_cube(step)
+        pfaces, pcolors, increments = rotate_cube(step)
 
         # set to extremes
         top_y = 100
@@ -231,12 +259,12 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
 
         print(f"step {step} {step:04x}")
 
-        for p in range(len(polys)):
-            poly = polys[p]
+        for p in range(len(pfaces)):
+            poly = Polygon(pfaces[p])
             # sorted vertically
             sorted_vertices = sorted(poly.exterior.coords[:-1], key=lambda x: [x[1], x[0]], reverse=False)
 
-            print(f"{p} {sorted_vertices}")
+            print(f"{p} {pcolors[p]} {sorted_vertices} {pfaces[p]}")
 
             sections = []
 
@@ -277,10 +305,10 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             if y1 == y2: # Flat top (x2 > x1)
                 if (x1 > x2):
                     raise RuntimeError("x1 was not expected to be > x2")
-                starting_len = (x2 - x1) + 1
+                starting_len = (x2 - x1)
 
             elif x1 < x2: # Top slants like "backslash"
-                starting_len = 1
+                starting_len = 0
                 right_slope = (x2 - x1) / (y2 - y1)
                 left_slope = (xbl - x1) / (ybl - y1)
                 lines = y2 - y1 # lines to follow
@@ -290,7 +318,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 starting_len += length_incr * lines
 
             elif x1 > x2: # Top slants like "forward slash"
-                starting_len = 1
+                starting_len = 0
                 right_slope = (xbr - x1) / (ybr - y1)
                 left_slope = (x2 - x1) / (y2 - y1)
                 lines = y2 - y1 # lines to follow
@@ -300,21 +328,22 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 starting_len += length_incr * lines
 
             else: # Top section is a point
-                starting_len = 1
+                starting_len = 0
 
             # middle section
 
             if x3 > x4 or (x3 == x4 and x2 < x3) or (x3 == x4 and x1 < x3): # Right side changes first
-                right_slope = (x3 - xtr) / (y3 - ytr)
-                left_slope = (x4 - xtl) / (y4 - ytl)
                 lines = y3 - y2 # lines to follow
-                left_at_x3 = xtl + (left_slope * lines)
+                left_slope = (x4 - xtl) / (y4 - ytl)
                 if lines > 0:
+                    right_slope = (x3 - xtr) / (y3 - ytr)
+                    left_at_x3 = xtl + (left_slope * lines)
                     length_incr = ((x3 - left_at_x3) - starting_len) / lines
                     sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
                     starting_len += length_incr * lines
                 else:
-                    pass # no middle section
+                    # no middle section
+                    left_at_x3 = xtl
 
                 if y3 == y4: # Flat bottom
                     pass
@@ -327,16 +356,17 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                     starting_len += length_incr * lines
 
             elif x3 < x4 or (x3 == x4 and x2 > x3) or (x3 == x4 and x1 > x3): # Left side changes first
-                left_slope = (x3 - xtl) / (y3 - ytl)
-                right_slope = (x4 - xtr) / (y4 - ytr)
                 lines = y3 - y2 # lines to follow
-                right_at_x3 = xtr + (right_slope * lines)
+                right_slope = (x4 - xtr) / (y4 - ytr)
                 if lines > 0:
+                    left_slope = (x3 - xtl) / (y3 - ytl)
+                    right_at_x3 = xtr + (right_slope * lines)
                     length_incr = ((right_at_x3 - x3) - starting_len) / lines
                     sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
                     starting_len += length_incr * lines
                 else:
-                    pass # no middle section
+                    # no middle section
+                    right_at_x3 = xtr
 
                 if y3 == y4: # Flat bottom
                     pass
@@ -386,8 +416,11 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             #affine_y_start = (increments[p][1] * step)
             #affine_x_start = (increments[p][0] * step)
 
-            affine_y_start = (y1 - vertex0[p][1]) * (increments[p][3] + increments[p][1]) # + (increments[p][1] * step)
-            affine_x_start = (x1 - vertex0[p][0]) * (increments[p][0] + increments[p][2]) # + (increments[p][0] * step)
+            xdiff = pfaces[p][0][0] - sorted_vertices[0][0]
+            ydiff = pfaces[p][0][1] - sorted_vertices[0][1]
+
+            affine_y_start = (ydiff * increments[p][3]) + (xdiff * increments[p][1]) #+ (increments[p][1] * step)
+            affine_x_start = (ydiff * increments[p][2]) + (xdiff * increments[p][0]) #+ (increments[p][0] * step)
 
             while affine_y_start < 0:
                 affine_y_start += 256
@@ -404,7 +437,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             file.write(bytes([global_affine_y_incr_frac, global_affine_y_incr, global_affine_x_incr_frac, global_affine_x_incr]))
             file.write(bytes([affine_y_start_frac, affine_x_start_frac, affine_y_start_int, affine_x_start_int]))
 
-            print(f"x: {raster_x} y: {raster_y} aff_x: {increments[p][0]} aff_y: {increments[p][1]}")
+            print(f"x: {raster_x} y: {raster_y} affine_x_start: {affine_x_start} affine_y_start: {affine_y_start} aff_x: {increments[p][0]} aff_y: {increments[p][1]} base_lw_x: {increments[p][2]} base_lw_y: {increments[p][3]}")
 
             for s in sections:
                 file.write(bytes([0x10])) # section begin
@@ -428,12 +461,14 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
 
         print("")
         pygame.display.flip()
-#        clock.tick(10)
+        #clock.tick(30)
 
         step += 1
 
-        if step > 1660:
+        if step > 1750:
             running = False
+
+    file.write(bytes([0x69])) # end series
 
 
 
