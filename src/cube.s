@@ -162,12 +162,6 @@ start_face:
 	lda (ptr1) ; Y coordinate
 	sta line_ypos
 
-	INCPTR1
-	lda (ptr1) ; X coordinate
-	sta line_xpos_int
-	lda #$80
-	sta line_xpos_frac
-
 	; set DCSEL=3
 	lda #(3 << 1)
 	sta Vera::Reg::Ctrl
@@ -184,34 +178,6 @@ start_face:
 	INCPTR1
 	lda (ptr1)
 	sta Vera::Reg::FXXIncrH
-
-	; set DCSEL=5
-	lda #(5 << 1)
-	sta Vera::Reg::Ctrl
-
-	INCPTR1
-	lda (ptr1) ; Y affine pos frac
-	sta Vera::Reg::FXYPosS
-	sta affine_y_pos_frac
-	INCPTR1
-	lda (ptr1) ; X affine pos frac
-	sta Vera::Reg::FXXPosS
-	sta affine_x_pos_frac
-
-	; set DCSEL=4
-	lda #(4 << 1)
-	sta Vera::Reg::Ctrl
-
-	INCPTR1
-	lda (ptr1) ; Y affine pos whole
-	sta Vera::Reg::FXYPosL
-	sta affine_y_pos_int
-	INCPTR1
-	lda (ptr1) ; X affine pos whole
-	sta Vera::Reg::FXXPosL
-	sta affine_x_pos_int
-	stz Vera::Reg::FXYPosH
-	stz Vera::Reg::FXXPosH
 
 	; finished setting up face parameters
 	stz Vera::Reg::Ctrl
@@ -264,23 +230,42 @@ start_section:
 	lda (ptr1)
 	sta length_int
 
-start_line:
-	lda length_increment_frac
-	clc
-	adc length_frac
-	sta length_frac
-	lda length_increment_int
-	adc length_int
-	sta length_int
-
-	lda line_xpos_frac
-	clc
-	adc left_slope_frac
+	INCPTR1
+	lda (ptr1)
 	sta line_xpos_frac
-	lda line_xpos_int
-	adc left_slope_int
+
+	INCPTR1
+	lda (ptr1)
 	sta line_xpos_int
 
+	; set DCSEL=5
+	lda #(5 << 1)
+	sta Vera::Reg::Ctrl
+
+	INCPTR1
+	lda (ptr1) ; Y affine pos frac
+	sta Vera::Reg::FXYPosS
+	sta affine_y_pos_frac
+	INCPTR1
+	lda (ptr1) ; X affine pos frac
+	sta Vera::Reg::FXXPosS
+	sta affine_x_pos_frac
+
+	; set DCSEL=4
+	lda #(4 << 1)
+	sta Vera::Reg::Ctrl
+
+	INCPTR1
+	lda (ptr1) ; Y affine pos whole
+	sta Vera::Reg::FXYPosL
+	sta affine_y_pos_int
+	INCPTR1
+	lda (ptr1) ; X affine pos whole
+	sta Vera::Reg::FXXPosL
+	sta affine_x_pos_int
+	stz Vera::Reg::FXYPosH
+	stz Vera::Reg::FXXPosH
+start_line:
 	ldy length_int
 	beq end_line
 	bmi end_line

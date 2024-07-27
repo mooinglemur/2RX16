@@ -154,7 +154,7 @@ def rotate_cube(step):
 #    angle_z = 0
 
 
-    scale = 23+3*math.sin(step/128)
+    scale = 23+4*math.sin(step/128)
 
     rotated_2d_vertices = []
     rotated_3d_vertices = []
@@ -314,34 +314,37 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
 
                 if len(section_vertices) == 3: # triangle
                     if sy1 == sy2: # flat top
-                        starting_len = sx2 - sx1
                         lines = sy3 - sy1
                         left_slope = (sx3 - sx1) / (sy3 - sy1)
                         right_slope = (sx3 - sx2) / (sy3 - sy2)
                         length_incr = right_slope - left_slope
+                        starting_len = (sx2 - sx1) + (length_incr / 2)
+                        start_x = sx1 + (left_slope / 2)
                         if lines > 0:
-                            sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "flat top triangle"})
+                            sections.append({"start_x": start_x, "left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "flat top triangle"})
                     elif sy2 == sy3: # flat bottom
-                        starting_len = 0
                         lines = sy2 - sy1
                         left_slope = (sx2 - sx1) / (sy2 - sy1)
                         right_slope = (sx3 - sx1) / (sy3 - sy1)
                         length_incr = right_slope - left_slope
+                        starting_len = length_incr / 2
+                        start_x = sx1 + (left_slope / 2)
                         if lines > 0:
-                            sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "flat bottom triangle"})
+                            sections.append({"start_x": start_x, "left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "flat bottom triangle"})
                     else:
                         raise RuntimeError("unknown triangle type")
                 elif len(section_vertices) == 4: # quad
                     sx4 = section_vertices[3][0]
                     sy4 = section_vertices[3][1]
                     if sy1 == sy2 and sy3 == sy4: # flat top and bottom
-                        starting_len = sx2 - sx1
                         lines = sy3 - sy1
                         left_slope = (sx3 - sx1) / (sy3 - sy1)
                         right_slope = (sx4 - sx2) / (sy4 - sy2)
                         length_incr = right_slope - left_slope
+                        starting_len = (sx2 - sx1) + (length_incr / 2)
+                        start_x = sx1 + (left_slope / 2)
                         if lines > 0:
-                            sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "quad"})
+                            sections.append({"start_x": start_x, "left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "quad"})
                     else:
                         raise RuntimeError("unknown quad type")
                 else:
@@ -353,24 +356,6 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 bottom_y = y4
 
             pygame.draw.polygon(screen, colors[pcolors[p]], poly.exterior.coords, 0)
-
-            for s in sections:
-                linewise_affine_y = increments[p][3]
-                linewise_affine_x = increments[p][2]
-                global_affine_y = increments[p][1]
-                global_affine_x = increments[p][0]
-
-                linewise_affine_y += s['left_slope'] * global_affine_y
-                linewise_affine_x += s['left_slope'] * global_affine_x
-
-                s['linewise_affine_y'] = linewise_affine_y
-                s['linewise_affine_x'] = linewise_affine_x
-
-                s['left_slope'] /= 2
-                s['length_incr'] /= 2
-                #s['starting_len'] += 1
-
-                print(s)
 
             # write out face-wise parameters
             face_type = pcolors[p] # 0-2
@@ -392,24 +377,36 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             affine_y_start = 8 - (xdiff * increments[p][1]) - (ydiff * increments[p][3]) #+ (increments[p][1] * step)
             affine_x_start = - (xdiff * increments[p][0]) - (ydiff * increments[p][2]) + (step*1.5)
 
-            while affine_y_start < 0:
-                affine_y_start += 256
-            while affine_x_start < 0:
-                affine_x_start += 256
-
-            affine_y_start_frac = int(affine_y_start * 256) & 0xff
-            affine_y_start_int = int(affine_y_start) & 0xff
-            affine_x_start_frac = int(affine_x_start * 256) & 0xff
-            affine_x_start_int = int(affine_x_start) & 0xff
-
-
-            file.write(bytes([face_type, int(raster_y), int(raster_x)]))
+            file.write(bytes([face_type, int(raster_y)]))
             file.write(bytes([global_affine_y_incr_frac, global_affine_y_incr, global_affine_x_incr_frac, global_affine_x_incr]))
-            file.write(bytes([affine_y_start_frac, affine_x_start_frac, affine_y_start_int, affine_x_start_int]))
 
             print(f"x: {raster_x} y: {raster_y} affine_x_start: {affine_x_start} affine_y_start: {affine_y_start} aff_x: {increments[p][0]} aff_y: {increments[p][1]} base_lw_x: {increments[p][2]} base_lw_y: {increments[p][3]}")
 
             for s in sections:
+                linewise_affine_y = increments[p][3]
+                linewise_affine_x = increments[p][2]
+                global_affine_y = increments[p][1]
+                global_affine_x = increments[p][0]
+
+                linewise_affine_y += s['left_slope'] * global_affine_y
+                linewise_affine_x += s['left_slope'] * global_affine_x
+
+                s['linewise_affine_y'] = linewise_affine_y
+                s['linewise_affine_x'] = linewise_affine_x
+
+                prev_affine_y_start = affine_y_start
+                prev_affine_x_start = affine_x_start
+
+                affine_y_start += linewise_affine_y / 2
+                affine_x_start += linewise_affine_x / 2
+
+                affine_y_start_frac = int(affine_y_start * 256) & 0xff
+                affine_y_start_int = int(affine_y_start) & 0xff
+                affine_x_start_frac = int(affine_x_start * 256) & 0xff
+                affine_x_start_int = int(affine_x_start) & 0xff
+
+                print(s)
+
                 file.write(bytes([0x10])) # section begin
                 file.write(bytes([int((256 + s['linewise_affine_y']) * 256) & 0xff]))
                 file.write(bytes([int(256 + s['linewise_affine_y']) & 0xff]))
@@ -422,6 +419,12 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 file.write(bytes([int(s['lines'])]))
                 file.write(bytes([int((256 + s['starting_len']) * 256) & 0xff]))
                 file.write(bytes([int(256 + s['starting_len']) & 0xff]))
+                file.write(bytes([int((256 + s['start_x']) * 256) & 0xff]))
+                file.write(bytes([int(256 + s['start_x']) & 0xff]))
+                file.write(bytes([affine_y_start_frac, affine_x_start_frac, affine_y_start_int, affine_x_start_int]))
+
+                affine_y_start = prev_affine_y_start + (linewise_affine_y * s['lines'])
+                affine_x_start = prev_affine_x_start + (linewise_affine_x * s['lines'])
 
             file.write(bytes([0xfe])) # end poly
 
