@@ -142,19 +142,19 @@ def rotate_cube(step):
     # Temporary rotation choreography
     # This will eventually determine the entire sequence
     # based on the step (frame) number
-    angle_x = step*2*math.pi/360/7
+    angle_x = step*2*math.pi/360/5
 #    angle_x = 0
     angle_y = step*2*math.pi/360
 #    angle_y = 0
 #    angle_x = angle_y
     if step > 64:
-        angle_z = (step-64)*2*math.pi/360/13
+        angle_z = (step-64)*2*math.pi/360/17
     else:
         angle_z = 0
 #    angle_z = 0
 
 
-    scale = 26+4*math.sin(step/60)
+    scale = 23+3*math.sin(step/128)
 
     rotated_2d_vertices = []
     rotated_3d_vertices = []
