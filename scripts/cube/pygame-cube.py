@@ -2,8 +2,8 @@
 
 import pygame
 from pygame.locals import *
-from shapely.geometry import Polygon, MultiPolygon
-from shapely.ops import unary_union
+from shapely.geometry import Polygon, MultiPolygon, LineString
+from shapely.ops import unary_union, split
 from shapely.validation import make_valid
 from shapely import equals
 import math
@@ -88,64 +88,8 @@ camera = (0, 0, 6)
 
 # - Section terminator (high bit set)
 
-def on_segment(p, q, r):
-    """Given three collinear points p, q, r, the function checks if
-    point q lies on line segment 'pr'."""
-
-    if (q[0] <= max(p[0], r[0]) and q[0] >= min(p[0], r[0]) and
-        q[1] <= max(p[1], r[1]) and q[1] >= min(p[1], r[1])):
-        return True
-    return False
-
-def orientation(p, q, r):
-    """To find the orientation of the ordered triplet (p, q, r).
-    The function returns:
-    0 -> p, q and r are collinear
-    1 -> Clockwise
-    2 -> Counterclockwise"""
-
-    val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1])
-    if val == 0:
-        return 0
-    elif val > 0:
-        return 1
-    else:
-        return 2
-
-def do_intersect(p1, q1, p2, q2):
-    """The main function that returns true if the line segment 'p1q1'
-    and 'p2q2' intersect."""
-
-    # Find the four orientations needed for general and
-    # special cases
-    o1 = orientation(p1, q1, p2)
-    o2 = orientation(p1, q1, q2)
-    o3 = orientation(p2, q2, p1)
-    o4 = orientation(p2, q2, q1)
-
-    # General case
-    if o1 != o2 and o3 != o4:
-        return True
-
-    # Special Cases
-    # p1, q1 and p2 are collinear and p2 lies on segment p1q1
-    if o1 == 0 and on_segment(p1, p2, q1):
-        return True
-
-    # p1, q1 and q2 are collinear and q2 lies on segment p1q1
-    if o2 == 0 and on_segment(p1, q2, q1):
-        return True
-
-    # p2, q2 and p1 are collinear and p1 lies on segment p2q2
-    if o3 == 0 and on_segment(p2, p1, q2):
-        return True
-
-    # p2, q2 and q1 are collinear and q1 lies on segment p2q2
-    if o4 == 0 and on_segment(p2, q1, q2):
-        return True
-
-    # Doesn't fall in any of the above cases
-    return False
+def min_y_coordinate(shape):
+    return min(y for _, y in shape.exterior.coords)
 
 
 def calculate_texture_increments(vertices):
@@ -169,7 +113,8 @@ def calculate_texture_increments(vertices):
     vector_h_ratio = scale*2/vector_h_len
     vector_v_ratio = scale*2/vector_v_len
 
-    scale_ratio = 25/scale
+    scale_ratio_h = 46/scale
+    scale_ratio_v = 24/scale
 
     # normalize the two vectors
     normal_h = (vector_h[0] / vector_h_len, vector_h[1] / vector_h_len)
@@ -184,17 +129,11 @@ def calculate_texture_increments(vertices):
 
     print(f"skew {skew_angle} angle {angle_h} sin {math.sin(angle_h)} cos {math.cos(angle_h)}")
 
-    global_x_inc = scale_ratio*vector_h_ratio*math.cos(angle_h + skew_angle)
-    global_y_inc = scale_ratio*vector_v_ratio*-math.sin(angle_h)
+    global_x_inc = scale_ratio_h*vector_h_ratio*math.cos(angle_h + skew_angle)
+    global_y_inc = scale_ratio_v*vector_v_ratio*-math.sin(angle_h)
 
-    linewise_x_inc = scale_ratio*vector_h_ratio*math.sin(angle_h + skew_angle)
-    linewise_y_inc = scale_ratio*vector_v_ratio*math.cos(angle_h)
-
-    # XXX
-    #global_x_inc = 1
-    #global_y_inc = 0
-    #linewise_x_inc = 0
-    #linewise_y_inc = 1
+    linewise_x_inc = scale_ratio_h*vector_h_ratio*math.sin(angle_h + skew_angle)
+    linewise_y_inc = scale_ratio_v*vector_v_ratio*math.cos(angle_h)
 
     return [global_x_inc, global_y_inc, linewise_x_inc, linewise_y_inc]
 
@@ -338,8 +277,6 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             # sorted vertically
             sorted_vertices = sorted(poly.exterior.coords[:-1], key=lambda x: [x[1], x[0]], reverse=False)
 
-            print(f"{p} {pcolors[p]} {sorted_vertices} {pfaces[p]}")
-
             sections = []
 
             x1, y1 = sorted_vertices[0]
@@ -347,117 +284,68 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             x3, y3 = sorted_vertices[2]
             x4, y4 = sorted_vertices[3]
 
-#            if x3 < x4 or (x3 < x2 and x3 > x1):
-#            else:
+            y_coords = sorted([y for y in set(p[1] for p in sorted_vertices) if y != y1 and y != y4])
+            horizontal_lines = [LineString([(min(p[0] for p in sorted_vertices) - 1, y), (max(p[0] for p in sorted_vertices) + 1, y)]) for y in y_coords]
 
-            lpf = len(pfaces[p])
+            split_shapes = [poly]
+            for line in horizontal_lines:
+                new_split_shapes = []
+                for shape in split_shapes:
+                    result = split(shape, line)
+                    new_split_shapes.extend(result.geoms)
+                split_shapes = new_split_shapes
 
-            if x1 < x2:
-                xtl = x1
-                ytl = y1
-                xtr = x2
-                ytr = y2
-            else:
-                xtl = x2
-                ytl = y2
-                xtr = x1
-                ytr = y1
+            # Sort the split shapes by their top y-coordinate
+            sorted_shapes = sorted(split_shapes, key=min_y_coordinate, reverse=False)
 
-            if do_intersect((xtl,ytl),(x3,y3),(xtr,ytr),(x4,y4)):
-                xbl = x4
-                ybl = y4
-                xbr = x3
-                ybr = y3
-            else:
-                xbl = x3
-                ybl = y3
-                xbr = x4
-                ybr = y4
+            print(f"{p} {pcolors[p]} {sorted_vertices} {pfaces[p]}")
+            print(f"{split_shapes} {y_coords} {horizontal_lines}")
 
-            left_at_y2 = x2
-            right_at_y2 = x2
-            left_at_y3 = x3
-            right_at_y3 = x3
+            for shape in sorted_shapes:
+                section_vertices = sorted(shape.exterior.coords[:-1], key=lambda x: [x[1], x[0]], reverse=False)
+                sx1 = section_vertices[0][0]
+                sy1 = section_vertices[0][1]
+                sx2 = section_vertices[1][0]
+                sy2 = section_vertices[1][1]
+                sx3 = section_vertices[2][0]
+                sy3 = section_vertices[2][1]
 
-            # section above y2, if any
+                print(f"sv: {section_vertices}")
 
-            if y1 == y2: # Flat top (x2 > x1)
-                if (x1 > x2):
-                    raise RuntimeError("x1 was not expected to be > x2")
-                starting_len = (x2 - x1)
-                left_at_y2 = x1
-
-            elif x1 < x2: # Top slants like "backslash"
-                starting_len = 0
-                right_slope = (x2 - x1) / (y2 - y1)
-                left_slope = (xbl - x1) / (ybl - y1)
-                lines = y2 - y1 # lines to follow
-                left_at_y2 = x1 + (left_slope * lines)
-                length_incr = ((x2 - left_at_y2) - starting_len) / lines
-                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'top backslash', "xtl": xtl, "ytl": ytl, "xbl": xbl, "ybl": ybl})
-                starting_len += length_incr * lines
-
-            elif x1 > x2: # Top slants like "forward slash"
-                starting_len = 0
-                right_slope = (xbr - x1) / (ybr - y1)
-                left_slope = (x2 - x1) / (y2 - y1)
-                lines = y2 - y1 # lines to follow
-                right_at_y2 = x1 + (right_slope * lines)
-                length_incr = ((right_at_y2 - x2) - starting_len) / lines
-                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'top forwardslash', "x2": x2, "y2": y2})
-                starting_len += length_incr * lines
-
-            else: # Top section is a point
-                starting_len = 0
-
-            # middle section
-
-            if x3 == xbr: # Right side changes first
-                lines = y3 - y2 # lines to follow
-                left_slope = (xbl - xtl) / (ybl - ytl)
-                if lines > 0:
-                    right_slope = (x3 - xtr) / (y3 - ytr)
-                    left_at_y3 = left_at_y2 + (left_slope * lines)
-                    length_incr = ((xbr - left_at_y3) - starting_len) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'middle before right side change', "left_at_y3": left_at_y3, "xtl": xtl, "ytl": ytl, "xbr": xbr, "ybr": ybr})
-                    starting_len += length_incr * lines
+                if len(section_vertices) == 3: # triangle
+                    if sy1 == sy2: # flat top
+                        starting_len = sx2 - sx1
+                        lines = sy3 - sy1
+                        left_slope = (sx3 - sx1) / (sy3 - sy1)
+                        right_slope = (sx3 - sx2) / (sy3 - sy2)
+                        length_incr = right_slope - left_slope
+                        if lines > 0:
+                            sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "flat top triangle"})
+                    elif sy2 == sy3: # flat bottom
+                        starting_len = 0
+                        lines = sy2 - sy1
+                        left_slope = (sx2 - sx1) / (sy2 - sy1)
+                        right_slope = (sx3 - sx1) / (sy3 - sy1)
+                        length_incr = right_slope - left_slope
+                        if lines > 0:
+                            sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "flat bottom triangle"})
+                    else:
+                        raise RuntimeError("unknown triangle type")
+                elif len(section_vertices) == 4: # quad
+                    sx4 = section_vertices[3][0]
+                    sy4 = section_vertices[3][1]
+                    if sy1 == sy2 and sy3 == sy4: # flat top and bottom
+                        starting_len = sx2 - sx1
+                        lines = sy3 - sy1
+                        left_slope = (sx3 - sx1) / (sy3 - sy1)
+                        right_slope = (sx4 - sx2) / (sy4 - sy2)
+                        length_incr = right_slope - left_slope
+                        if lines > 0:
+                            sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "type": "quad"})
+                    else:
+                        raise RuntimeError("unknown quad type")
                 else:
-                    # no middle section
-                    left_at_y3 = xtl
-
-                if y3 == y4: # Flat bottom
-                    pass
-                else: # Triangular section
-                    right_slope = (xbr - xbl) / (ybr - ybl)
-                    lines = y4 - y3
-                    length_incr = (left_at_y3 - x3) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'bottom right changing'})
-                    starting_len += length_incr * lines
-
-            elif x3 == xbl: # Left side changes first
-                lines = y3 - y2 # lines to follow
-                right_slope = (xbr - xtr) / (ybr - ytr)
-                if lines > 0:
-                    left_slope = (x3 - xtl) / (y3 - ytl)
-                    right_at_y3 = right_at_y2 + (right_slope * lines)
-                    length_incr = ((right_at_y3 - xbl) - starting_len) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'middle before left side change'})
-                    starting_len += length_incr * lines
-                else:
-                    # no middle section
-                    right_at_y3 = xtr
-
-                if y3 == y4: # Flat bottom
-                    pass
-                else: # Triangular section
-                    left_slope = (xbl - xbr) / (ybl - ybr)
-                    lines = y4 - y3
-                    length_incr = (x3 - right_at_y3) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'bottom left changing'})
-                    starting_len += length_incr * lines
-
-            else: # Vertical arrangement of bottom points
-                raise RuntimeError("Add code for stacked vertices 3 and 4")
+                    raise RuntimeError("unknown shape")
 
             if y1 < top_y:
                 top_y = y1
@@ -501,8 +389,8 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             xdiff = pfaces[p][0][0] - sorted_vertices[0][0]
             ydiff = pfaces[p][0][1] - sorted_vertices[0][1]
 
-            affine_y_start = 5 - (xdiff * increments[p][1]) - (ydiff * increments[p][3]) #+ (increments[p][1] * step)
-            affine_x_start = - (xdiff * increments[p][0]) - (ydiff * increments[p][2]) + step
+            affine_y_start = 8 - (xdiff * increments[p][1]) - (ydiff * increments[p][3]) #+ (increments[p][1] * step)
+            affine_x_start = - (xdiff * increments[p][0]) - (ydiff * increments[p][2]) + (step*1.5)
 
             while affine_y_start < 0:
                 affine_y_start += 256

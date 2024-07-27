@@ -88,6 +88,8 @@ fading_out:
 	.res 1
 slide_up_idx:
 	.res 1
+tmp1:
+	.res 1
 
 .segment "CUBE"
 entry:
@@ -99,7 +101,7 @@ entry:
 	LOADFILE "CUBETILES.DAT", 0, .loword(CUBE_TILEBASE), <(.hiword(CUBE_TILEBASE))
 	LOADFILE "CUBETILES.PAL", 0, $FA00, 1 ; direct to palette
 
-;	MUSIC_SYNC $82 ;XXX
+	MUSIC_SYNC $82
 	jsr do_cube
 	jsr wipe_first_64k_vram
 
@@ -376,9 +378,6 @@ gowait:
 	lsr
 	sta Vera::Reg::L0TileBase
 
-:	jsr X16::Kernal::GETIN
-	beq :-
-
 	jsr flush_palette
 	jsr flush_palette2
 
@@ -408,7 +407,7 @@ noslide:
 check_sync:
 	lda syncval
 	cmp #$8C
-;	bcs startfade
+	bcs startfade
 next_step:
 	inc step
 	bne :+
