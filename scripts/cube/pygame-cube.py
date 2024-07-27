@@ -32,8 +32,8 @@ vertices = [
 # Cube faces!
 # index 4 of each one is the color index of the face
 faces = [
-    (2, 0, 4, 6, 0), # front
-    (7, 5, 1, 3, 0), # back
+    (0, 4, 6, 2, 0), # front
+    (5, 1, 3, 7, 0), # back
     (0, 1, 5, 4, 1), # top
     (6, 7, 3, 2, 1), # bottom
     (3, 1, 0, 2, 2), # left
@@ -88,6 +88,66 @@ camera = (0, 0, 6)
 
 # - Section terminator (high bit set)
 
+def on_segment(p, q, r):
+    """Given three collinear points p, q, r, the function checks if
+    point q lies on line segment 'pr'."""
+
+    if (q[0] <= max(p[0], r[0]) and q[0] >= min(p[0], r[0]) and
+        q[1] <= max(p[1], r[1]) and q[1] >= min(p[1], r[1])):
+        return True
+    return False
+
+def orientation(p, q, r):
+    """To find the orientation of the ordered triplet (p, q, r).
+    The function returns:
+    0 -> p, q and r are collinear
+    1 -> Clockwise
+    2 -> Counterclockwise"""
+
+    val = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1])
+    if val == 0:
+        return 0
+    elif val > 0:
+        return 1
+    else:
+        return 2
+
+def do_intersect(p1, q1, p2, q2):
+    """The main function that returns true if the line segment 'p1q1'
+    and 'p2q2' intersect."""
+
+    # Find the four orientations needed for general and
+    # special cases
+    o1 = orientation(p1, q1, p2)
+    o2 = orientation(p1, q1, q2)
+    o3 = orientation(p2, q2, p1)
+    o4 = orientation(p2, q2, q1)
+
+    # General case
+    if o1 != o2 and o3 != o4:
+        return True
+
+    # Special Cases
+    # p1, q1 and p2 are collinear and p2 lies on segment p1q1
+    if o1 == 0 and on_segment(p1, p2, q1):
+        return True
+
+    # p1, q1 and q2 are collinear and q2 lies on segment p1q1
+    if o2 == 0 and on_segment(p1, q2, q1):
+        return True
+
+    # p2, q2 and p1 are collinear and p1 lies on segment p2q2
+    if o3 == 0 and on_segment(p2, p1, q2):
+        return True
+
+    # p2, q2 and q1 are collinear and q1 lies on segment p2q2
+    if o4 == 0 and on_segment(p2, q1, q2):
+        return True
+
+    # Doesn't fall in any of the above cases
+    return False
+
+
 def calculate_texture_increments(vertices):
     if len(vertices) < 3:
         raise ValueError("At least three vertices are required.")
@@ -103,23 +163,32 @@ def calculate_texture_increments(vertices):
     vector_h = (vector_h1 + vector_h2) / 2
     vector_v = (vector_v1 + vector_v2) / 2
 
-    vector_h_len = math.sqrt(abs(vector_h[0]**2) + abs(vector_h[1]**2))
-    vector_v_len = math.sqrt(abs(vector_v[0]**2) + abs(vector_v[1]**2))
+    vector_h_len = math.sqrt(vector_h[0]**2 + vector_h[1]**2)
+    vector_v_len = math.sqrt(vector_v[0]**2 + vector_v[1]**2)
 
     vector_h_ratio = scale*2/vector_h_len
     vector_v_ratio = scale*2/vector_v_len
 
-    scale_ratio = 22/scale
+    scale_ratio = 25/scale
 
     # normalize the two vectors
     normal_h = (vector_h[0] / vector_h_len, vector_h[1] / vector_h_len)
     normal_v = (vector_v[0] / vector_v_len, vector_v[1] / vector_v_len)
 
-    global_x_inc = scale_ratio*vector_h_ratio*normal_h[0]
-    global_y_inc = scale_ratio*vector_v_ratio*normal_v[0]
+    # turn the vectors into angles
+    angle_h = math.atan2(normal_h[1], normal_h[0])
+    angle_v = math.atan2(normal_v[1], normal_v[0])
 
-    linewise_x_inc = scale_ratio*vector_h_ratio*normal_h[1]
-    linewise_y_inc = scale_ratio*vector_v_ratio*normal_v[1]
+    # How much does the V vector deviate from 90°?
+    skew_angle = angle_v - (math.pi/2) - angle_h
+
+    print(f"skew {skew_angle} angle {angle_h} sin {math.sin(angle_h)} cos {math.cos(angle_h)}")
+
+    global_x_inc = scale_ratio*vector_h_ratio*math.cos(angle_h + skew_angle)
+    global_y_inc = scale_ratio*vector_v_ratio*-math.sin(angle_h)
+
+    linewise_x_inc = scale_ratio*vector_h_ratio*math.sin(angle_h + skew_angle)
+    linewise_y_inc = scale_ratio*vector_v_ratio*math.cos(angle_h)
 
     # XXX
     #global_x_inc = 1
@@ -135,11 +204,16 @@ def rotate_cube(step):
     # This will eventually determine the entire sequence
     # based on the step (frame) number
     angle_x = step*2*math.pi/360/7
-    angle_x = 0
+#    angle_x = 0
     angle_y = step*2*math.pi/360
-    angle_y = 0
-    angle_z = step*2*math.pi/360
+#    angle_y = 0
+#    angle_x = angle_y
+    if step > 64:
+        angle_z = (step-64)*2*math.pi/360/13
+    else:
+        angle_z = 0
 #    angle_z = 0
+
 
     scale = 26+4*math.sin(step/60)
 
@@ -257,7 +331,7 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
         top_y = 100
         bottom_y = 0
 
-        print(f"step {step} {step:04x}")
+        print(f"step {step} {step:04x}: {file.tell():08x}")
 
         for p in range(len(pfaces)):
             poly = Polygon(pfaces[p])
@@ -273,16 +347,10 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             x3, y3 = sorted_vertices[2]
             x4, y4 = sorted_vertices[3]
 
-            if x3 < x4:
-                xbl = x3
-                ybl = y3
-                xbr = x4
-                ybr = y4
-            else:
-                xbl = x4
-                ybl = y4
-                xbr = x3
-                ybr = y3
+#            if x3 < x4 or (x3 < x2 and x3 > x1):
+#            else:
+
+            lpf = len(pfaces[p])
 
             if x1 < x2:
                 xtl = x1
@@ -295,10 +363,21 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 xtr = x1
                 ytr = y1
 
-            left_at_x2 = x2
-            right_at_x2 = x2
-            left_at_x3 = x3
-            right_at_x3 = x3
+            if do_intersect((xtl,ytl),(x3,y3),(xtr,ytr),(x4,y4)):
+                xbl = x4
+                ybl = y4
+                xbr = x3
+                ybr = y3
+            else:
+                xbl = x3
+                ybl = y3
+                xbr = x4
+                ybr = y4
+
+            left_at_y2 = x2
+            right_at_y2 = x2
+            left_at_y3 = x3
+            right_at_y3 = x3
 
             # section above y2, if any
 
@@ -306,15 +385,16 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 if (x1 > x2):
                     raise RuntimeError("x1 was not expected to be > x2")
                 starting_len = (x2 - x1)
+                left_at_y2 = x1
 
             elif x1 < x2: # Top slants like "backslash"
                 starting_len = 0
                 right_slope = (x2 - x1) / (y2 - y1)
                 left_slope = (xbl - x1) / (ybl - y1)
                 lines = y2 - y1 # lines to follow
-                left_at_x2 = x1 + (left_slope * lines)
-                length_incr = ((x2 - left_at_x2) - starting_len) / lines
-                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                left_at_y2 = x1 + (left_slope * lines)
+                length_incr = ((x2 - left_at_y2) - starting_len) / lines
+                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'top backslash', "xtl": xtl, "ytl": ytl, "xbl": xbl, "ybl": ybl})
                 starting_len += length_incr * lines
 
             elif x1 > x2: # Top slants like "forward slash"
@@ -322,9 +402,9 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 right_slope = (xbr - x1) / (ybr - y1)
                 left_slope = (x2 - x1) / (y2 - y1)
                 lines = y2 - y1 # lines to follow
-                right_at_x2 = x1 + (right_slope * lines)
-                length_incr = ((right_at_x2 - x2) - starting_len) / lines
-                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                right_at_y2 = x1 + (right_slope * lines)
+                length_incr = ((right_at_y2 - x2) - starting_len) / lines
+                sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'top forwardslash', "x2": x2, "y2": y2})
                 starting_len += length_incr * lines
 
             else: # Top section is a point
@@ -332,50 +412,48 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
 
             # middle section
 
-            if x3 > x4 or (x3 == x4 and x2 < x3) or (x3 == x4 and x1 < x3): # Right side changes first
+            if x3 == xbr: # Right side changes first
                 lines = y3 - y2 # lines to follow
-                left_slope = (x4 - xtl) / (y4 - ytl)
+                left_slope = (xbl - xtl) / (ybl - ytl)
                 if lines > 0:
                     right_slope = (x3 - xtr) / (y3 - ytr)
-                    left_at_x3 = xtl + (left_slope * lines)
-                    length_incr = ((x3 - left_at_x3) - starting_len) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    left_at_y3 = left_at_y2 + (left_slope * lines)
+                    length_incr = ((xbr - left_at_y3) - starting_len) / lines
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'middle before right side change', "left_at_y3": left_at_y3, "xtl": xtl, "ytl": ytl, "xbr": xbr, "ybr": ybr})
                     starting_len += length_incr * lines
                 else:
                     # no middle section
-                    left_at_x3 = xtl
+                    left_at_y3 = xtl
 
                 if y3 == y4: # Flat bottom
                     pass
                 else: # Triangular section
-                    right_slope = (x4 - x3) / (y4 - y3)
+                    right_slope = (xbr - xbl) / (ybr - ybl)
                     lines = y4 - y3
-                    # should this be 0 or 1?
-                    length_incr = (0 - (x3 - left_at_x3)) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    length_incr = (left_at_y3 - x3) / lines
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'bottom right changing'})
                     starting_len += length_incr * lines
 
-            elif x3 < x4 or (x3 == x4 and x2 > x3) or (x3 == x4 and x1 > x3): # Left side changes first
+            elif x3 == xbl: # Left side changes first
                 lines = y3 - y2 # lines to follow
-                right_slope = (x4 - xtr) / (y4 - ytr)
+                right_slope = (xbr - xtr) / (ybr - ytr)
                 if lines > 0:
                     left_slope = (x3 - xtl) / (y3 - ytl)
-                    right_at_x3 = xtr + (right_slope * lines)
-                    length_incr = ((right_at_x3 - x3) - starting_len) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    right_at_y3 = right_at_y2 + (right_slope * lines)
+                    length_incr = ((right_at_y3 - xbl) - starting_len) / lines
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'middle before left side change'})
                     starting_len += length_incr * lines
                 else:
                     # no middle section
-                    right_at_x3 = xtr
+                    right_at_y3 = xtr
 
                 if y3 == y4: # Flat bottom
                     pass
                 else: # Triangular section
-                    left_slope = (x4 - x3) / (y4 - y3)
+                    left_slope = (xbl - xbr) / (ybl - ybr)
                     lines = y4 - y3
-                    # should this be 0 or 1?
-                    length_incr = (0 - (right_at_x3 - x3)) / lines
-                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len})
+                    length_incr = (x3 - right_at_y3) / lines
+                    sections.append({"left_slope": left_slope, "length_incr": length_incr, "lines": lines, "starting_len": starting_len, "sec": 'bottom left changing'})
                     starting_len += length_incr * lines
 
             else: # Vertical arrangement of bottom points
@@ -400,6 +478,10 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
                 s['linewise_affine_y'] = linewise_affine_y
                 s['linewise_affine_x'] = linewise_affine_x
 
+                s['left_slope'] /= 2
+                s['length_incr'] /= 2
+                #s['starting_len'] += 1
+
                 print(s)
 
             # write out face-wise parameters
@@ -408,10 +490,10 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             raster_x = x1
 
             # preshifted for VERA FX's registers
-            global_affine_y_incr_frac = int(increments[p][1] * 512) & 0xff
-            global_affine_y_incr = int(increments[p][1] * 2) & 0x7f
-            global_affine_x_incr_frac = int(increments[p][0] * 512) & 0xff
-            global_affine_x_incr = int(increments[p][0] * 2) & 0x7f
+            global_affine_y_incr_frac = int((65536 + increments[p][1]) * 512) & 0xff
+            global_affine_y_incr = int((65536 + increments[p][1]) * 2) & 0x7f
+            global_affine_x_incr_frac = int((65536 + increments[p][0]) * 512) & 0xff
+            global_affine_x_incr = int((65536 + increments[p][0]) * 2) & 0x7f
 
             #affine_y_start = (increments[p][1] * step)
             #affine_x_start = (increments[p][0] * step)
@@ -419,8 +501,8 @@ with open("CUBECHOREO.DAT", mode="wb") as file:
             xdiff = pfaces[p][0][0] - sorted_vertices[0][0]
             ydiff = pfaces[p][0][1] - sorted_vertices[0][1]
 
-            affine_y_start = (ydiff * increments[p][3]) + (xdiff * increments[p][1]) #+ (increments[p][1] * step)
-            affine_x_start = (ydiff * increments[p][2]) + (xdiff * increments[p][0]) #+ (increments[p][0] * step)
+            affine_y_start = 5 - (xdiff * increments[p][1]) - (ydiff * increments[p][3]) #+ (increments[p][1] * step)
+            affine_x_start = - (xdiff * increments[p][0]) - (ydiff * increments[p][2]) + step
 
             while affine_y_start < 0:
                 affine_y_start += 256

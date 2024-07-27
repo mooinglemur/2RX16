@@ -263,6 +263,22 @@ start_section:
 	sta length_int
 
 start_line:
+	lda length_increment_frac
+	clc
+	adc length_frac
+	sta length_frac
+	lda length_increment_int
+	adc length_int
+	sta length_int
+
+	lda line_xpos_frac
+	clc
+	adc left_slope_frac
+	sta line_xpos_frac
+	lda line_xpos_int
+	adc left_slope_int
+	sta line_xpos_int
+
 	ldy length_int
 	beq end_line
 	bmi end_line
@@ -330,7 +346,7 @@ end_line:
 	stx Vera::Reg::FXXPosL
 
 	dec line_count
-	bne start_line
+	jne start_line
 	jmp start_section
 end_frame:
 	lda which_fbuf
