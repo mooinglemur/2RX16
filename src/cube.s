@@ -127,10 +127,10 @@ entry:
 	stz step+1
 start_frame:
 	; we are at frame start
-	lda step
-	sta $9fb9
-	lda step+1
-	sta $9fba
+	;lda step
+	;sta $9fb9
+	;lda step+1
+	;sta $9fba
 start_face:
 	; set up tile base
 

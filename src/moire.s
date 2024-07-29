@@ -21,6 +21,11 @@
 
 .macpack longbranch
 
+.scope SCROLLER
+	.importzp SCROLL_COPY_CODE_RAM_BANK
+	.import SCROLL_COPY_CODE_RAM_ADDRESS
+.endscope
+
 CHOREO_BANK = $20
 TECHNO_MAPBASE = $10000
 TECHNO_TILEBASE = $11000 ; (plus $1000 offset for each frame)
@@ -185,6 +190,9 @@ panicpal_set:
 	MUSIC_SYNC $4C
 
 	jsr slide_on
+
+	; do this SCROLLER lengthy load here since we have time
+	LOADFILE "SCROLLCOPY.DAT", SCROLLER::SCROLL_COPY_CODE_RAM_BANK, SCROLLER::SCROLL_COPY_CODE_RAM_ADDRESS
 
 	MUSIC_SYNC $4E
 

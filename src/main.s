@@ -167,10 +167,11 @@ SCENE = $4800
 	LOADFILE "MUSIC3.ZSM", SONG_BANK, $a000
 	LOADFILE "SCROLLER.BIN", 0, SCENE
 	jsr zero_entire_palette_and_target
-
-	; do some of the SCROLLER lengthy loads here
-	LOADFILE "FOREST.DAT", 0, .loword(SCROLLER::BITMAP_VRAM_ADDRESS), <(.hiword(SCROLLER::BITMAP_VRAM_ADDRESS))
+.ifdef SKIP_SONG2
+	; do this SCROLLER lengthy load here if we didn't get to it in MOIRE
 	LOADFILE "SCROLLCOPY.DAT", SCROLLER::SCROLL_COPY_CODE_RAM_BANK, SCROLLER::SCROLL_COPY_CODE_RAM_ADDRESS
+.endif
+	LOADFILE "FOREST.DAT", 0, .loword(SCROLLER::BITMAP_VRAM_ADDRESS), <(.hiword(SCROLLER::BITMAP_VRAM_ADDRESS))
 
 	jsr play_song
 	jsr SCENE

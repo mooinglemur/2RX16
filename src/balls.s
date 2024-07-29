@@ -2,8 +2,12 @@
 .import apply_palette_fade_step
 .import flush_palette
 
+.import graceful_fail
+
 .import target_palette
 
+BALLTABLE1_BANK = $30
+BALLTABLE2_BANK = $20 ; $20 as a base is baked into pre-gen data in BALLTABLE1 by python code
 
 .macpack longbranch
 
@@ -13,6 +17,11 @@
 
 .segment "BALLS"
 entry:
+	LOADFILE "BALLTABLE1.DAT", BALLTABLE1_BANK, $A000
+	LOADFILE "BALLTABLE2.DAT", BALLTABLE2_BANK, $A000
+
+
+
 	; fade to grey
 
 	ldx #32
