@@ -25,7 +25,7 @@ GROUND_TILE_BASE = $1E000
 GROUND_TILE_MAP = $1E800
 BALL_SPRITE_BASE = $1F000
 
-WIND_START_FRAMES = 1680
+WIND_START_FRAMES = 1600
 MAIN_ROTATE_FRAMES = 1700
 
 .include "x16.inc"
@@ -128,7 +128,7 @@ after_fade:
 	bcc main_choreo
 wind_choreo:
 	lda frame_nr
-	and #$03
+	and #$01
 	bne testloop
 
 	lda cur_ball
@@ -149,10 +149,8 @@ wind_choreo:
 	lda #0
 	sbc #0
 	sta ball_momentum,x
-	lda ball_gravity,x
-	beq :+
-	dec ball_gravity,x
-:	inc cur_ball
+	stz ball_gravity,x
+	inc cur_ball
 	jmp testloop
 check_start_fade:
 	lda fading
@@ -204,7 +202,7 @@ do_choreo:
 	lda (ptr2)
 	sta ball_momentum,x
 	INCPTR2
-	lda #40
+	lda #30
 	sta ball_gravity,x
 	lda X16::Reg::RAMBank
 	sta bankc
@@ -342,13 +340,21 @@ after_invert:
 	sta theta_add
 	rts
 final_rotate:
-	; float, cancel gravity
 	ldx #127
-:	stz ball_gravity,x
-	dex
-	bpl :-
-	inc speen
-	bne :+
+decrease_gravity:
+	lda ball_gravity,x
+	beq :+
+	dec ball_gravity,x
+:	dex
+	bpl decrease_gravity
+
+	lda frame_nr
+	and #1
+	clc
+	inc
+	adc speen
+	sta speen
+	bcc :+
 	inc speen+1
 :	lda speen
 	clc
@@ -379,7 +385,7 @@ loop:
 	bcc after_bounce
 	; bounce
 	; negate momentum, with energy loss
-	lda #80
+	lda #40
 	sec
 	sbc ball_momentum_frac,x
 	sta ball_momentum_frac,x
@@ -644,7 +650,7 @@ tile_loop:
 
 	; L1 bitmap palette offset
 	lda #2
-	sta Vera::Reg::L1HScrollH	
+	sta Vera::Reg::L1HScrollH
 
 	rts
 .endproc

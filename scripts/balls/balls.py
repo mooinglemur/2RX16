@@ -52,6 +52,8 @@ vertex_z = 0
 # OUTPUT
 # y value on screen
 
+
+# These functions and constant arrays are from the original (and/or the OpenGL port)
 def isin(deg):
 	return math.sin(math.pi * deg / 512) * 255
 
