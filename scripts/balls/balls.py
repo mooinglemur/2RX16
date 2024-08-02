@@ -3,7 +3,8 @@
 import math
 import numpy as np
 
-camera = 360
+camera = 4
+scale = 100
 vertex_x = 1
 vertex_y = 0
 vertex_z = 0
@@ -39,7 +40,7 @@ with open("BALLTABLE1.DAT", mode="wb") as file:
     for magnitude in range(32):
         for theta in range(256):
             angle_y = (theta*2*math.pi)/256
-            scaled_x = vertex_x * magnitude
+            scaled_x = vertex_x * (magnitude / 31)
 
             # Rotate around the y-axis
             new_x = scaled_x * math.cos(angle_y) - vertex_z * math.sin(angle_y)
@@ -48,17 +49,17 @@ with open("BALLTABLE1.DAT", mode="wb") as file:
             z_ratio = (camera) / (new_z + camera) # camera position
 
             new_x *= z_ratio
-            scaled_x = round(new_x*4.7)+160
+            scaled_x = round(new_x*scale*1.3)+160
             if scaled_x < 0:
                 scaled_x += 65536
 
             resolved_x.append(scaled_x)
 
-            ysh = round(z_ratio * (127/128)*19*4.7)+100+2
+            ysh = round(z_ratio*scale)+50+3
             if ysh < 0 or ysh >= 200:
                 raise RuntimeError(f"ysh {ysh}")
             shadow_y.append(ysh)
-            scale_amount.append(round(z_ratio,3))
+            scale_amount.append(round(z_ratio,2))
 
     uniq_scales = np.unique(np.array(scale_amount))
     print(shadow_y)
@@ -86,10 +87,15 @@ with open("BALLTABLE1.DAT", mode="wb") as file:
         bank = (s // 32) + 0x20
         file.write(bytes([bank & 0xff]))
 
+if len(uniq_scales) > 256:
+    raise RuntimeError(f"Uniq scales count {len(uniq_scales)} > 256")
+
 with open("BALLTABLE2.DAT", mode="wb") as file:
     for us in uniq_scales:
         for y in range(256):
-            ty = round(us * (y-128)/128*19*4.7)+100
-            if ty < 0 or ty >= 200:
+            ty = round(us*scale*(y-128)/128)+50
+            if ty <= 0:
+                ty = 255
+            elif ty >= 200:
                 raise RuntimeError(f"ty {ty}")
             file.write(bytes([ty & 0xff]))

@@ -25,6 +25,8 @@
 .import target_palette3
 .import target_palette4
 
+.import galois16o
+
 .macpack longbranch
 .feature string_escapes
 
@@ -1193,37 +1195,6 @@ syncf:
 	PALETTE_FADE 5
 
 	rts
-.endproc
-
-.proc galois16o
-	lda seed+1
-	pha ; store copy of high byte
-	; compute seed+1 ($39>>1 = %11100)
-	lsr ; shift to consume zeroes on left...
-	lsr
-	lsr
-	sta seed+1 ; now recreate the remaining bits in reverse order... %111
-	lsr
-	eor seed+1
-	lsr
-	eor seed+1
-	eor seed+0 ; recombine with original low byte
-	sta seed+1
-	; compute seed+0 ($39 = %111001)
-	pla ; original high byte
-	sta seed+0
-	asl
-	eor seed+0
-	asl
-	eor seed+0
-	asl
-	asl
-	asl
-	eor seed+0
-	sta seed+0
-	rts
-seed:
-	.word $6502
 .endproc
 
 titlepal:

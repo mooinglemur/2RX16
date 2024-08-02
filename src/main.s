@@ -1,11 +1,15 @@
 .export syncval
 .exportzp blob_to_read, blob_target_ptr
 
+.export galois16o
+
 .export scenevector
 .export graceful_fail
 
 .import zero_entire_palette_and_target
 .import zero_entire_target
+
+.import target_palette
 
 .import flush_palette
 .import apply_palette_fade_step
@@ -188,12 +192,24 @@ SCENE = $4800
 	LOADFILE "BALLS.BIN", 0, SCENE
 	jsr SCENE
 	; overwrites the currently-playing song!
-	; but the cursor is past the end of the
-	; new song's length, so it can coast
-	; to the end of the old song's data
+	; but the cursor is already past the end of the
+	; new song's length, so the current playback
+	; can coast to the end of the old song's data
 	LOADFILE "MUSIC4.ZSM", SONG_BANK, $a000
+
+	; fade to black
+	ldx #0
+:   stz target_palette,x
+	inx
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+
+	PALETTE_FADE 1
+
 	MUSIC_SYNC $A0
-	jsr play_song_1 ; priority 1 to avoid audible gap
+	jsr play_song_1 ; priority 1 to mask the gap by keeping the PCM from MUSIC3 playing
 .endif
 .ifndef SKIP_SONG4
 .ifdef SKIP_SONG3
@@ -727,3 +743,35 @@ machine_speed:
 
 auto_tx:
 	.byte "U0>B",1
+
+.proc galois16o
+	lda seed+1
+	pha ; store copy of high byte
+	; compute seed+1 ($39>>1 = %11100)
+	lsr ; shift to consume zeroes on left...
+	lsr
+	lsr
+	sta seed+1 ; now recreate the remaining bits in reverse order... %111
+	lsr
+	eor seed+1
+	lsr
+	eor seed+1
+	eor seed+0 ; recombine with original low byte
+	sta seed+1
+	; compute seed+0 ($39 = %111001)
+	pla ; original high byte
+	sta seed+0
+	asl
+	eor seed+0
+	asl
+	eor seed+0
+	asl
+	asl
+	asl
+	eor seed+0
+	sta seed+0
+	rts
+seed:
+	.word $6502
+.endproc
+
