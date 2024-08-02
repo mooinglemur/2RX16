@@ -109,7 +109,7 @@ blackpal:
 	; load title font
 	LOADFILE "TITLEFONT.VTS", 0, $0000, 1
 
-	; show no layers 
+	; show no layers
 	stz Vera::Reg::Ctrl
 	lda Vera::Reg::DCVideo
 	and #$0f
@@ -143,6 +143,12 @@ blackpal:
 	; mapbase is at $0D000
 	lda #(TILE_MAPBASE >> 9)
 	sta Vera::Reg::L0MapBase
+
+	; reset tilemap scroll
+	stz Vera::Reg::L0HScrollL
+	stz Vera::Reg::L0HScrollH
+	stz Vera::Reg::L0VScrollL
+	stz Vera::Reg::L0VScrollH
 
 	; put the tiles in place
 	VERA_SET_ADDR TILE_MAPBASE, 1
@@ -217,7 +223,7 @@ prebgloop:
 	lda syncval
 	cmp lastsync
 	jeq nosync
-	
+
 	sta lastsync
 	cmp #3
 	beq card1
@@ -338,7 +344,7 @@ noscroll:
 	lda syncval
 	cmp lastsync
 	jeq nosync1
-	
+
 	sta lastsync
 
 	cmp #7
@@ -820,7 +826,7 @@ backdrop_loop:
 	sta Vera::Reg::Data0
 	sty Vera::Reg::Data0
 	dex
-	bne :-	
+	bne :-
 
 	WAITVSYNC
 
@@ -834,7 +840,7 @@ backdrop_loop:
 	sta Vera::Reg::Data0
 	sty Vera::Reg::Data0
 	dex
-	bne :-	
+	bne :-
 
 	; let's copy the palette into the target
 	ldx #0
@@ -962,7 +968,7 @@ outerloop:
 	lda fx_y_val+2
 	sta $9f2c
 
-	; set DCSEL=5 to return to beginning of row source (subpixels) 
+	; set DCSEL=5 to return to beginning of row source (subpixels)
 	lda #(5 << 1)
 	sta Vera::Reg::Ctrl
 	lda xpos_s,y
@@ -1045,7 +1051,7 @@ planet_outerloop:
 	lda planet_fx_y_val+2
 	sta $9f2c
 
-	; set DCSEL=5 to return to beginning of row source (subpixels) 
+	; set DCSEL=5 to return to beginning of row source (subpixels)
 	lda #(5 << 1)
 	sta Vera::Reg::Ctrl
 	lda planet_pos_s,y
