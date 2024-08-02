@@ -51,7 +51,7 @@ pygame.display.set_caption("2R Cube")
 scale = 22
 center_offset = (width // 2, height // 2)
 
-vertical_offset = 0
+vertical_offset = -0.2
 
 camera = (0, 0, 6)
 

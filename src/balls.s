@@ -11,7 +11,8 @@
 
 .import target_palette
 
-BALLTABLE1_BANK = $30
+BALLCHOREO_BANK = $30
+BALLTABLE1_BANK = $28
 BALLTABLE2_BANK = $20 ; $20 as a base is baked into pre-gen data in BALLTABLE1 by python code
 
 .macpack longbranch
@@ -46,6 +47,10 @@ MADDRM:
 speen:
 	.res 2
 fading:
+	.res 1
+ptr2:
+	.res 2
+bankc:
 	.res 1
 
 .segment "BALLS_BSS"
@@ -92,6 +97,7 @@ entry:
 
 	LOADFILE "BALLTABLE1.DAT", BALLTABLE1_BANK, $A000
 	LOADFILE "BALLTABLE2.DAT", BALLTABLE2_BANK, $A000
+	LOADFILE "BALLCHOREO.DAT", BALLCHOREO_BANK, $A000
 
 testloop:
 	jsr update_physics
@@ -122,7 +128,7 @@ after_fade:
 	bcc main_choreo
 wind_choreo:
 	lda frame_nr
-	and #$01
+	and #$03
 	bne testloop
 
 	lda cur_ball
@@ -143,14 +149,16 @@ wind_choreo:
 	lda #0
 	sbc #0
 	sta ball_momentum,x
-	stz ball_gravity,x
-	inc cur_ball
+	lda ball_gravity,x
+	beq :+
+	dec ball_gravity,x
+:	inc cur_ball
 	jmp testloop
 check_start_fade:
 	lda fading
 	beq start_fade
 	cmp #16
-	bcs get_out
+	jcs get_out
 	inc fading
 	jmp after_fade
 start_fade:
@@ -168,31 +176,40 @@ start_fade:
 	inc fading
 	jmp after_fade
 main_choreo:
-
-	lda frame_nr
-	and #$07
-	jne testloop
-
+	lda bankc
+	sta X16::Reg::RAMBank
+	lda (ptr2)
+	beq do_choreo
+	dec
+	sta (ptr2)
+	jmp testloop
+do_choreo:
 	lda cur_ball
 	and #$7f
 	tax
-	lda #10
-	sta ball_gravity,x
-	lda frame_nr+1
-	and #$1f
-	ora #$a0
-	sta ball_magnitude,x
-	txa
-	asl
-	asl
+	INCPTR2
+	lda (ptr2)
 	sta ball_theta,x
-	txa
-	lda #0
+	INCPTR2
+	lda (ptr2)
+	sta ball_magnitude,x
+	INCPTR2
+	lda (ptr2)
 	sta ball_yint,x
+	stz ball_yfrac,x
+	INCPTR2
+	lda (ptr2)
+	sta ball_momentum_frac,x
+	INCPTR2
+	lda (ptr2)
+	sta ball_momentum,x
+	INCPTR2
+	lda #40
+	sta ball_gravity,x
+	lda X16::Reg::RAMBank
+	sta bankc
 	inc cur_ball
-
 	jmp testloop
-
 get_out:
 	DISABLE_SPRITES
 	rts
@@ -480,6 +497,12 @@ next2:
 	dex
 	bpl :-
 
+	sta ptr2+1
+	stz ptr2
+
+	lda #BALLCHOREO_BANK
+	sta bankc
+
 	stz speen
 	stz speen+1
 	stz theta_frac
@@ -489,6 +512,7 @@ next2:
 	stz frame_nr
 	stz frame_nr+1
 	stz cur_ball
+
 	rts
 .endproc
 
