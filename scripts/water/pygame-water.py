@@ -50,7 +50,7 @@ SCROLLER_BUFFER_ADDRESS = 0x8000
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
 DRAW_NEW_PALETTE = False
-DRAW_SPRITE_POSITIONS = False
+DRAW_SPRITE_POSITIONS = True
 DRAW_ALL_DRAWN_POSITIONS = False
 DO_SCROLL = True
 
@@ -408,8 +408,41 @@ scroll_copy_file.close()
 print("scroll copy code written to file: " + full_scroll_copy_file_name)
             
     
+# Sprite data
+
+sprite_x_high_string = "  .byte "
+sprite_x_low_string = "  .byte "
+sprite_y_high_string = "  .byte "
+sprite_y_low_string = "  .byte "
+
+for sprite_pos in sprite_positions:
+    x = sprite_pos[0]
+    y = sprite_pos[1]
+    
+    x_low = x % 256
+    x_high = x // 256
+    y_low = y % 256
+    y_high = y // 256
+    
+    sprite_x_high_string += "$" + format(x_high,"02x") + ", "
+    sprite_x_low_string += "$" + format(x_low,"02x") + ", "
+    sprite_y_high_string += "$" + format(y_high,"02x") + ", "
+    sprite_y_low_string += "$" + format(y_low,"02x") + ", "
+
+print('sprite_x_pos_l:')
+print(sprite_x_low_string)
+print('sprite_x_pos_h:')
+print(sprite_x_high_string)
+print('sprite_y_pos_l:')
+print(sprite_y_low_string)
+print('sprite_y_pos_h:')
+print(sprite_y_high_string)
+
+print()
+    
 # Printing out asm for palette:
 
+print('palette_data:')
 palette_string = ""
 for new_color in colors_12bit:
     red = new_color[0]
@@ -425,7 +458,7 @@ for new_color in colors_12bit:
     palette_string += "\n"
 
 print(palette_string)
-
+print('end_of_palette_data:')
 
 background_color = (0,0,0)
 
@@ -547,7 +580,7 @@ def run():
                 
                 pixel_color = (0xFF, 0xFF, 0x00)
         
-                pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 64*scale, 64*scale))
+                pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 64*scale, 64*scale), 1*scale)
         
         
         if (DRAW_ORIG_PALETTE):

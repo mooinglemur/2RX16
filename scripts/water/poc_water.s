@@ -87,6 +87,7 @@ SCROLL_COPY_CODE_RAM_ADDRESS = $A000
 ; === VRAM addresses ===
 
 BITMAP_VRAM_ADDRESS   = $00000
+SPRITES_VRAM_ADDRESS  = $10000  ; 10 sprites of 64x64 are used (40960 bytes)
 
 
 ; === Other constants ===
@@ -120,6 +121,13 @@ start:
 
     jsr clear_initial_scroll_sword_slow
     jsr load_initial_scroll_sword_slow
+    
+    
+; FIXME: IMPLEMENT!
+;    jsr load_sprite_data
+
+    jsr setup_sprites
+    
     jsr do_scrolling
     
     ; We are not returning to BASIC here...
@@ -214,6 +222,77 @@ initial_copy_scroll_sword_next_pixel:
     
 
     stz RAM_BANK
+    
+    rts
+    
+    
+sprite_address_l:  ; Addres bits: 12:5  -> starts at $10000, then $11000: so first is %00000000, second is %10000000 = $00 and $80
+    .byte $00, $80, $00, $80, $00, $80, $00, $80, $00, $80
+sprite_address_h:  ; Addres bits: 16:13  -> starts at $10000, so first is %10001000 (mode = 8bpp, $10000) = $88
+    .byte $88, $88, $89, $89, $8A, $8A, $8B, $8B, $8C, $8C
+    
+; This part is *generated*
+sprite_x_pos_l:
+  .byte $00, $40, $80, $00, $40, $80, $c0, $d6, $c0, $00
+sprite_x_pos_h:
+  .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $01
+sprite_y_pos_l:
+  .byte $00, $00, $00, $40, $40, $40, $10, $48, $88, $88
+sprite_y_pos_h:
+  .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+  
+setup_sprites:
+
+    lda #%00010001      ; setting bit 16 of vram address to 1, setting auto-increment value to 1
+    sta VERA_ADDR_BANK
+
+    lda #<(VERA_SPRITES)
+    sta VERA_ADDR_LOW
+    lda #>(VERA_SPRITES)
+    sta VERA_ADDR_HIGH
+
+    ldx #0
+
+setup_next_sprite:
+
+    ; TODO: for performance we could skip writing certain sprite attibutes and just read them 
+
+    ; Address (12:5)
+    lda sprite_address_l, x
+    sta VERA_DATA0
+
+    ; Mode,	-	, Address (16:13)
+    lda sprite_address_h, x
+    sta VERA_DATA0
+    
+    ; X (7:0)
+    lda sprite_x_pos_l, x
+    sta VERA_DATA0
+    
+    ; X (9:8)
+    lda sprite_x_pos_h, x
+    sta VERA_DATA0
+
+    ; Y (7:0)
+    lda sprite_y_pos_l, x
+    sta VERA_DATA0
+
+    ; Y (9:8)
+    lda sprite_y_pos_h, x
+    sta VERA_DATA0
+    
+    ; Collision mask	Z-depth	V-flip	H-flip
+    lda #%00000100 ; Sprite between background and layer 0
+    sta VERA_DATA0
+
+    ; Sprite height,	Sprite width,	Palette offset
+    lda #%11110000 ; 64x64, 0*16 = 0 palette offset
+    sta VERA_DATA0
+    
+    inx
+    
+    cpx #10
+    bne setup_next_sprite
     
     rts
     
