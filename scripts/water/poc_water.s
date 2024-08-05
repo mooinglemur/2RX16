@@ -101,7 +101,7 @@ NR_OF_SCROLL_COPY_CODE_BANKS = 17
 ; FIXME: we should change this!
 ; FIXME: we should change this!
 ; FIXME: we should change this!
-INITIAL_SCROLL = 100
+INITIAL_SCROLL = 1
 NR_OF_SCROLL_ITERATIONS = 400-INITIAL_SCROLL
 
 start:

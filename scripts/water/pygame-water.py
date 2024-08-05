@@ -31,11 +31,27 @@ bitmap_image_height = 200
 scrollsword_image_width = 400
 scrollsword_image_height = 35
 
+# We put a few sprites behind the background, so when we draw a zero to the background bitmap, we see the background-pixel of a sprite behind it (not a black pixel)
+sprite_positions = [
+    (0,   0),
+    (64,  0),
+    (128, 0),
+    (0,   64),
+    (64,  64),
+    (128, 64),
+    (192, 16),   # this one overlaps the next one a bit, but thats ok
+    (224-10, 200-64-64),
+    (192, 200-64),
+    (256, 200-64),
+]
+
 SCROLLER_BUFFER_ADDRESS = 0x8000
 
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
 DRAW_NEW_PALETTE = False
+DRAW_SPRITE_POSITIONS = False
+DRAW_ALL_DRAWN_POSITIONS = False
 DO_SCROLL = True
 
 '''
@@ -517,12 +533,21 @@ def run():
                         elif (pos_file_nr == 2):
                             pixel_color = (0x00, 0xFF, 0xFF)
                     
-# FIXME!
-# FIXME!
-# FIXME!
-#                    pixel_color = (0x00, 0xFF, 0xFF)
+                    # To draw all positions that are drawn
+                    if (DRAW_ALL_DRAWN_POSITIONS):
+                        pixel_color = (0x00, 0xFF, 0xFF)
                     
                     pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
+        
+        if (DRAW_SPRITE_POSITIONS):
+        
+            for sprite_pos in sprite_positions:
+                x = sprite_pos[0]
+                y = sprite_pos[1]
+                
+                pixel_color = (0xFF, 0xFF, 0x00)
+        
+                pygame.draw.rect(screen, pixel_color, pygame.Rect(x*scale, y*scale, 64*scale, 64*scale))
         
         
         if (DRAW_ORIG_PALETTE):
