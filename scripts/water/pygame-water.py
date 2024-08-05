@@ -29,9 +29,9 @@ bitmap_image_width = 320
 bitmap_image_height = 200
 
 scrollsword_image_width = 400
-scrollsword_image_height = 34
+scrollsword_image_height = 35
 
-SCROLLER_BUFFER_ADDRESS = 0x6000
+SCROLLER_BUFFER_ADDRESS = 0x8000
 
 DEBUG_POS_COLORS = False
 DRAW_ORIG_PALETTE = False
@@ -200,7 +200,6 @@ while (byte_index < nr_of_palette_bytes):
     
     colors_12bit.append((red, green, blue))
 
-'''
 bitmap_data = []
 for source_y in range(bitmap_image_height):
 
@@ -215,7 +214,6 @@ bitmapFile = open(full_bitmap_file_name, "wb")
 bitmapFile.write(bytearray(bitmap_data))
 bitmapFile.close()
 print("bitmap written to file: " + full_bitmap_file_name)
-'''
 
 
 '''
@@ -460,8 +458,9 @@ def run():
 
     pygame.display.update()
 
-
-    scroll_offset = 0
+# FIXME: what should this actually be?
+#    scroll_offset = 0
+    scroll_offset = -108
 
     running = True
     
@@ -532,6 +531,11 @@ def run():
                             pixel_color = (0xFF, 0x00, 0xFF)
                         elif (pos_file_nr == 2):
                             pixel_color = (0x00, 0xFF, 0xFF)
+                    
+# FIXME!
+# FIXME!
+# FIXME!
+#                    pixel_color = (0x00, 0xFF, 0xFF)
                     
                     pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
         
