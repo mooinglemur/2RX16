@@ -108,7 +108,7 @@ start:
 
     sei
     
-;    jsr generate_shift_by_one_pixel_code
+    jsr generate_shift_by_one_pixel_code
     
     jsr setup_vera_for_layer0_bitmap
 
@@ -138,7 +138,6 @@ clear_initial_scroll_sword_slow:
     ldx #0
 clear_scroll_sword_next_column:
 
-; FIXME: REMOVE (OLD): lda #$80  ; We set bit7 to 1
     lda #0  ; We clear the buffer
     ldy #0
 clear_scroll_sword_next_pixel:    
@@ -235,7 +234,6 @@ do_scrolling:
 ;    lda #%00000100
 ;    sta VERA_FX_CTRL         ; 4-bit mode
 
-
     lda #<NR_OF_SCROLL_ITERATIONS
     sta SCROLL_ITERATION
     lda #>NR_OF_SCROLL_ITERATIONS
@@ -306,16 +304,13 @@ scroll_sword_single_column_copy_next_y:
 scroll_bank_is_ok:
     
     
-; FIXME: enable this!
-; FIXME: enable this!
-; FIXME: enable this!
     ; We 'shift' all pixels to the left in the buffer (34 rows)
-;    ldy #0
-;shift_nex_row:
-;    jsr SHIFT_PIXEL_CODE_ADDRESS
-;    iny
-;    cpy #34
-;    bne shift_nex_row
+    ldy #0
+shift_nex_row:
+    jsr SHIFT_PIXEL_CODE_ADDRESS
+    iny
+    cpy #34
+    bne shift_nex_row
 
     sec
     lda SCROLL_ITERATION
@@ -526,7 +521,7 @@ generate_shift_by_one_pixel_code:
     
     ldy #0                 ; generated code byte counter
     
-    ldx #0                 ; counts nr of copy instructions (we need to do 237 copies)
+    ldx #0                 ; counts nr of copy instructions (we need to do 158 copies)
 next_copy_instruction:
 
     ; Use the previous LOAD_ADDRESS as the new STORE_ADDRESS
@@ -565,13 +560,7 @@ next_copy_instruction:
     jsr add_code_byte
 
     inx
-; FIXME! NOT 237!
-; FIXME! NOT 237!
-; FIXME! NOT 237!
-; FIXME! NOT 237!
-; FIXME! NOT 237!
-; FIXME! NOT 237!
-    cpx #237
+    cpx #158
     bne next_copy_instruction
 
     ; -- rts --
