@@ -323,16 +323,23 @@ load_sprite_data:
     sta VERA_CTRL
 
 
-; FIXME: iterate over all 10 sprites!
+    ; iterating over all 10 sprites
 
-; FIXME: setup SPRITE_SRC_VRAM_ADDR beforehand!
-    lda #$00
+    ldx #0
+
+load_next_sprite:
+
+    lda sprite_src_addr_l, x
     sta SPRITE_SRC_VRAM_ADDR
-    lda #$00
+    lda sprite_src_addr_h, x
     sta SPRITE_SRC_VRAM_ADDR+1
 
     jsr copy_sprite_data_slow
     
+    inx
+    
+    cpx #10
+    bne load_next_sprite
 
     rts
     
