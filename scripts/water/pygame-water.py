@@ -216,7 +216,6 @@ bitmapFile.close()
 print("bitmap written to file: " + full_bitmap_file_name)
 
 
-'''
 # Note: we store the scrollsword pixels in a different way: column by column (from left to right)
 scrollsword_data = []
 for source_x in range(scrollsword_image_width):
@@ -225,16 +224,17 @@ for source_x in range(scrollsword_image_width):
 
         clr_idx = scroll_sword_pixels[source_x + source_y * 400]
         
-        # We want to this be nicely divided into 8kB chunks, we *for now* we store 256 * 32 pixels in each RAM bank
+        # We want to this be nicely divided into 8kB chunks, we *for now* we store 128 * 64 pixels in each RAM bank. Note: only 35 of the 64 bytes/pixels are used!
         # There is no real need to actually split this file (for now) since the LOAD kernal function on the X16 does
         # the spliting for us.
         
-# FIXME!        
-# FIXME!        
-# FIXME!        
         # But note: only 34*158 are going to be copied into the scroller buffer!
         
         scrollsword_data.append(clr_idx)
+    
+    # We fill with 64-35 = 29 black/dummy pixels
+    for dummy_y in range(64-35):
+        scrollsword_data.append(0)
         
 full_scrollsword_file_name = os.path.join(base_output_dir, scrollsword_filename)
 scrollSwordFile = open(full_scrollsword_file_name, "wb")
@@ -242,13 +242,9 @@ scrollSwordFile.write(bytearray(scrollsword_data))
 scrollSwordFile.close()
 print("scroll sword written to file: " + full_scrollsword_file_name)
 
-'''
 
 
-'''
-# Using the WATx.DAT info, we determine which pixels should be in the first 16 colors.
-# Also: reversing the mapping: source_pos -> screen_x/y ==> screen_x/y -> source_pos
-background_colors_overwritten_by_scroller = {}
+# Using the WATx.DAT info: we reverse the mapping: source_pos -> screen_x/y ==> screen_x/y -> source_pos
 nr_of_pixels_overdrawn_by_scroller = 0
 screen_xy_to_source_pos = {}
 for pos_file_nr in range(3):
@@ -260,31 +256,21 @@ for pos_file_nr in range(3):
             x_screen = destination['x']
             y_screen = destination['y']
             
-            clr_idx = pixels[x_screen + y_screen * 320]
+            # clr_idx = pixels[x_screen + y_screen * 320]
             
-# FIXME!
-            # Note: We should only change pixels that are blue-ish (so they should be >=128)
-            if (clr_idx >= 128):
+            nr_of_pixels_overdrawn_by_scroller += 1
             
-                nr_of_pixels_overdrawn_by_scroller += 1
-                background_colors_overwritten_by_scroller[clr_idx] = True
+            if (not (y_screen in screen_xy_to_source_pos)):
+                screen_xy_to_source_pos[y_screen] = {}
                 
-                if (not (y_screen in screen_xy_to_source_pos)):
-                    screen_xy_to_source_pos[y_screen] = {}
-                    
-                screen_xy_to_source_pos[y_screen][x_screen] = pos_index
-            
+            screen_xy_to_source_pos[y_screen][x_screen] = pos_index
 
 print('nr of pixels overdrawn by scroller: ' + str(nr_of_pixels_overdrawn_by_scroller))
-
-#print(len(background_colors_overwritten_by_scroller.keys()))
 #print(nr_of_pixels_overdrawn_by_scroller)
 
-'''
 
 
 
-'''
 # Now we go through the screen coordinates (left to right, then top to bottom)
 # and for a pixel that has a source_pos we start to create hor-line-draw code
 # to draw on that row. If we encounter a pixel that has no source_pos anymore
@@ -404,7 +390,6 @@ scroll_copy_file = open(full_scroll_copy_file_name, "wb")
 scroll_copy_file.write(bytearray(scroll_copy_code))
 scroll_copy_file.close()
 print("scroll copy code written to file: " + full_scroll_copy_file_name)
-'''
             
     
 # Printing out asm for palette:

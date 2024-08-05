@@ -94,16 +94,12 @@ BITMAP_VRAM_ADDRESS   = $00000
 BITMAP_WIDTH = 320
 BITMAP_HEIGHT = 200
 
-SCROLLSWORD_RAM_BANK       = $01  ; This is 400x35 bytes (1.7 RAM banks -> 2 RAM banks)
-; FIXME! How long is this?
-; FIXME! How long is this?
-; FIXME! How long is this?
-; FIXME! How long is this?
-; FIXME! How long is this?
-; FIXME: start with bank $03 here?
-SCROLL_COPY_CODE_RAM_BANK  = $04  ; This is 13 RAM Banks of scroll copy code (actually 12.06 RAM banks)
-NR_OF_SCROLL_COPY_CODE_BANKS = 13
+SCROLLSWORD_RAM_BANK       = $01  ; This is 400x64 bytes (3.125 RAM banks -> 4 RAM banks)
+SCROLL_COPY_CODE_RAM_BANK  = $05  ; This is 17 RAM Banks of scroll copy code (actually 16.268 RAM banks)
+NR_OF_SCROLL_COPY_CODE_BANKS = 17
 
+; FIXME: we should change this!
+; FIXME: we should change this!
 ; FIXME: we should change this!
 INITIAL_SCROLL = 100
 NR_OF_SCROLL_ITERATIONS = 400-INITIAL_SCROLL
@@ -119,12 +115,12 @@ start:
     jsr copy_palette_from_index_0
     jsr load_bitmap_into_vram
     
-;    jsr load_scrollsword_into_banked_ram
-;    jsr load_scroll_copy_code_into_banked_ram
+    jsr load_scrollsword_into_banked_ram
+    jsr load_scroll_copy_code_into_banked_ram
 
-;    jsr clear_initial_scroll_text_slow
-;    jsr load_initial_scroll_text_slow
-;    jsr do_scrolling
+    jsr clear_initial_scroll_sword_slow
+    jsr load_initial_scroll_sword_slow
+    jsr do_scrolling
     
     ; We are not returning to BASIC here...
 infinite_loop:
@@ -132,7 +128,7 @@ infinite_loop:
     
     rts
     
-clear_initial_scroll_text_slow:
+clear_initial_scroll_sword_slow:
 
     lda #<SCROLLER_BUFFER_ADDRESS
     sta STORE_ADDRESS
@@ -140,16 +136,17 @@ clear_initial_scroll_text_slow:
     sta STORE_ADDRESS+1
 
     ldx #0
-clear_scroll_text_next_column:
+clear_scroll_sword_next_column:
 
-    lda #$80  ; We set bit7 to 1
+; FIXME: REMOVE (OLD): lda #$80  ; We set bit7 to 1
+    lda #0  ; We clear the buffer
     ldy #0
-clear_scroll_text_next_pixel:    
+clear_scroll_sword_next_pixel:    
 
     sta (STORE_ADDRESS), y
     iny
     cpy #34
-    bne clear_scroll_text_next_pixel
+    bne clear_scroll_sword_next_pixel
     
     clc
     lda STORE_ADDRESS
@@ -161,13 +158,13 @@ clear_scroll_text_next_pixel:
     
     inx
     cpx #158
-    bne clear_scroll_text_next_column
+    bne clear_scroll_sword_next_column
 
 
     rts
     
     
-load_initial_scroll_text_slow:
+load_initial_scroll_sword_slow:
 
     lda #SCROLLSWORD_RAM_BANK
     sta RAM_BANK
@@ -183,22 +180,22 @@ load_initial_scroll_text_slow:
     sta STORE_ADDRESS+1
     
     ldx #0
-initial_copy_scroll_text_next_column:
+initial_copy_scroll_sword_next_column:
 
     ldy #0
-initial_copy_scroll_text_next_pixel:    
+initial_copy_scroll_sword_next_pixel:    
 
     lda (LOAD_ADDRESS), y
     sta (STORE_ADDRESS), y
     iny
     cpy #34
-    bne initial_copy_scroll_text_next_pixel
+    bne initial_copy_scroll_sword_next_pixel
     
-    ; Increment LOAD and STORE ADDRESS (with 35 and 34 respectively)
+    ; Increment LOAD and STORE ADDRESS (with 64 and 34 respectively)
     
     clc
     lda LOAD_ADDRESS
-    adc #35
+    adc #64
     sta LOAD_ADDRESS
     lda LOAD_ADDRESS+1
     adc #0
@@ -214,7 +211,7 @@ initial_copy_scroll_text_next_pixel:
     
     inx
     cpx #INITIAL_SCROLL
-    bne initial_copy_scroll_text_next_column
+    bne initial_copy_scroll_sword_next_column
     
 
     stz RAM_BANK
@@ -225,16 +222,18 @@ initial_copy_scroll_text_next_pixel:
     
 do_scrolling:
 
-    ; Setup ADDR0 HIGH and nibble-bit and increment (+1 byte) and set to 4-bit mode
+    ; Setup ADDR0 HIGH and nibble-bit and increment (+1 byte)
     
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
     
+; FIXME: nibble addess bit??
     lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte, nibble-address bit to 1
     sta VERA_ADDR_BANK
 
-    lda #%00000100
-    sta VERA_FX_CTRL         ; 4-bit mode
+; FIXME: remove this!
+;    lda #%00000100
+;    sta VERA_FX_CTRL         ; 4-bit mode
 
 
     lda #<NR_OF_SCROLL_ITERATIONS
@@ -242,9 +241,9 @@ do_scrolling:
     lda #>NR_OF_SCROLL_ITERATIONS
     sta SCROLL_ITERATION+1
     
-    lda #<(SCROLLSWORD_RAM_ADDRESS+INITIAL_SCROLL*35)
+    lda #<(SCROLLSWORD_RAM_ADDRESS+INITIAL_SCROLL*64)
     sta LOAD_ADDRESS
-    lda #>(SCROLLSWORD_RAM_ADDRESS+INITIAL_SCROLL*35)
+    lda #>(SCROLLSWORD_RAM_ADDRESS+INITIAL_SCROLL*64)
     sta LOAD_ADDRESS+1
     
     lda #SCROLLSWORD_RAM_BANK
@@ -252,7 +251,7 @@ do_scrolling:
 
 next_scroll_iteration:
 
-    ; Copying all scroll text to VRAM
+    ; Copying all scroll sword to VRAM
     
     ldy #SCROLL_COPY_CODE_RAM_BANK
 next_scroll_copy_code_bank:
@@ -267,7 +266,7 @@ next_scroll_copy_code_bank:
     
 
     
-    ; FIXME: WARNING: if no more scroll text is left, we need to fill with zeros!
+    ; FIXME: WARNING: if no more scroll sword is left, we need to fill with zeros!
         
     ; We load the 159th column into the buffer
     
@@ -275,17 +274,17 @@ next_scroll_copy_code_bank:
     sta RAM_BANK
     
     ldy #0
-scroll_text_single_column_copy_next_y:
+scroll_sword_single_column_copy_next_y:
     lda (LOAD_ADDRESS), y
     sta SCROLLER_BUFFER_ADDRESS+158*34, y  ; 158 is the 159th pixel from the left
     iny
     cpy #34
-    bne scroll_text_single_column_copy_next_y
+    bne scroll_sword_single_column_copy_next_y
 
-    ; We increment our load address into the scroll text data
+    ; We increment our load address into the scroll sword data
     clc
     lda LOAD_ADDRESS
-    adc #35
+    adc #64
     sta LOAD_ADDRESS
     lda LOAD_ADDRESS+1
     adc #0
@@ -306,14 +305,17 @@ scroll_text_single_column_copy_next_y:
     
 scroll_bank_is_ok:
     
-
+    
+; FIXME: enable this!
+; FIXME: enable this!
+; FIXME: enable this!
     ; We 'shift' all pixels to the left in the buffer (34 rows)
-    ldy #0
-shift_nex_row:
-    jsr SHIFT_PIXEL_CODE_ADDRESS
-    iny
-    cpy #34
-    bne shift_nex_row
+;    ldy #0
+;shift_nex_row:
+;    jsr SHIFT_PIXEL_CODE_ADDRESS
+;    iny
+;    cpy #34
+;    bne shift_nex_row
 
     sec
     lda SCROLL_ITERATION
