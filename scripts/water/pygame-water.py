@@ -414,6 +414,8 @@ sprite_x_high_string = "  .byte "
 sprite_x_low_string = "  .byte "
 sprite_y_high_string = "  .byte "
 sprite_y_low_string = "  .byte "
+sprite_src_address_low_string = "  .byte "
+sprite_src_address_high_string = "  .byte "
 
 for sprite_pos in sprite_positions:
     x = sprite_pos[0]
@@ -428,6 +430,14 @@ for sprite_pos in sprite_positions:
     sprite_x_low_string += "$" + format(x_low,"02x") + ", "
     sprite_y_high_string += "$" + format(y_high,"02x") + ", "
     sprite_y_low_string += "$" + format(y_low,"02x") + ", "
+    
+    source_address = x + y * 320
+    source_address_low = source_address % 256
+    source_address_high = source_address // 256
+    
+    sprite_src_address_high_string += "$" + format(source_address_high,"02x") + ", "
+    sprite_src_address_low_string += "$" + format(source_address_low,"02x") + ", "
+    
 
 print('sprite_x_pos_l:')
 print(sprite_x_low_string)
@@ -437,6 +447,10 @@ print('sprite_y_pos_l:')
 print(sprite_y_low_string)
 print('sprite_y_pos_h:')
 print(sprite_y_high_string)
+print('sprite_src_addr_l:')
+print(sprite_src_address_low_string)
+print('sprite_src_addr_h:')
+print(sprite_src_address_high_string)
 
 print()
     

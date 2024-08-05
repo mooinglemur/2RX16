@@ -240,6 +240,10 @@ sprite_y_pos_l:
   .byte $00, $00, $00, $40, $40, $40, $10, $48, $88, $88
 sprite_y_pos_h:
   .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+sprite_src_addr_l:
+  .byte $00, $40, $80, $00, $40, $80, $c0, $d6, $c0, $00
+sprite_src_addr_h:
+  .byte $00, $00, $00, $50, $50, $50, $14, $5a, $aa, $ab
   
 setup_sprites:
 
@@ -488,6 +492,67 @@ next_packed_color_256:
     bne next_packed_color_256
     
     rts
+
+
+
+copy_sprite_data_slow:
+
+; FIXME: setup SPRITE_SRC_VRAM_ADDR beforehand!
+; FIXME: setup VERA_ADDR for DATA1 beforehand!
+; FIXME: preserve x!
+
+    ; Starting at palette VRAM address
+    
+    lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to 1
+    sta VERA_ADDR_BANK
+
+    ldy #0
+next_sprite_row:
+
+    lda SPRITE_SRC_VRAM_ADDR
+    sta VERA_ADDR_LOW
+    lda SPRITE_SRC_VRAM_ADDR+1
+    sta VERA_ADDR_HIGH
+
+    ldx #0
+next_sprite_pixel:
+
+    lda VERA_DATA0
+    sta VERA_DATA1
+    lda VERA_DATA0
+    sta VERA_DATA1
+    lda VERA_DATA0
+    sta VERA_DATA1
+    lda VERA_DATA0
+    sta VERA_DATA1
+    
+    lda VERA_DATA0
+    sta VERA_DATA1
+    lda VERA_DATA0
+    sta VERA_DATA1
+    lda VERA_DATA0
+    sta VERA_DATA1
+    lda VERA_DATA0
+    sta VERA_DATA1
+    
+    inx
+    cpx #64/8   ; 64 pixels (and we are doing 8 pixel each iteration
+    bne next_sprite_pixel
+    
+    clc
+    lda SPRITE_SRC_VRAM_ADDR
+    adc #64
+    sta SPRITE_SRC_VRAM_ADDR
+    lda SPRITE_SRC_VRAM_ADDR+1
+    adc #0
+    sta SPRITE_SRC_VRAM_ADDR+1
+    
+    iny    
+    cpy #64
+    bne next_sprite_row
+
+    rts
+
 
 
 bitmap_filename:      .byte    "water.dat" 
