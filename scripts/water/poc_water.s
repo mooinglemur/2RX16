@@ -72,6 +72,8 @@ CODE_ADDRESS              = $32 ; 33
 STORE_ADDRESS             = $34 ; 35
 VRAM_ADDRESS              = $36 ; 37 ; 38
 
+SPRITE_SRC_VRAM_ADDR      = $39 ; 3A
+
 SCROLL_ITERATION          = $40 ; 41
 CURRENT_SCROLLSWORD_BANK  = $42
 
@@ -123,8 +125,7 @@ start:
     jsr load_initial_scroll_sword_slow
     
     
-; FIXME: IMPLEMENT!
-;    jsr load_sprite_data
+    jsr load_sprite_data
 
     jsr setup_sprites
     
@@ -301,6 +302,40 @@ setup_next_sprite:
     rts
     
     
+load_sprite_data:
+
+    ; Setting up ADDR1 first to SPRITES_VRAM_ADDRESS
+
+    lda #%00000001           ; DCSEL=0, ADDRSEL=1
+    sta VERA_CTRL
+    
+    ; FIXME: assuming bit 16 is 1 here!
+    lda #%00010001      ; setting bit 16 of vram address to 1, setting auto-increment value to +1 byte, nibble-address bit to 1
+    sta VERA_ADDR_BANK
+    
+    lda #>SPRITES_VRAM_ADDRESS
+    sta VERA_ADDR_HIGH
+    
+    lda #<SPRITES_VRAM_ADDRESS    
+    sta VERA_ADDR_LOW
+
+    lda #%00000000           ; DCSEL=0, ADDRSEL=0
+    sta VERA_CTRL
+
+
+; FIXME: iterate over all 10 sprites!
+
+; FIXME: setup SPRITE_SRC_VRAM_ADDR beforehand!
+    lda #$00
+    sta SPRITE_SRC_VRAM_ADDR
+    lda #$00
+    sta SPRITE_SRC_VRAM_ADDR+1
+
+    jsr copy_sprite_data_slow
+    
+
+    rts
+    
     
 do_scrolling:
 
@@ -309,13 +344,8 @@ do_scrolling:
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
     
-; FIXME: nibble addess bit??
     lda #%00010000      ; setting bit 16 of vram address to 0, setting auto-increment value to +1 byte, nibble-address bit to 1
     sta VERA_ADDR_BANK
-
-; FIXME: remove this!
-;    lda #%00000100
-;    sta VERA_FX_CTRL         ; 4-bit mode
 
     lda #<NR_OF_SCROLL_ITERATIONS
     sta SCROLL_ITERATION
@@ -497,9 +527,7 @@ next_packed_color_256:
 
 copy_sprite_data_slow:
 
-; FIXME: setup SPRITE_SRC_VRAM_ADDR beforehand!
-; FIXME: setup VERA_ADDR for DATA1 beforehand!
-; FIXME: preserve x!
+    phx
 
     ; Starting at palette VRAM address
     
@@ -541,15 +569,17 @@ next_sprite_pixel:
     
     clc
     lda SPRITE_SRC_VRAM_ADDR
-    adc #64
+    adc #<320
     sta SPRITE_SRC_VRAM_ADDR
     lda SPRITE_SRC_VRAM_ADDR+1
-    adc #0
+    adc #>320
     sta SPRITE_SRC_VRAM_ADDR+1
     
     iny    
     cpy #64
     bne next_sprite_row
+    
+    plx
 
     rts
 
