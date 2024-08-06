@@ -29,6 +29,7 @@ bitmap_image_width = 320
 bitmap_image_height = 200
 
 scrollsword_image_width = 400
+scrollsword_image_padding = 60 # We add width-padding to the image (so it will scroll off screeen)
 scrollsword_image_height = 35
 
 # We put a few sprites behind the background, so when we draw a zero to the background bitmap, we see the background-pixel of a sprite behind it (not a black pixel)
@@ -250,6 +251,11 @@ for source_x in range(scrollsword_image_width):
     
     # We fill with 64-35 = 29 black/dummy pixels
     for dummy_y in range(64-35):
+        scrollsword_data.append(0)
+
+# We add width-padding to the image, so it will scroll off screen
+for dummy_x in range(scrollsword_image_padding):
+    for dummy_y in range(64):
         scrollsword_data.append(0)
         
 full_scrollsword_file_name = os.path.join(base_output_dir, scrollsword_filename)

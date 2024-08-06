@@ -97,7 +97,7 @@ SPRITES_VRAM_ADDRESS  = $10000  ; 10 sprites of 64x64 are used (40960 bytes)
 BITMAP_WIDTH = 320
 BITMAP_HEIGHT = 200
 
-SCROLLSWORD_RAM_BANK       = $01  ; This is 400x64 bytes (3.125 RAM banks -> 4 RAM banks)
+SCROLLSWORD_RAM_BANK       = $01  ; This is 460x64 bytes (3.59 RAM banks -> 4 RAM banks)  - Note: the original image is 400x35, but we added 60 pixels of padding at the end
 SCROLL_COPY_CODE_RAM_BANK  = $05  ; This is 17 RAM Banks of scroll copy code (actually 16.268 RAM banks)
 NR_OF_SCROLL_COPY_CODE_BANKS = 17
 
@@ -105,7 +105,7 @@ NR_OF_SCROLL_COPY_CODE_BANKS = 17
 ; FIXME: we should change this!
 ; FIXME: we should change this!
 INITIAL_SCROLL = 1
-NR_OF_SCROLL_ITERATIONS = 400-INITIAL_SCROLL
+NR_OF_SCROLL_ITERATIONS = 460-INITIAL_SCROLL
 
 start:
 
