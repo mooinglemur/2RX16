@@ -42,7 +42,7 @@ MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
 USE_FX_POLY_FILLER_SIM = True
-PRINT_PALETTE = True
+PRINT_PALETTE = False
 
 # FIXME!
 # FIXME!
@@ -75,7 +75,9 @@ fx_state = {}
 if SCENE == 'U2E':
     fov_degrees = 40
 else:
-    fov_degrees = 48
+    # FIXME: manually adjusted, is it correct?
+    #fov_degrees = 48
+    fov_degrees = 24
     
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1
@@ -2229,10 +2231,6 @@ if (PRINT_PALETTE):
         palette_string += "\n"
 
     print(palette_string)
-    
-# FIXME!
-while (True):
-    pass
     
 polygon_type_stats = {}
 
