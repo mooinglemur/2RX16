@@ -1,7 +1,7 @@
-; == PoC of the 3D part of the 2R demo  ==
+; == PoC of the 3D *city* part of the 2R demo  ==
 
-; To build: cl65 -t cx16 -o 3D-SCENE.PRG 3d-scene.s
-; To run: x16emu.exe -prg 3D-SCENE.PRG -run
+; To build: cl65 -t cx16 -o 3D-CITY-SCENE.PRG 3d-city-scene.s
+; To run: x16emu.exe -prg 3D-CITY-SCENE.PRG -run -ram 2048
 
 .org $080D
 .segment "STARTUP"
@@ -85,14 +85,12 @@ TMP2                      = $03
 TMP3                      = $04
 TMP4                      = $05
 
-; For generating jump-table code
-END_JUMP_ADDRESS          = $2B ; 2C
-START_JUMP_ADDRESS        = $2D ; 2E
+; For generating code and loading/storing
 CODE_ADDRESS              = $2F ; 30
 LOAD_ADDRESS              = $31 ; 32
 STORE_ADDRESS             = $33 ; 34
 
-; Used to generate jump-tables (and also the slow polygon filler)
+; Used by the slow polygon filler
 FILL_LENGTH_LOW           = $40
 FILL_LENGTH_HIGH          = $41
 NUMBER_OF_ROWS            = $42
@@ -111,29 +109,8 @@ CURRENT_RAM_BANK          = $4C
 VRAM_ADDRESS              = $50 ; 51 ; 52
 
 ; FIXME: these are TEMPORARY variables and should be REMOVE or REPLACED!
-; FIXME: these are TEMPORARY variables and should be REMOVE or REPLACED!
-; FIXME: these are TEMPORARY variables and should be REMOVE or REPLACED!
 VSYNC_FRAME_COUNTER       = $53 ; 54
 DEFAULT_IRQ_VECTOR        = $55 ; 56
-
-
-; Used to generate jump-tables
-LEFT_OVER_PIXELS         = $B6 ; B7
-NIBBLE_PATTERN           = $B8
-NR_OF_FULL_CACHE_WRITES  = $B9
-NR_OF_STARTING_PIXELS    = $BA
-NR_OF_ENDING_PIXELS      = $BB
-
-GEN_START_X              = $BC
-GEN_START_X_ORG          = $BD ; only for 2-bit mode
-GEN_START_X_SET_TO_ZERO  = $BE ; only for 2-bit mode
-GEN_FILL_LENGTH_LOW      = $BF
-GEN_FILL_LENGTH_IS_16_OR_MORE = $C0
-GEN_FILL_LENGTH_IS_8_OR_MORE = GEN_FILL_LENGTH_IS_16_OR_MORE
-GEN_LOANED_16_PIXELS     = $C1
-GEN_LOANED_8_PIXELS = GEN_LOANED_16_PIXELS
-GEN_START_X_SUB          = $C2 ; only for 2-bit mode
-GEN_FILL_LINE_CODE_INDEX = $C3
 
 
 ; === RAM addresses ===
@@ -156,20 +133,12 @@ POLYGON_DATA_RAM_BANK    = 1      ; polygon data starts at this RAM bank
 
 ; === Other constants ===
 
-NR_OF_BYTES_PER_LINE = 320
-
 BACKGROUND_COLOR = 0
 BLACK_COLOR = 254     ; this is a non-transparant black color
 
 LOAD_FILE = 1
 USE_JUMP_TABLE = 1
 DEBUG = 0
-
-; Jump table specific constants
-TEST_JUMP_TABLE = 0   ; This turns off the iteration in-between the jump-table calls
-USE_SOFT_FILL_LEN = 0 ; This turns off reading from 9F2B and 9F2C (for fill length data) and instead reads from USE_SOFT_FILL_LEN-variables
-DO_4BIT = 0
-DO_2BIT = 0
 
 VSYNC_BIT         = $01
 
@@ -211,7 +180,7 @@ start:
 
 
 ; FIXME: HACK now looping the entire movie!
-tmp_loop:
+;tmp_loop:
     
     lda #POLYGON_DATA_RAM_BANK
     sta CURRENT_RAM_BANK
@@ -225,7 +194,7 @@ tmp_loop:
     jsr unset_polygon_filler
     
 ; FIXME: HACK now looping the entire move!
-    jmp tmp_loop
+;    jmp tmp_loop
     
     
     ; We are not returning to BASIC here...
@@ -279,16 +248,8 @@ polygon_count_is_ok:
     adc #0
     sta LOAD_ADDRESS+1
     
-
-; FIXME: UGLY HACK: fixed amount of polygons!
-;    lda #105
-;    lda #86
-; FIXME: nr 86 is BROKEN!
-; FIXME: nr 86 is BROKEN!
-; FIXME: nr 86 is BROKEN!
-;    lda #21
-;    lda #92
-;    sta NR_OF_POLYGONS
+    lda NR_OF_POLYGONS
+    beq done_drawing_polygons  ; if nr of polygons is 0, we are done drawing polygons for this frame   
     
 draw_next_polygon:
     jsr draw_polygon_fast
@@ -304,14 +265,11 @@ draw_next_polygon:
     dec NR_OF_POLYGONS
     bne draw_next_polygon
 
-; FIXME: replace this with something proper!
+done_drawing_polygons:
+    ; FIXME: replace this with something proper!
     jsr dumb_wait_for_vsync_and_three_frames
 
     ; Every frame we switch to which buffer we write to and which one we show
-; FIXME!
-;    stp
- 
-; FIXME: switching turned off! 
     lda #1
     eor BUFFER_NR
     sta BUFFER_NR
@@ -338,42 +296,7 @@ done_switching_buffer:
     rts
     
 
-    
 
-
-    .if(0)
-; FIXME! BROKEN!
-;   .byte 0, 197, 108,   88, 0,   0, 0,   205, 127,   4,     1,    171, 127,   6,   0
-
-; This is an example of the *free form* polygon data:
-; We still want to create a jump-table for *common* types of polygons (like: triangle with single top and left-side is lower than right-side etc.), but this is not implemented yet.
-
-; polygon_data:
-    .byte $00          ; polygon type  ($00 = single top free form, $80 = double top free form)
-    .byte $01          ; polygon color
-    .byte $14          ; y-start           (note: 20 = $14)
-    .byte $5A, $00     ; x position (L, H) (note: 90 = $005A)
-    .byte $92, $7F     ; x1 incr (L, H)    (note: -100 = $FF92)
-    .byte $7C, $01     ; x2 incr (L, H)    (note: 380 = $017C)
-    .byte $96          ; nr of lines       (note: 150 = $96)
-    .byte $02          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
-    .byte $CA, $79     ; x2 incr (L, H)    (note: -1590 = $F9CA)
-    .byte $32          ; nr of lines       (note: 50 = $32)
-    .byte $00          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
-    
-    .byte $80          ; polygon type  ($00 = single top free form, $80 = double top free form)
-    .byte $02          ; polygon color
-    .byte $40          ; y-start           (note: 64 = $40)
-    .byte $9B, $00     ; x1 position (L, H) (note: 155 = $009B)
-    .byte $2C, $01     ; x2 position (L, H) (note: 300 = $012C)
-    .byte $7C, $01     ; x1 incr (L, H)    (note: 380 = $017C)
-    .byte $92, $7F     ; x2 incr (L, H)    (note: -100 = $FF92)
-    .byte $4B          ; nr of lines       (note: 75 = $4B)
-    .byte $00          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
-    
-    .endif
-
-    
 
 setup_polygon_filler:
 
@@ -439,6 +362,41 @@ setup_polygon_data_address:
     rts
     
     
+
+    .if(0)
+    
+; FIXME! This one is BROKEN!
+;   .byte 0, 197, 108,   88, 0,   0, 0,   205, 127,   4,     1,    171, 127,   6,   0
+
+; This is an example of the *free form* polygon data:
+; We still want to create a jump-table for *common* types of polygons (like: triangle with single top and left-side is lower than right-side etc.), but this is not implemented yet. We have enough speed for now though.
+
+; polygon_data:
+    .byte $00          ; polygon type  ($00 = single top free form, $80 = double top free form)
+    .byte $01          ; polygon color
+    .byte $14          ; y-start           (note: 20 = $14)
+    .byte $5A, $00     ; x position (L, H) (note: 90 = $005A)
+    .byte $92, $7F     ; x1 incr (L, H)    (note: -100 = $FF92)
+    .byte $7C, $01     ; x2 incr (L, H)    (note: 380 = $017C)
+    .byte $96          ; nr of lines       (note: 150 = $96)
+    .byte $02          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
+    .byte $CA, $79     ; x2 incr (L, H)    (note: -1590 = $F9CA)
+    .byte $32          ; nr of lines       (note: 50 = $32)
+    .byte $00          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
+    
+    .byte $80          ; polygon type  ($00 = single top free form, $80 = double top free form)
+    .byte $02          ; polygon color
+    .byte $40          ; y-start           (note: 64 = $40)
+    .byte $9B, $00     ; x1 position (L, H) (note: 155 = $009B)
+    .byte $2C, $01     ; x2 position (L, H) (note: 300 = $012C)
+    .byte $7C, $01     ; x1 incr (L, H)    (note: 380 = $017C)
+    .byte $92, $7F     ; x2 incr (L, H)    (note: -100 = $FF92)
+    .byte $4B          ; nr of lines       (note: 75 = $4B)
+    .byte $00          ; next step     ($00 = stop, $01 = left incr change, $02 = right incr change, $03 = both left and right incr change)
+    
+    .endif
+
+    
     
 draw_polygon_fast:
 
@@ -448,9 +406,7 @@ draw_polygon_fast:
     lda (LOAD_ADDRESS), y
     sta TMP_POLYGON_TYPE
    
-; FIXME: we need an FRAME-END code!!
-; FIXME: we need an FRAME-END code!!
-; FIXME: we need an FRAME-END code!!
+    ; FIXME: its better to use a FRAME-END code!
 
 ; FIXME: technically this name is INCORRECT, since we are MIXING single and double top draws!
 single_top_free_form:
@@ -467,7 +423,7 @@ single_top_free_form:
 
         lda (LOAD_ADDRESS), y
         iny
-; FIXME: we can SPEED this up  if we use the alternative cache incrementer! (only 2 bytes need to be set then)
+        ; FIXME: we can SPEED this up  if we use the alternative cache incrementer! (only 2 bytes need to be set then)
         sta VERA_FX_CACHE_L      ; cache32[7:0]
         sta VERA_FX_CACHE_M      ; cache32[15:8]
         sta VERA_FX_CACHE_H      ; cache32[23:16]
@@ -481,7 +437,7 @@ single_top_free_form:
     
     ; -- Y-start --
     
-; FIXME: we can do this more efficiently!
+    ; FIXME: we can do this more efficiently!
     lda BUFFER_NR
     bne do_y_to_address_1
     
@@ -517,7 +473,7 @@ y_to_address_done:
     lda #%00001000           ; DCSEL=4, ADDRSEL=0
     sta VERA_CTRL
     
-; FIXME: we are MIXING single and double top drawing, so we use TMP_POLYGON_TYPE here for now!
+    ; FIXME: we are MIXING single and double top drawing, so we use TMP_POLYGON_TYPE here for now!
     lda TMP_POLYGON_TYPE
     bmi set_double_x_positions
     
@@ -701,10 +657,13 @@ done_drawing_polygon:
     
     rts
     
+
+    .if(USE_JUMP_TABLE)
     
 draw_polygon_part_using_polygon_filler_and_jump_tables:
     jmp (FILL_LINE_START_JUMP,x)
     
+    .else
     
 ; Routine to draw a triangle part
 draw_polygon_part_using_polygon_filler_slow:
@@ -775,7 +734,7 @@ polygon_fill_triangle_row_done:
     
     rts
 
-    
+    .endif
     
     
 generate_y_to_address_table_0:

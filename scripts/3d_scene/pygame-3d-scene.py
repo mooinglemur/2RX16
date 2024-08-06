@@ -21,14 +21,14 @@ from functools import cmp_to_key
 #  - Forward Axis: Y
 #  - Upward Axis: Z
 #  - Select: Normals, Materials->Export  (do NOT triangulate mesh!)
-#  - Select: Animation->Export, 1-100 (or 1-1802 for U2E or 1-522 for U2A)
+#  - Select: Animation->Export, 1-100 (or 1-1802*4 for U2E or 1-522*4 for U2A)
 #  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
 # Before actually running this script: 
 #  - change the SCENE variable below
 #  - run from root repo directory: python .\scripts\3d_scene\pygame-3d-scene.py
 
-SCENE = 'U2E'
-#SCENE = 'U2A'
+#SCENE = 'U2E'
+SCENE = 'U2A'
 
 
 polygon_data_file = 'scripts/3d_scene/' + SCENE + '-POLYGONS.DAT'
@@ -42,7 +42,7 @@ MERGE_FACES = True
 CONVERT_COLORS_TO_12BITS = True
 PATCH_COLORS_MANUALLY = True
 USE_FX_POLY_FILLER_SIM = True
-PRINT_PALETTE = False
+PRINT_PALETTE = True
 
 # FIXME!
 # FIXME!
@@ -2230,7 +2230,10 @@ if (PRINT_PALETTE):
 
     print(palette_string)
     
-
+# FIXME!
+while (True):
+    pass
+    
 polygon_type_stats = {}
 
 
