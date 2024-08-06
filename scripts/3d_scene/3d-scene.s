@@ -140,20 +140,21 @@ GEN_FILL_LINE_CODE_INDEX = $C3
 
 IRQ_VECTOR               = $0314
 
-FILL_LINE_START_JUMP     = $2F00   ; 256 bytes
-FILL_LINE_START_CODE     = $3000   ; 128 different (start of) fill line code patterns -> safe: takes $0D00 bytes
+FILL_LINE_START_JUMP     = $3000   ; 256 bytes
+FILL_LINE_START_CODE     = $3100   ; 128 different (start of) fill line code patterns -> safe: takes $0D00 bytes
 
 ; -- IMPORTANT: we set the *two* lower bits of (the HIGH byte of) this address in the code, using FILL_LINE_END_JUMP_0 as base. So the distance between the 4 tables should be $100! AND bits 8 and 9 should be 00b! (for FILL_LINE_END_JUMP_0) --
-FILL_LINE_END_JUMP_0     = $6400   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_0
-FILL_LINE_END_JUMP_1     = $6500   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_1
-FILL_LINE_END_JUMP_2     = $6600   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_2
-FILL_LINE_END_JUMP_3     = $6700   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_3
+FILL_LINE_END_JUMP_0     = $5000   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_0
+FILL_LINE_END_JUMP_1     = $5100   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_1
+FILL_LINE_END_JUMP_2     = $5200   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_2
+FILL_LINE_END_JUMP_3     = $5300   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_3
 
 ; FIXME: can we put these code blocks closer to each other? Are they <= 256 bytes? -> NO, MORE than 256 bytes!!
-FILL_LINE_END_CODE_0     = $6800   ; 3 (stz) * 80 (=320/4) = 240                      + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
-FILL_LINE_END_CODE_1     = $6A00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
-FILL_LINE_END_CODE_2     = $6C00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
-FILL_LINE_END_CODE_3     = $6E00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
+FILL_LINE_END_CODE_0     = $5400   ; 3 (stz) * 80 (=320/4) = 240                      + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
+FILL_LINE_END_CODE_1     = $5600   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
+FILL_LINE_END_CODE_2     = $5800   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
+FILL_LINE_END_CODE_3     = $5A00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
+
 
 Y_TO_ADDRESS_LOW_0       = $8100
 Y_TO_ADDRESS_HIGH_0      = $8200
@@ -182,10 +183,11 @@ TEST_JUMP_TABLE = 0   ; This turns off the iteration in-between the jump-table c
 USE_SOFT_FILL_LEN = 0 ; This turns off reading from 9F2B and 9F2C (for fill length data) and instead reads from USE_SOFT_FILL_LEN-variables
 DO_4BIT = 0
 DO_2BIT = 0
-DEBUG_SHOW_THREE_FRAMES_MISSES = 1
 
 VSYNC_BIT         = $01
 
+; FIXME: TURN this OFF in PRODUCTION!
+DEBUG_SHOW_THREE_FRAMES_MISSES = 1 ; If we exceed 3 frames, we missed a frame (or more) and we mark this (for now) by changing the border color
 
 
 start:
