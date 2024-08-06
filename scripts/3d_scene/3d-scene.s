@@ -155,6 +155,9 @@ FILL_LINE_END_CODE_3     = $3A00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta 
 FILL_LINE_START_JUMP     = $3C00   ; 256 bytes
 FILL_LINE_START_CODE     = $3D00   ; 128 different (start of) fill line code patterns -> safe: takes $0D00 bytes  (so this ends before: $4A00)
 
+; FIXME: let this START at $4A00!
+; FIXME: let this START at $4A00!
+; FIXME: let this START at $4A00!
 
 Y_TO_ADDRESS_LOW_0       = $8100
 Y_TO_ADDRESS_HIGH_0      = $8200
