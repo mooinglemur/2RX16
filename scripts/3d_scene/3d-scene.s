@@ -1,4 +1,4 @@
-; == PoC of the FOREST part of the 2R demo  ==
+; == PoC of the 3D part of the 2R demo  ==
 
 ; To build: cl65 -t cx16 -o 3D-SCENE.PRG 3d-scene.s
 ; To run: x16emu.exe -prg 3D-SCENE.PRG -run
@@ -140,32 +140,16 @@ GEN_FILL_LINE_CODE_INDEX = $C3
 
 IRQ_VECTOR               = $0314
 
-; -- IMPORTANT: we set the *two* lower bits of (the HIGH byte of) this address in the code, using FILL_LINE_END_JUMP_0 as base. So the distance between the 4 tables should be $100! AND bits 8 and 9 should be 00b! (for FILL_LINE_END_JUMP_0) --
-FILL_LINE_END_JUMP_0     = $3000   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_0
-FILL_LINE_END_JUMP_1     = $3100   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_1
-FILL_LINE_END_JUMP_2     = $3200   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_2
-FILL_LINE_END_JUMP_3     = $3300   ; 20 entries (* 4 bytes) of jumps into FILL_LINE_END_CODE_3
+POLYFILL_TBLS_AND_CODE_RAM_ADDRESS = $3000 ; to $4A00
+FILL_LINE_START_JUMP     = $3C00   ; this is the actual jump table of 256 bytes 
 
-; FIXME: can we put these code blocks closer to each other? Are they <= 256 bytes? -> NO, MORE than 256 bytes!!
-FILL_LINE_END_CODE_0     = $3400   ; 3 (stz) * 80 (=320/4) = 240                      + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
-FILL_LINE_END_CODE_1     = $3600   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
-FILL_LINE_END_CODE_2     = $3800   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
-FILL_LINE_END_CODE_3     = $3A00   ; 3 (stz) * 80 (=320/4) = 240 + lda .. + sta DATA1 + lda DATA0 + lda DATA1 + dey + beq + ldx $9F2B + jmp (..,x) + rts/jmp?
+Y_TO_ADDRESS_LOW_0       = $4A00
+Y_TO_ADDRESS_HIGH_0      = $4B00
+Y_TO_ADDRESS_BANK_0      = $4C00
 
-FILL_LINE_START_JUMP     = $3C00   ; 256 bytes
-FILL_LINE_START_CODE     = $3D00   ; 128 different (start of) fill line code patterns -> safe: takes $0D00 bytes  (so this ends before: $4A00)
-
-; FIXME: let this START at $4A00!
-; FIXME: let this START at $4A00!
-; FIXME: let this START at $4A00!
-
-Y_TO_ADDRESS_LOW_0       = $8100
-Y_TO_ADDRESS_HIGH_0      = $8200
-Y_TO_ADDRESS_BANK_0      = $8300
-
-Y_TO_ADDRESS_LOW_1       = $8400
-Y_TO_ADDRESS_HIGH_1      = $8500
-Y_TO_ADDRESS_BANK_1      = $8600
+Y_TO_ADDRESS_LOW_1       = $4D00
+Y_TO_ADDRESS_HIGH_1      = $4E00
+Y_TO_ADDRESS_BANK_1      = $4F00
 
 POLYGON_DATA_RAM_ADDRESS = $A000
 POLYGON_DATA_RAM_BANK    = 1      ; polygon data starts at this RAM bank
@@ -206,17 +190,12 @@ start:
 ; FIXME: use a fast clear buffers/vram!
     jsr clear_vram_slow
     
-    jsr load_polygon_data_into_banked_ram
     
-; FIXME: generate these tables *offline* (in Python!)
-    .if(USE_JUMP_TABLE)
-        jsr generate_fill_line_end_code
-        jsr generate_fill_line_end_jump
-        jsr generate_fill_line_start_code_and_jump
-    .endif
-    
+    jsr load_polyfill_tables_and_code_into_fixed_ram
     jsr generate_y_to_address_table_0
     jsr generate_y_to_address_table_1
+    
+    jsr load_polygon_data_into_banked_ram
     
     jsr setup_covering_sprites
     
@@ -1210,6 +1189,38 @@ clear_bitmap_next_1a:
 
     
     
+    
+polyfill_tables_and_code_filename:      .byte    "polyfill-8bit-tbls-and-code.dat" 
+end_polyfill_tables_and_code_filename:
+
+load_polyfill_tables_and_code_into_fixed_ram:
+
+    lda #(end_polyfill_tables_and_code_filename-polyfill_tables_and_code_filename) ; Length of filename
+    ldx #<polyfill_tables_and_code_filename      ; Low byte of Fname address
+    ldy #>polyfill_tables_and_code_filename      ; High byte of Fname address
+    jsr SETNAM
+ 
+    lda #1            ; Logical file number
+    ldx #8            ; Device 8 = sd card
+    ldy #2            ; 0=ignore address in bin file (2 first bytes)
+                      ; 1=use address in bin file
+                      ; 2=?use address in bin file? (and dont add first 2 bytes?)
+    
+    jsr SETLFS
+    
+    lda #0            ; load into Fixed RAM (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
+    ldx #<POLYFILL_TBLS_AND_CODE_RAM_ADDRESS
+    ldy #>POLYFILL_TBLS_AND_CODE_RAM_ADDRESS
+    jsr LOAD
+    bcc tables_and_code_loaded
+    ; FIXME: do proper error handling!
+    stp
+tables_and_code_loaded:
+
+    rts
+
+    
+    
 polygon_data_filename:      .byte    "u2e-polygons.dat" 
 end_polygon_data_filename:
 
@@ -1278,19 +1289,6 @@ next_packed_color_1:
     rts
     
     
-add_code_byte:
-    sta (CODE_ADDRESS),y   ; store code byte at address (located at CODE_ADDRESS) + y
-    iny                    ; increase y
-    cpy #0                 ; if y == 0
-    bne done_adding_code_byte
-    inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
-done_adding_code_byte:
-    rts
-
-
-    .include "fx_polygon_fill_jump_tables.s"
-    .include "fx_polygon_fill_jump_tables_8bit.s"
-
 
 palette_data:
   .byte $00, $00
