@@ -181,15 +181,14 @@ start:
 
     sei
     
-; FIXME: do this a cleaner/nicer way!
+    ; FIXME: do this a cleaner/nicer way!
     lda VERA_DC_VIDEO
     and #%10001111           ; Disable Layer 0, Layer 1 and sprites
     sta VERA_DC_VIDEO
 
     jsr copy_palette_from_index_0
-; FIXME: use a fast clear buffers/vram!
+    ; FIXME: use a fast clear buffers/vram!
     jsr clear_vram_slow
-    
     
     jsr load_polyfill_tables_and_code_into_fixed_ram
     jsr generate_y_to_address_table_0
@@ -206,12 +205,12 @@ start:
     jsr setup_vera_for_layer0_bitmap_buffer_1
     stz BUFFER_NR
 
-; FIXME: this should be REMOVED/REPLACED!
-; FIXME: this should be REMOVED/REPLACED!
-; FIXME: this should be REMOVED/REPLACED!
+    ; FIXME: this vsync-handling should probably be REPLACED!
     jsr backup_default_irq_handler
     jsr enable_vsync_handler
 
+
+; FIXME: HACK now looping the entire movie!
 tmp_loop:
     
     lda #POLYGON_DATA_RAM_BANK
@@ -220,7 +219,25 @@ tmp_loop:
     jsr setup_polygon_filler
     jsr setup_polygon_data_address
     
-   
+    jsr draw_all_frames
+
+
+    jsr unset_polygon_filler
+    
+; FIXME: HACK now looping the entire move!
+    jmp tmp_loop
+    
+    
+    ; We are not returning to BASIC here...
+infinite_loop:
+    jmp infinite_loop
+    
+    rts
+
+
+
+draw_all_frames:
+
 ; FIXME: HARDCODED!
 ; FIXME when the 16-bit number goes negative we have detect the end, BUT this means the NR_OF_FRAMES should be initially filled with nr_of_frames-1 !
 ; FIXME: shoulnt this be 1030?
@@ -274,7 +291,7 @@ polygon_count_is_ok:
 ;    sta NR_OF_POLYGONS
     
 draw_next_polygon:
-    jsr test_draw_polygon_fast
+    jsr draw_polygon_fast
     
     clc
     tya                 ; y contained the nr of bytes we read for the previous polygon
@@ -287,11 +304,8 @@ draw_next_polygon:
     dec NR_OF_POLYGONS
     bne draw_next_polygon
 
-
-
 ; FIXME: replace this with something proper!
     jsr dumb_wait_for_vsync_and_three_frames
-    
 
     ; Every frame we switch to which buffer we write to and which one we show
 ; FIXME!
@@ -311,7 +325,6 @@ show_buffer_0:
     jsr setup_vera_for_layer0_bitmap_buffer_0
 done_switching_buffer:
 
-
     sec
     lda NR_OF_FRAMES
     sbc #1
@@ -322,139 +335,19 @@ done_switching_buffer:
     
     bpl draw_next_frame
 
-
-    jsr unset_polygon_filler
-    
-; FIXME: HACK now looping!
-    jmp tmp_loop
-    
-    
-    ; We are not returning to BASIC here...
-infinite_loop:
-    jmp infinite_loop
-    
-    rts
-
-    
-; This is just a dumb verison of a proper vsync-wait
-dumb_wait_for_vsync_and_three_frames:
-
-    ; We wait until SCANLINE == $1FF (indicating the beam is off screen, lines 512-524)
-wait_for_scanline_bit8:
-    lda VERA_IEN
-    and #%01000000
-    beq wait_for_scanline_bit8
-    
-wait_for_scanline_low:
-    lda VERA_SCANLINE_L
-    cmp #$FF
-    bne wait_for_scanline_low
-       
-wait_until_three_frames_have_passed:
-    ; We should be (just) past the VSYNC-IRQ now, so the vsync counter is not going to increment any time soon. We read it and wait until its 3. When it is we reset it and move on.
-    
-    lda VSYNC_FRAME_COUNTER
-    cmp #3
-    bcc wait_until_three_frames_have_passed
-    
-    .if(DEBUG_SHOW_THREE_FRAMES_MISSES)
-        beq reset_frame_counter
-        
-        ; FIXME: The counter exceeded 3 frames so we missed a frame (or more) we mark this (for now) by changing the border color!
-        
-        lda #%00000000           ; DCSEL=0, ADDRSEL=0
-        sta VERA_CTRL
-
-        ; FIXME: quick and dirty way of showing that we missed a frame
-        lda VERA_DC_BORDER
-        eor #40
-        sta VERA_DC_BORDER
-    .endif
-
-reset_frame_counter:
-    stz VSYNC_FRAME_COUNTER
-done_waiting:
-    
-    rts
-
-
-
-
-
-; FIXME: REPLACE/REMOVE THIS!
-; FIXME: REPLACE/REMOVE THIS!
-; FIXME: REPLACE/REMOVE THIS!
-backup_default_irq_handler:
-
-    ; backup default RAM IRQ vector
-    lda IRQ_VECTOR
-    sta DEFAULT_IRQ_VECTOR
-    lda IRQ_VECTOR+1
-    sta DEFAULT_IRQ_VECTOR+1
-
-    rts
-
-; FIXME: REPLACE/REMOVE THIS!
-; FIXME: REPLACE/REMOVE THIS!
-; FIXME: REPLACE/REMOVE THIS!
-enable_vsync_handler:
-
-    ; overwrite RAM IRQ vector with custom handler address
-    sei ; disable IRQ while vector is changing
-    lda #<vsync_irq_handler
-    sta IRQ_VECTOR
-    lda #>vsync_irq_handler
-    sta IRQ_VECTOR+1
-
-    lda #VSYNC_BIT ; make VERA generate VSYNC IRQs
-    sta VERA_IEN
-    
-    stz VSYNC_FRAME_COUNTER
-    stz VSYNC_FRAME_COUNTER+1
-    
-    cli ; enable IRQ now that vector is properly set
-
     rts
     
-    
-vsync_irq_handler:
-
-    pha                     ; save accumulator
-    txa
-    pha                     ; save X-register
-    tya
-    pha                     ; save Y-register
-    
-    lda VERA_ISR
-    and #VSYNC_BIT
-    beq continue_to_default_irq_hanndler  ; non-VSYNC IRQ, skip incrementing the vsync-frame-counter
-    stz VERA_ISR
-    
-    ; Increment vsync frame counter
-    inc VSYNC_FRAME_COUNTER
-    bne vsync_counter_is_incremented
-    inc VSYNC_FRAME_COUNTER+1
-vsync_counter_is_incremented:
-    
-continue_to_default_irq_hanndler:
-
-    pla
-    tay                     ; restore Y-register
-    pla
-    tax                     ; restore X-register
-    pla                     ; restore accumulator
-    
-    jmp (DEFAULT_IRQ_VECTOR) ; continue to default IRQ handler
 
     
-
 
 
     .if(0)
 ; FIXME! BROKEN!
 ;   .byte 0, 197, 108,   88, 0,   0, 0,   205, 127,   4,     1,    171, 127,   6,   0
 
-; FIXME: put this somewhere else!
+; This is an example of the *free form* polygon data:
+; We still want to create a jump-table for *common* types of polygons (like: triangle with single top and left-side is lower than right-side etc.), but this is not implemented yet.
+
 ; polygon_data:
     .byte $00          ; polygon type  ($00 = single top free form, $80 = double top free form)
     .byte $01          ; polygon color
@@ -547,8 +440,7 @@ setup_polygon_data_address:
     
     
     
-; FIXME: make this test_draw_polygon*S*_fast!
-test_draw_polygon_fast:
+draw_polygon_fast:
 
     ldy #0
     
@@ -1548,3 +1440,116 @@ palette_data:
   .byte $00, $00
   .byte $b5, $0e
 end_of_palette_data:
+
+
+
+
+; This is just a dumb verison of a proper vsync-wait
+dumb_wait_for_vsync_and_three_frames:
+
+    ; We wait until SCANLINE == $1FF (indicating the beam is off screen, lines 512-524)
+wait_for_scanline_bit8:
+    lda VERA_IEN
+    and #%01000000
+    beq wait_for_scanline_bit8
+    
+wait_for_scanline_low:
+    lda VERA_SCANLINE_L
+    cmp #$FF
+    bne wait_for_scanline_low
+       
+wait_until_three_frames_have_passed:
+    ; We should be (just) past the VSYNC-IRQ now, so the vsync counter is not going to increment any time soon. We read it and wait until its 3. When it is we reset it and move on.
+    
+    lda VSYNC_FRAME_COUNTER
+    cmp #3
+    bcc wait_until_three_frames_have_passed
+    
+    .if(DEBUG_SHOW_THREE_FRAMES_MISSES)
+        beq reset_frame_counter
+        
+        ; FIXME: The counter exceeded 3 frames so we missed a frame (or more) we mark this (for now) by changing the border color!
+        
+        lda #%00000000           ; DCSEL=0, ADDRSEL=0
+        sta VERA_CTRL
+
+        ; FIXME: quick and dirty way of showing that we missed a frame
+        lda VERA_DC_BORDER
+        eor #40
+        sta VERA_DC_BORDER
+    .endif
+
+reset_frame_counter:
+    stz VSYNC_FRAME_COUNTER
+done_waiting:
+    
+    rts
+
+
+
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+backup_default_irq_handler:
+
+    ; backup default RAM IRQ vector
+    lda IRQ_VECTOR
+    sta DEFAULT_IRQ_VECTOR
+    lda IRQ_VECTOR+1
+    sta DEFAULT_IRQ_VECTOR+1
+
+    rts
+
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+; FIXME: REPLACE/REMOVE THIS!
+enable_vsync_handler:
+
+    ; overwrite RAM IRQ vector with custom handler address
+    sei ; disable IRQ while vector is changing
+    lda #<vsync_irq_handler
+    sta IRQ_VECTOR
+    lda #>vsync_irq_handler
+    sta IRQ_VECTOR+1
+
+    lda #VSYNC_BIT ; make VERA generate VSYNC IRQs
+    sta VERA_IEN
+    
+    stz VSYNC_FRAME_COUNTER
+    stz VSYNC_FRAME_COUNTER+1
+    
+    cli ; enable IRQ now that vector is properly set
+
+    rts
+    
+    
+vsync_irq_handler:
+
+    pha                     ; save accumulator
+    txa
+    pha                     ; save X-register
+    tya
+    pha                     ; save Y-register
+    
+    lda VERA_ISR
+    and #VSYNC_BIT
+    beq continue_to_default_irq_hanndler  ; non-VSYNC IRQ, skip incrementing the vsync-frame-counter
+    stz VERA_ISR
+    
+    ; Increment vsync frame counter
+    inc VSYNC_FRAME_COUNTER
+    bne vsync_counter_is_incremented
+    inc VSYNC_FRAME_COUNTER+1
+vsync_counter_is_incremented:
+    
+continue_to_default_irq_hanndler:
+
+    pla
+    tay                     ; restore Y-register
+    pla
+    tax                     ; restore X-register
+    pla                     ; restore accumulator
+    
+    jmp (DEFAULT_IRQ_VECTOR) ; continue to default IRQ handler
+
+
