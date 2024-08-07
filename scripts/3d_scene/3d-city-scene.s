@@ -128,6 +128,8 @@ Y_TO_ADDRESS_LOW_1       = $4D00
 Y_TO_ADDRESS_HIGH_1      = $4E00
 Y_TO_ADDRESS_BANK_1      = $4F00
 
+CLEAR_256_BYTES_CODE     = $5000   ; takes up to 00F0+rts (256 bytes to clear = 80 * stz = 80 * 3 bytes)
+
 POLYGON_DATA_RAM_ADDRESS = $A000
 POLYGON_DATA_RAM_BANK    = 1      ; polygon data starts at this RAM bank
 
@@ -135,6 +137,7 @@ POLYGON_DATA_RAM_BANK    = 1      ; polygon data starts at this RAM bank
 
 BACKGROUND_COLOR = 0
 BLACK_COLOR = 254     ; this is a non-transparant black color
+STARTING_BACKGROUND_COLOR = $16  ; this is the color of the first wall shown
 
 LOAD_FILE = 1
 USE_JUMP_TABLE = 1
@@ -156,15 +159,20 @@ start:
     sta VERA_DC_VIDEO
 
     jsr copy_palette_from_index_0
+    jsr generate_clear_256_bytes_code
+    
     ; FIXME: use a fast clear buffers/vram!
-    jsr clear_vram_slow
+    ; jsr clear_vram_slow
+    
+    ; This clears (almost) the entire VRAM and sets it to the STARTING_BACKGROUND_COLOR
+    ; FIXME: you might want to change this color to WHITE at the beginning?
+    jsr clear_screen_fast_4_bytes
     
     jsr load_polyfill_tables_and_code_into_fixed_ram
     jsr generate_y_to_address_table_0
     jsr generate_y_to_address_table_1
     
-    jsr load_polygon_data_into_banked_ram
-    
+    ; This also fills their buffers two 64-pixel rows of black (non transparant) pixels
     jsr setup_covering_sprites
     
     jsr setup_vera_for_layer0_bitmap_general
@@ -174,6 +182,8 @@ start:
     jsr setup_vera_for_layer0_bitmap_buffer_1
     stz BUFFER_NR
 
+    jsr load_polygon_data_into_banked_ram
+    
     ; FIXME: this vsync-handling should probably be REPLACED!
     jsr backup_default_irq_handler
     jsr enable_vsync_handler
@@ -219,7 +229,7 @@ draw_all_frames:
     jsr dumb_wait_for_vsync_and_three_frames
 
 draw_next_frame:
-    
+
     ldy #0
     
     ; -- Nr of polygons in this frame --
@@ -1139,6 +1149,107 @@ next_packed_color_1:
     
     rts
     
+    
+    
+    
+clear_screen_fast_4_bytes:
+
+    ; We first need to fill the 32-bit cache with 4 times our background color
+
+    lda #%00001100           ; DCSEL=6, ADDRSEL=0
+    sta VERA_CTRL
+
+    ; TODO: we *could* use 'one byte cache cycling' so we have to set only *one* byte of the cache here
+    lda #STARTING_BACKGROUND_COLOR
+    sta VERA_FX_CACHE_L      ; cache32[7:0]
+    sta VERA_FX_CACHE_M      ; cache32[15:8]
+    sta VERA_FX_CACHE_H      ; cache32[23:16]
+    sta VERA_FX_CACHE_U      ; cache32[31:24]
+
+    ; We setup blit writes
+    
+    lda #%00000100           ; DCSEL=2, ADDRSEL=0
+    sta VERA_CTRL
+
+    lda #%01000000           ; transparent writes = 0, blit write = 1, cache fill enabled = 0, one byte cache cycling = 0, 16bit hop = 0, 4bit mode = 0, normal addr1 mode 
+    sta VERA_FX_CTRL
+
+    ; -- Set the starting VRAM address --
+    lda #%00110000           ; Setting bit 16 of vram address to the highest bit (=0), setting auto-increment value to 4 bytes
+    sta VERA_ADDR_BANK
+    
+    ; We start at the very beginning of VRAM
+    lda #0
+    sta VERA_ADDR_HIGH
+    lda #0
+    sta VERA_ADDR_LOW
+    
+    ; Two full frame buffers + 2 extra 320-rows + two 64-rows for the covering sprites (not precise, but good enough)
+    ; 128768 * 1 byte / 256 = 503 iterations = 256 + 247 iterations
+    ldx #0
+clear_next_256_bytes_256:
+    jsr CLEAR_256_BYTES_CODE
+    dex
+    bne clear_next_256_bytes_256
+
+    ldx #247
+clear_next_256_bytes:
+    jsr CLEAR_256_BYTES_CODE
+    dex
+    bne clear_next_256_bytes 
+     
+    lda #%00000000           ; transparent writes = 0, blit write = 0, cache fill enabled = 0, one byte cache cycling = 0, 16bit hop = 0, 4bit mode = 0, normal addr1 mode 
+    sta VERA_FX_CTRL
+    
+    lda #%00000000           ; DCSEL=0, ADDRSEL=0
+    sta VERA_CTRL
+    
+    rts
+    
+    
+generate_clear_256_bytes_code:
+
+    lda #<CLEAR_256_BYTES_CODE
+    sta CODE_ADDRESS
+    lda #>CLEAR_256_BYTES_CODE
+    sta CODE_ADDRESS+1
+    
+    ldy #0                 ; generated code byte counter
+
+    ; -- We generate 64 clear (stz) instructions --
+    
+    ldx #64                ; counts nr of clear instructions
+next_clear_instruction:
+
+    ; -- stz VERA_DATA0 ($9F23)
+    lda #$9C               ; stz ....
+    jsr add_code_byte
+
+    lda #$23               ; $23
+    jsr add_code_byte
+    
+    lda #$9F               ; $9F
+    jsr add_code_byte
+    
+    dex
+    bne next_clear_instruction
+
+    ; -- rts --
+    lda #$60
+    jsr add_code_byte
+
+    rts
+
+    
+add_code_byte:
+    sta (CODE_ADDRESS),y   ; store code byte at address (located at CODE_ADDRESS) + y
+    iny                    ; increase y
+    cpy #0                 ; if y == 0
+    bne done_adding_code_byte
+    inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
+done_adding_code_byte:
+    rts
+
     
 
 palette_data:
