@@ -116,8 +116,8 @@ DEFAULT_IRQ_VECTOR        = $55 ; 56
 
 IRQ_VECTOR               = $0314
 
-POLYFILL_TBLS_AND_CODE_RAM_ADDRESS = $3000 ; to $4A00
-FILL_LINE_START_JUMP     = $3C00   ; this is the actual jump table of 256 bytes 
+POLYFILL_TBLS_AND_CODE_RAM_ADDRESS = $8400 ; to $9E00
+FILL_LINE_START_JUMP     = $9000   ; this is the actual jump table of 256 bytes 
 
 Y_TO_ADDRESS_LOW_0       = $4A00
 Y_TO_ADDRESS_HIGH_0      = $4B00
