@@ -21,7 +21,7 @@ from functools import cmp_to_key
 #  - Forward Axis: Y
 #  - Upward Axis: Z
 #  - Select: Normals, Materials->Export  (do NOT triangulate mesh!)
-#  - Select: Animation->Export, 1-100 (or 1-1802*4 for U2E or 1-522*4 for U2A)
+#  - Select: Animation->Export, 1-100 (or 1-1802*4 for U2E or 1-522*2 for U2A)
 #  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
 # Before actually running this script: 
 #  - change the SCENE variable below
@@ -75,9 +75,7 @@ fx_state = {}
 if SCENE == 'U2E':
     fov_degrees = 40
 else:
-    # FIXME: manually adjusted, is it correct?
-    #fov_degrees = 48
-    fov_degrees = 24
+    fov_degrees = 48
     
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1
@@ -2071,7 +2069,7 @@ if SCENE == 'U2E':
     max_frame_nr = 1802*4
     increment_frame_by = 7
 else:
-    max_frame_nr = 522*4
+    max_frame_nr = 522*2
     increment_frame_by = 7
 
 if DEBUG_SORTING:

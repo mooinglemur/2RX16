@@ -116,11 +116,11 @@ infinite_loop:
     
 clear_memory:
     
-    ; We clear from $2000 to $9000 (so $7000 = 7*16*256 bytes)
+    ; We clear from $2F00 to $9F00 (so $7000 = 7*16*256 bytes)
     
     lda #$00
     sta STORE_ADDRESS
-    lda #$20
+    lda #$2F
     sta STORE_ADDRESS+1
     
     lda #0
