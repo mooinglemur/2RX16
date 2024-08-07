@@ -450,6 +450,10 @@ handler:
 	; do this one first
 	jsr scenevector
 
+	lda Vera::Reg::ISR
+	and #1
+	beq restorefx_and_return
+
 	lda music_interrupt_type ; 0 for vblank, 1 for via
 	jsr zsmkit::zsm_tick
 
@@ -491,13 +495,14 @@ via_timer_loops = * - 1
 	lda #2
 	jsr zsmkit::zsm_tick
 
+restorefx_and_return:
 	; restore FX
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
 	pla
 	sta Vera::Reg::FXCtrl
 	pla
-	sta Vera::Reg::Ctrl	
+	sta Vera::Reg::Ctrl
 endirq:
 	pla
 	sta X16::Reg::RAMBank

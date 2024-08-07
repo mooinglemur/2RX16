@@ -27,8 +27,102 @@
 
 .import galois16o
 
+.import scenevector
+
 .macpack longbranch
 .feature string_escapes
+
+; JeffreyH battle scene constants
+
+VERA_ADDR_LOW     = $9F20
+VERA_ADDR_HIGH    = $9F21
+VERA_ADDR_BANK    = $9F22
+VERA_DATA0        = $9F23
+VERA_DATA1        = $9F24
+VERA_CTRL         = $9F25
+
+VERA_IEN          = $9F26
+VERA_ISR          = $9F27
+VERA_IRQLINE_L    = $9F28
+VERA_SCANLINE_L   = $9F28
+
+VERA_DC_VIDEO     = $9F29  ; DCSEL=0
+VERA_DC_HSCALE    = $9F2A  ; DCSEL=0
+VERA_DC_VSCALE    = $9F2B  ; DCSEL=0
+VERA_DC_BORDER    = $9F2C  ; DCSEL=0
+
+VERA_DC_VSTART    = $9F2B  ; DCSEL=1
+VERA_DC_VSTOP     = $9F2C  ; DCSEL=1
+
+VERA_FX_CTRL      = $9F29  ; DCSEL=2
+VERA_FX_TILEBASE  = $9F2A  ; DCSEL=2
+VERA_FX_MAPBASE   = $9F2B  ; DCSEL=2
+
+VERA_FX_X_INCR_L  = $9F29  ; DCSEL=3
+VERA_FX_X_INCR_H  = $9F2A  ; DCSEL=3
+VERA_FX_Y_INCR_L  = $9F2B  ; DCSEL=3
+VERA_FX_Y_INCR_H  = $9F2C  ; DCSEL=3
+
+VERA_FX_X_POS_L   = $9F29  ; DCSEL=4
+VERA_FX_X_POS_H   = $9F2A  ; DCSEL=4
+VERA_FX_Y_POS_L   = $9F2B  ; DCSEL=4
+VERA_FX_Y_POS_H   = $9F2C  ; DCSEL=4
+
+VERA_FX_X_POS_S   = $9F29  ; DCSEL=5
+VERA_FX_Y_POS_S   = $9F2A  ; DCSEL=5
+VERA_FX_POLY_FILL_L = $9F2B  ; DCSEL=5
+VERA_FX_POLY_FILL_H = $9F2C  ; DCSEL=5
+
+VERA_FX_CACHE_L   = $9F29  ; DCSEL=6
+VERA_FX_ACCUM_RESET = $9F29  ; DCSEL=6
+VERA_FX_CACHE_M   = $9F2A  ; DCSEL=6
+VERA_FX_ACCUM     = $9F2A  ; DCSEL=6
+VERA_FX_CACHE_H   = $9F2B  ; DCSEL=6
+VERA_FX_CACHE_U   = $9F2C  ; DCSEL=6
+
+VERA_L0_CONFIG    = $9F2D
+VERA_L0_TILEBASE  = $9F2F
+
+VERA_L1_CONFIG    = $9F34
+VERA_L1_TILEBASE  = $9F36
+
+VERA_PALETTE      = $1FA00
+VERA_SPRITES      = $1FC00
+
+; Bank switching
+RAM_BANK                  = $00
+ROM_BANK                  = $01
+
+; === RAM addresses ===
+
+POLYFILL_TBLS_AND_CODE_RAM_ADDRESS = $8400 ; to $9E00
+FILL_LINE_START_JUMP     = $9000   ; this is the actual jump table of 256 bytes 
+
+POLYGON_DATA_RAM_ADDRESS = $A000
+POLYGON_DATA_RAM_BANK    = $20      ; polygon data starts at this RAM bank
+
+; ==== VRAM addresses ====
+
+FRAME_BUFFER_0_ADDR      = $00000
+FRAME_BUFFER_1_ADDR      = $0C000
+
+; === Other constants ===
+
+BACKGROUND_COLOR = 0
+
+LOAD_FILE = 1
+USE_JUMP_TABLE = 1
+DEBUG = 0
+
+VSYNC_BIT         = $01
+
+; FIXME: TURN this OFF in PRODUCTION!
+DEBUG_SHOW_THREE_FRAMES_MISSES = 1 ; If we exceed 3 frames, we missed a frame (or more) and we mark this (for now) by changing the border color
+
+; ^^ end battle scene constants
+; vv other constants
+
+DISABLE_LAYER1_ON_LINE = 270
 
 TEMP_4BPP_BMP_ADDR = $18000
 TILE_MAPBASE = $0D000
@@ -57,6 +151,54 @@ planet_fx_y_val:
 fadingout:
 	.res 1
 
+; JeffreyH battle scene ZP
+
+TMP1:
+	.res 1
+TMP2:
+	.res 1
+TMP3:
+	.res 1
+TMP4:
+	.res 1
+
+; For generating code and loading/storing
+CODE_ADDRESS:
+	.res 2
+LOAD_ADDRESS:
+	.res 2
+STORE_ADDRESS:
+	.res 2
+
+; Used by the slow polygon filler
+FILL_LENGTH_LOW:
+	.res 1
+FILL_LENGTH_HIGH:
+	.res 1
+NUMBER_OF_ROWS:
+	.res 1
+
+; FIXME: REMOVE THIS!?
+TMP_COLOR:
+	.res 1
+TMP_POLYGON_TYPE:
+	.res 1
+
+NEXT_STEP:
+	.res 1
+NR_OF_POLYGONS:
+	.res 2
+NR_OF_FRAMES:
+	.res 2
+BUFFER_NR:
+	.res 1
+CURRENT_RAM_BANK:
+	.res 1
+
+VRAM_ADDRESS:
+	.res 3
+
+
 .segment "INTRO_BSS"
 tileno:
 	.res 2
@@ -68,6 +210,27 @@ bmprow:
 	.res 1
 tiletmp:
 	.res 2
+
+.segment "INTRO_BSS_A"
+; battle scene RAM
+Y_TO_ADDRESS_LOW_0:
+	.res 256
+Y_TO_ADDRESS_HIGH_0:
+	.res 256
+Y_TO_ADDRESS_BANK_0:
+	.res 256
+
+Y_TO_ADDRESS_LOW_1:
+	.res 256
+Y_TO_ADDRESS_HIGH_1:
+	.res 256
+Y_TO_ADDRESS_BANK_1:
+	.res 256
+
+CLEAR_256_BYTES_CODE: ; takes up to 00F0+rts (256 bytes to clear = 80 * stz = 80 * 3 bytes)
+	.res 256
+
+.assert * <= POLYFILL_TBLS_AND_CODE_RAM_ADDRESS, error, "INTRO_BSS_A impinges on external codegen POLYFILL-8BIT-TBLS-AND-CODE.DAT"
 
 .segment "INTRO"
 entry:
@@ -81,7 +244,7 @@ entry:
 	jsr opening_text
 	jsr bgscroller_with_text
 	jsr prepare_for_ship
-	; do 3D ship stuff
+	jsr battle_scene
 	jsr prepare_for_praxis
 	MUSIC_SYNC $0d
 	jsr praxis_explosion
@@ -90,6 +253,737 @@ entry:
 dotitilecard:
 	jmp titlecard
 	; tail call
+
+.proc setup_our_interrupt_handler
+	php
+	sei
+
+	; enable our handler
+	lda #<our_handler
+	sta scenevector+2
+	lda #>our_handler
+	sta scenevector+3
+	lda #$ea ; NOP
+	sta scenevector
+
+	; set line interrupt
+	lda #<DISABLE_LAYER1_ON_LINE
+	sta Vera::Reg::IRQLineL
+	lda #>DISABLE_LAYER1_ON_LINE
+	lsr
+	ror
+	tsb Vera::Reg::IEN
+
+	; enable line interrupt
+	lda Vera::Reg::IEN
+	and #%10001101
+	ora #%00000010
+	sta Vera::Reg::IEN
+
+	plp
+	rts
+.endproc
+
+.proc unregister_our_interrupt_handler
+	php
+	sei
+
+	; disable our handler
+	lda #$60 ; RTS
+	sta scenevector
+
+	; disable line interrupt
+	lda Vera::Reg::IEN
+	and #%00001101
+	sta Vera::Reg::IEN
+
+	plp
+	rts
+.endproc
+
+.proc our_handler
+	lda Vera::Reg::ISR
+	lsr
+	bcs vsync
+	lsr
+	bcs line
+	rts
+line:
+	lda #%00100000
+	trb Vera::Reg::DCVideo
+	lda #2
+	sta Vera::Reg::ISR
+	rts
+vsync:
+	lda #%00100000
+	tsb Vera::Reg::DCVideo
+	rts
+.endproc
+
+.proc battle_scene
+	jsr generate_clear_256_bytes_code
+	jsr copy_palette_from_index_0
+
+	stz BUFFER_NR
+	jsr clear_screen_fast_4_bytes
+	lda #1
+	sta BUFFER_NR
+	jsr clear_screen_fast_4_bytes
+
+	LOADFILE "POLYFILL-8BIT-TBLS-AND-CODE.DAT", 0, POLYFILL_TBLS_AND_CODE_RAM_ADDRESS ; low RAM, python codegen
+
+	jsr generate_y_to_address_table_0
+	jsr generate_y_to_address_table_1
+
+	LOADFILE "U2A-POLYGONS.DAT", POLYGON_DATA_RAM_BANK, POLYGON_DATA_RAM_ADDRESS ; XXX fixme, need ring buffer management
+
+	jsr setup_vera_for_layer1_bitmap_general
+
+	; We start with showing buffer 1 while filling buffer 0
+	jsr setup_vera_for_layer1_bitmap_buffer_1
+	stz BUFFER_NR
+
+	jsr setup_our_interrupt_handler
+
+	lda #POLYGON_DATA_RAM_BANK
+	sta CURRENT_RAM_BANK
+	jsr setup_polygon_data_address
+	jsr draw_all_frames
+
+	jsr disable_layer1
+	jsr unregister_our_interrupt_handler
+
+	rts
+
+.endproc
+
+.proc disable_layer1
+	lda #%00100000
+	trb Vera::Reg::DCVideo
+	rts
+.endproc
+
+.proc draw_all_frames
+
+; FIXME: HARDCODED!
+; FIXME when the 16-bit number goes negative we have detect the end, BUT this means the NR_OF_FRAMES should be initially filled with nr_of_frames-1 !
+; FIXME: shoulnt this be 299?
+	lda #<(149)
+	sta NR_OF_FRAMES
+	lda #>(149)
+	sta NR_OF_FRAMES+1
+
+	WAITVSYNC
+	jsr X16::Kernal::RDTIM
+	sta lastjiffy
+
+draw_next_frame:
+	jsr setup_polygon_filler
+
+	ldy #0
+	; -- Nr of polygons in this frame --
+
+	lda (LOAD_ADDRESS), y
+	cmp #255                  ; if nr of polygon is 255, this means we have to switch to the next RAM bank!
+	bne polygon_count_is_ok
+
+	inc CURRENT_RAM_BANK
+
+	; We set the new RAM Bank and we set the LOAD_ADDRESS to the start of the new RAM Bank
+	jsr setup_polygon_data_address
+
+	; -- Nr of polygons in this frame --
+	lda (LOAD_ADDRESS), y
+
+polygon_count_is_ok:
+	sta NR_OF_POLYGONS
+
+; FIXME: we can probably *avoid* incrementing LOAD_ADDRESS each frame here! (but now we set y to 0 each polygon, so we need to think about a cleaner/better way to implement this)
+	clc
+	lda LOAD_ADDRESS
+	adc #1
+	sta LOAD_ADDRESS
+	lda LOAD_ADDRESS+1
+	adc #0
+	sta LOAD_ADDRESS+1
+
+	lda NR_OF_POLYGONS
+	beq done_drawing_polygons  ; if nr of polygons is 0, we are done drawing polygons for this frame
+
+draw_next_polygon:
+	jsr draw_polygon_fast
+
+	clc
+	tya                 ; y contained the nr of bytes we read for the previous polygon
+	adc LOAD_ADDRESS
+	sta LOAD_ADDRESS
+	lda LOAD_ADDRESS+1
+	adc #0
+	sta LOAD_ADDRESS+1
+
+	dec NR_OF_POLYGONS
+	bne draw_next_polygon
+
+done_drawing_polygons:
+	WAITVSYNC
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc lastjiffy
+	cmp #3
+	bcc done_drawing_polygons
+	lda lastjiffy
+	clc
+	adc #3
+	sta lastjiffy
+
+	; Every frame we switch to which buffer we write to and which one we show
+	lda #1
+	eor BUFFER_NR
+	sta BUFFER_NR
+
+	; If we are going to fill buffer 1 (not 0) then we show buffer 0
+	bne show_buffer_0
+show_buffer_1:
+	jsr setup_vera_for_layer1_bitmap_buffer_1
+	bra done_switching_buffer
+show_buffer_0:
+	jsr setup_vera_for_layer1_bitmap_buffer_0
+done_switching_buffer:
+
+
+	jsr unset_polygon_filler
+
+	jsr clear_screen_fast_4_bytes
+
+	sec
+	lda NR_OF_FRAMES
+	sbc #1
+	sta NR_OF_FRAMES
+	lda NR_OF_FRAMES+1
+	sbc #0
+	sta NR_OF_FRAMES+1
+
+	bpl draw_next_frame
+
+	rts
+lastjiffy:
+	.byte 0
+.endproc
+
+.proc draw_polygon_fast
+
+	ldy #0
+
+	; -- Polygon type --
+	lda (LOAD_ADDRESS), y
+	sta TMP_POLYGON_TYPE
+
+	; FIXME: its better to use a FRAME-END code!
+
+; FIXME: technically this name is INCORRECT, since we are MIXING single and double top draws!
+single_top_free_form:
+; FIXME: this iny should be moved up when we have an actual jump table!
+	iny
+
+	; -- Polygon color --
+
+	; We first need to fill the 32-bit cache with 4 times our color
+
+	lda #%00001100           ; DCSEL=6, ADDRSEL=0
+	sta VERA_CTRL
+
+	lda (LOAD_ADDRESS), y
+	iny
+	; FIXME: we can SPEED this up  if we use the alternative cache incrementer! (only 2 bytes need to be set then)
+	sta VERA_FX_CACHE_L      ; cache32[7:0]
+	sta VERA_FX_CACHE_M      ; cache32[15:8]
+	sta VERA_FX_CACHE_H      ; cache32[23:16]
+	sta VERA_FX_CACHE_U      ; cache32[31:24]
+
+	; -- Y-start --
+
+	; FIXME: we can do this more efficiently!
+	lda BUFFER_NR
+	bne do_y_to_address_1
+
+do_y_to_address_0:
+	lda (LOAD_ADDRESS), y
+	iny
+
+	tax
+	lda Y_TO_ADDRESS_LOW_0, x
+	sta VERA_ADDR_LOW
+	lda Y_TO_ADDRESS_HIGH_0, x
+	sta VERA_ADDR_HIGH
+	lda Y_TO_ADDRESS_BANK_0, x
+	sta VERA_ADDR_BANK
+
+	bra y_to_address_done
+
+do_y_to_address_1:
+	lda (LOAD_ADDRESS), y
+	iny
+
+	tax
+	lda Y_TO_ADDRESS_LOW_1, x
+	sta VERA_ADDR_LOW
+	lda Y_TO_ADDRESS_HIGH_1, x
+	sta VERA_ADDR_HIGH
+	lda Y_TO_ADDRESS_BANK_1, x
+	sta VERA_ADDR_BANK
+
+y_to_address_done:
+
+	lda #%00001000           ; DCSEL=4, ADDRSEL=0
+	sta VERA_CTRL
+
+	; FIXME: we are MIXING single and double top drawing, so we use TMP_POLYGON_TYPE here for now!
+	lda TMP_POLYGON_TYPE
+	bmi set_double_x_positions
+
+set_single_x_positions:
+	; -- X-position LOW --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_POS_L
+	sta VERA_FX_Y_POS_L
+
+	; -- X-position HIGH --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_POS_H
+	sta VERA_FX_Y_POS_H
+
+	bra done_with_x_positions
+
+set_double_x_positions:
+	; -- X1-position LOW --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_POS_L
+
+	; -- X1-position HIGH --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_POS_H
+
+	; -- X2-position LOW --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_Y_POS_L
+
+	; -- X2-position HIGH --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_Y_POS_H
+
+done_with_x_positions:
+
+	lda #%00000110           ; DCSEL=3, ADDRSEL=0
+	sta VERA_CTRL
+
+	; -- X1 incr LOW --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_INCR_L
+
+	; -- X1 incr HIGH --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_INCR_H
+
+	; -- X2 incr LOW --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_Y_INCR_L
+
+	; -- X2 incr HIGH --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_Y_INCR_H
+
+	; -- nr of lines --
+	lda (LOAD_ADDRESS), y
+	iny
+
+	phy   ; backup y (byte offset into data)
+
+	tay   ; put nr-of-lines into y register
+
+	lda VERA_DATA1   ; this will increment x1 and x2 and the fill_length value will be calculated (= x2 - x1). Also: ADDR1 will be updated with ADDR0 + x1
+
+	lda #%00001010           ; DCSEL=5, ADDRSEL=0
+	sta VERA_CTRL
+	ldx VERA_FX_POLY_FILL_L  ; This contains: FILL_LENGTH >= 16, X1[1:0], FILL_LENGTH[3:0], 0
+
+	jsr draw_polygon_part_using_polygon_filler_and_jump_tables
+
+	ply   ; restore y (byte offset into data)
+
+draw_next_part:
+
+	; -- next step code --
+	lda (LOAD_ADDRESS), y
+	sta NEXT_STEP
+	beq done_drawing_polygon
+	iny
+
+	; We know we have to either change the left or right increment (or both) so we need to set the appropiate DCSEL
+	ldx #%00000110           ; DCSEL=3, ADDRSEL=0
+	stx VERA_CTRL
+
+	and #$01   ; bit 0 determines if we have to change the left increment
+	beq left_increment_is_ok
+
+	; we (at least) have to change the left increment
+
+	; -- X1 incr LOW --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_INCR_L
+
+	; -- X1 incr HIGH --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_X_INCR_H
+
+left_increment_is_ok:
+
+	lda NEXT_STEP
+	and #$02   ; bit 1 determines if we have to change the right increment
+	beq right_increment_is_ok
+
+	; we have to change the right increment
+
+	; -- X2 incr LOW --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_Y_INCR_L
+
+	; -- X2 incr HIGH --
+	lda (LOAD_ADDRESS), y
+	iny
+	sta VERA_FX_Y_INCR_H
+
+right_increment_is_ok:
+	; -- nr of lines --
+	lda (LOAD_ADDRESS), y
+	iny
+
+	phy   ; backup y (byte offset into data)
+
+	tay   ; put nr-of-lines into y register
+
+	lda VERA_DATA1   ; this will increment x1 and x2 and the fill_length value will be calculated (= x2 - x1). Also: ADDR1 will be updated with ADDR0 + x1
+
+	lda #%00001010           ; DCSEL=5, ADDRSEL=0
+	sta VERA_CTRL
+	ldx VERA_FX_POLY_FILL_L  ; This contains: FILL_LENGTH >= 16, X1[1:0], FILL_LENGTH[3:0], 0
+
+	jsr draw_polygon_part_using_polygon_filler_and_jump_tables
+
+	ply   ; restore y (byte offset into data)
+	bra draw_next_part
+
+done_drawing_polygon:
+	iny   ; We can only get here from one place, and there we still hadnt incremented y yet
+	rts
+
+draw_polygon_part_using_polygon_filler_and_jump_tables:
+	jmp (FILL_LINE_START_JUMP,x)
+.endproc
+
+.proc setup_polygon_data_address
+
+	lda #<POLYGON_DATA_RAM_ADDRESS
+	sta LOAD_ADDRESS
+	lda #>POLYGON_DATA_RAM_ADDRESS
+	sta LOAD_ADDRESS+1
+
+	lda CURRENT_RAM_BANK
+	sta RAM_BANK
+
+	rts
+.endproc
+
+.proc setup_polygon_filler
+	lda #%00000101           ; DCSEL=2, ADDRSEL=1
+	sta VERA_CTRL
+
+	lda #%00110000           ; ADDR1 increment: +4 byte
+	sta VERA_ADDR_BANK
+
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+
+	lda #%11100000           ; ADDR0 increment: +320 bytes
+	sta VERA_ADDR_BANK
+
+	lda #%00000010           ; Entering *polygon filler mode*
+	ora #%01000000           ; cache write enabled = 1
+	sta VERA_FX_CTRL
+
+	rts
+.endproc
+
+.proc unset_polygon_filler
+
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+
+	lda #%00010000           ; ADDR0 increment: +1 bytes
+	sta VERA_ADDR_BANK
+
+	lda #%00000000           ; Exiting *polygon filler mode*
+	sta VERA_FX_CTRL
+
+	rts
+.endproc
+
+.proc setup_vera_for_layer1_bitmap_buffer_0
+	; Set layer1 tilebase to FRAME_BUFFER_0_ADDR and tile width to 320 px
+	lda #((>FRAME_BUFFER_0_ADDR)>>1)
+	sta VERA_L1_TILEBASE
+	rts
+.endproc
+
+.proc setup_vera_for_layer1_bitmap_buffer_1
+	; Set layer1 tilebase to FRAME_BUFFER_1_ADDR and tile width to 320 px
+	lda #((>FRAME_BUFFER_1_ADDR)>>1)
+	sta VERA_L1_TILEBASE
+	rts
+.endproc
+
+.proc setup_vera_for_layer1_bitmap_general
+	; -- Setup Layer 1 --
+	lda #%00000000           ; DCSEL=0, ADDRSEL=0
+	sta VERA_CTRL
+
+	lda #%00100000
+	tsb VERA_DC_VIDEO
+
+	; Enable bitmap mode and color depth = 8bpp on layer 0
+	lda #(4+3)
+	sta VERA_L1_CONFIG
+
+	rts
+.endproc
+
+.proc generate_y_to_address_table_0
+
+	lda #<FRAME_BUFFER_0_ADDR
+	sta VRAM_ADDRESS
+	lda #>FRAME_BUFFER_0_ADDR
+	sta VRAM_ADDRESS+1
+	stz VRAM_ADDRESS+2
+
+	; First entry
+	ldy #0
+	lda VRAM_ADDRESS
+	sta Y_TO_ADDRESS_LOW_0, y
+	lda VRAM_ADDRESS+1
+	sta Y_TO_ADDRESS_HIGH_0, y
+	lda VRAM_ADDRESS+2
+	ora #%11100000           ; +320 byte increment (=%1110)
+	sta Y_TO_ADDRESS_BANK_0, y
+
+	; Entries 1-255
+	ldy #1
+generate_next_y_to_address_entry_0:
+	clc
+	lda VRAM_ADDRESS
+	adc #<320
+	sta VRAM_ADDRESS
+	sta Y_TO_ADDRESS_LOW_0, y
+
+	lda VRAM_ADDRESS+1
+	adc #>320
+	sta VRAM_ADDRESS+1
+	sta Y_TO_ADDRESS_HIGH_0, y
+
+	lda VRAM_ADDRESS+2
+	adc #0
+	sta VRAM_ADDRESS+2
+	ora #%11100000           ; +320 byte increment (=%1110)
+	sta Y_TO_ADDRESS_BANK_0, y
+
+	iny
+	bne generate_next_y_to_address_entry_0
+
+	rts
+.endproc
+
+.proc generate_y_to_address_table_1
+
+	lda #<FRAME_BUFFER_1_ADDR
+	sta VRAM_ADDRESS
+	lda #>FRAME_BUFFER_1_ADDR
+	sta VRAM_ADDRESS+1
+	stz VRAM_ADDRESS+2
+
+	; First entry
+	ldy #0
+	lda VRAM_ADDRESS
+	sta Y_TO_ADDRESS_LOW_1, y
+	lda VRAM_ADDRESS+1
+	sta Y_TO_ADDRESS_HIGH_1, y
+	lda VRAM_ADDRESS+2
+	ora #%11100000           ; +320 byte increment (=%1110)
+	sta Y_TO_ADDRESS_BANK_1, y
+
+	; Entries 1-255
+	ldy #1
+generate_next_y_to_address_entry_1:
+	clc
+	lda VRAM_ADDRESS
+	adc #<320
+	sta VRAM_ADDRESS
+	sta Y_TO_ADDRESS_LOW_1, y
+
+	lda VRAM_ADDRESS+1
+	adc #>320
+	sta VRAM_ADDRESS+1
+	sta Y_TO_ADDRESS_HIGH_1, y
+
+	lda VRAM_ADDRESS+2
+	adc #0
+	sta VRAM_ADDRESS+2
+	ora #%11100000           ; +320 byte increment (=%1110)
+	sta Y_TO_ADDRESS_BANK_1, y
+
+	iny
+	bne generate_next_y_to_address_entry_1
+
+	rts
+.endproc
+
+.proc clear_screen_fast_4_bytes
+
+	; We first need to fill the 32-bit cache with 4 times our background color
+
+	lda #%00001100           ; DCSEL=6, ADDRSEL=0
+	sta VERA_CTRL
+
+	; TODO: we *could* use 'one byte cache cycling' so we have to set only *one* byte of the cache here
+	lda #BACKGROUND_COLOR
+	sta VERA_FX_CACHE_L      ; cache32[7:0]
+	sta VERA_FX_CACHE_M      ; cache32[15:8]
+	sta VERA_FX_CACHE_H      ; cache32[23:16]
+	sta VERA_FX_CACHE_U      ; cache32[31:24]
+
+	; We setup blit writes
+
+	lda #%00000100           ; DCSEL=2, ADDRSEL=0
+	sta VERA_CTRL
+
+	lda #%01000000           ; transparent writes = 0, blit write = 1, cache fill enabled = 0, one byte cache cycling = 0, 16bit hop = 0, 4bit mode = 0, normal addr1 mode 
+	sta VERA_FX_CTRL
+
+	; -- Set the starting VRAM address --
+	lda #%00110000           ; Setting bit 16 of vram address to the highest bit (=0), setting auto-increment value to 4 bytes
+	sta VERA_ADDR_BANK
+
+	; Depending of the current BUFFER_NR we set the address to that buffer (to clear)
+	lda BUFFER_NR
+	beq set_to_clear_buffer_0
+
+	lda #>FRAME_BUFFER_1_ADDR
+	sta VERA_ADDR_HIGH
+	lda #<FRAME_BUFFER_1_ADDR
+	sta VERA_ADDR_LOW
+
+	bra done_setting_clear_buffer
+
+set_to_clear_buffer_0:
+
+	lda #>FRAME_BUFFER_0_ADDR
+	sta VERA_ADDR_HIGH
+	lda #<FRAME_BUFFER_0_ADDR
+	sta VERA_ADDR_LOW
+
+done_setting_clear_buffer:
+
+	; 320x120 * 1 byte / 256 = 150 iterations
+	ldx #150
+
+clear_next_256_bytes:
+	jsr CLEAR_256_BYTES_CODE
+	dex
+	bne clear_next_256_bytes 
+
+	lda #%00000000           ; transparent writes = 0, blit write = 0, cache fill enabled = 0, one byte cache cycling = 0, 16bit hop = 0, 4bit mode = 0, normal addr1 mode 
+	sta VERA_FX_CTRL
+
+	lda #%00000000           ; DCSEL=0, ADDRSEL=0
+	sta VERA_CTRL
+
+	rts
+.endproc
+
+.proc copy_palette_from_index_0
+	VERA_SET_ADDR Vera::VRAM_palette, 1
+
+	ldy #0
+next_packed_color_256:
+	lda battle_palette_data, y
+	sta VERA_DATA0
+	iny
+	bne next_packed_color_256
+
+	ldy #0
+next_packed_color_1:
+	lda battle_palette_data+256, y
+	sta VERA_DATA0
+	iny
+	cpy #<(end_of_battle_palette_data-battle_palette_data)
+	bne next_packed_color_1
+
+	rts
+.endproc
+
+.proc generate_clear_256_bytes_code
+
+	lda #<CLEAR_256_BYTES_CODE
+	sta CODE_ADDRESS
+	lda #>CLEAR_256_BYTES_CODE
+	sta CODE_ADDRESS+1
+
+	ldy #0                 ; generated code byte counter
+
+	; -- We generate 64 clear (stz) instructions --
+
+	ldx #64                ; counts nr of clear instructions
+next_clear_instruction:
+
+	; -- stz VERA_DATA0 ($9F23)
+	lda #$9C               ; stz ....
+	jsr add_code_byte
+
+	lda #$23               ; $23
+	jsr add_code_byte
+
+	lda #$9F               ; $9F
+	jsr add_code_byte
+
+	dex
+	bne next_clear_instruction
+
+	; -- rts --
+	lda #$60
+	jsr add_code_byte
+
+	rts
+.endproc
+
+.proc add_code_byte
+	sta (CODE_ADDRESS),y   ; store code byte at address (located at CODE_ADDRESS) + y
+	iny                    ; increase y
+	cpy #0                 ; if y == 0
+	bne done_adding_code_byte
+	inc CODE_ADDRESS+1     ; increment high-byte of CODE_ADDRESS
+done_adding_code_byte:
+	rts
+.endproc
 
 .proc setup_vera_and_tiles
 	ldx #128
@@ -566,6 +1460,15 @@ tile2bmploop:
 	stz Vera::Reg::FXCtrl
 	stz Vera::Reg::Ctrl
 
+	; copy our palette to the last 16 colors
+	VERA_SET_ADDR ((Vera::VRAM_palette)+(240*2)), 1
+	ldy #0
+:	lda titlepal,y
+	sta Vera::Reg::Data0
+	iny
+	cpy #32
+	bcc :-
+
 	; we're done with the tile -> bitmap conversion
 	WAITVSYNC
 
@@ -574,7 +1477,7 @@ tile2bmploop:
 	sta Vera::Reg::L0Config
 	lda #((TEMP_4BPP_BMP_ADDR >> 11) << 2) | 0 ; 320
 	sta Vera::Reg::L0TileBase
-	lda #0
+	lda #15
 	sta Vera::Reg::L0HScrollH ; palette offset
 
 	; also let's set VSTOP earlier so we're clear of the registar area of VRAM
@@ -620,6 +1523,15 @@ bmp4to8loop:
 	bne bmp4to8loop
 	dey
 	bne bmp4to8loop
+
+	; copy our palette to the first 16 colors again
+	VERA_SET_ADDR Vera::VRAM_palette, 1
+	ldy #0
+:	lda titlepal,y
+	sta Vera::Reg::Data0
+	iny
+	cpy #32
+	bcc :-
 
 	WAITVSYNC
 
@@ -1513,3 +2425,246 @@ planet_pos_h:
 	.byte $07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07
 	.byte $07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07
 	.byte $07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07
+
+battle_palette_data:
+	.byte $00, $00
+	.byte $00, $00
+	.byte $11, $01
+	.byte $11, $01
+	.byte $22, $02
+	.byte $22, $02
+	.byte $33, $03
+	.byte $33, $03
+	.byte $44, $04
+	.byte $44, $04
+	.byte $55, $05
+	.byte $55, $05
+	.byte $66, $06
+	.byte $66, $06
+	.byte $77, $07
+	.byte $77, $07
+	.byte $88, $08
+	.byte $88, $08
+	.byte $99, $09
+	.byte $99, $09
+	.byte $aa, $0a
+	.byte $aa, $0a
+	.byte $aa, $0a
+	.byte $bb, $0b
+	.byte $bb, $0b
+	.byte $cc, $0c
+	.byte $cc, $0c
+	.byte $dd, $0d
+	.byte $dd, $0d
+	.byte $ee, $0e
+	.byte $ff, $0f
+	.byte $ff, $0f
+	.byte $25, $01
+	.byte $25, $01
+	.byte $36, $01
+	.byte $37, $02
+	.byte $37, $02
+	.byte $48, $02
+	.byte $49, $02
+	.byte $4a, $03
+	.byte $5a, $03
+	.byte $5b, $03
+	.byte $5b, $03
+	.byte $6c, $03
+	.byte $6d, $04
+	.byte $6e, $04
+	.byte $7e, $04
+	.byte $7f, $04
+	.byte $8f, $05
+	.byte $8f, $05
+	.byte $8f, $05
+	.byte $9f, $05
+	.byte $9f, $06
+	.byte $9f, $06
+	.byte $af, $06
+	.byte $af, $07
+	.byte $af, $07
+	.byte $bf, $07
+	.byte $bf, $08
+	.byte $bf, $08
+	.byte $cf, $08
+	.byte $cf, $09
+	.byte $cf, $09
+	.byte $cf, $09
+	.byte $24, $05
+	.byte $24, $06
+	.byte $24, $06
+	.byte $34, $06
+	.byte $34, $07
+	.byte $34, $07
+	.byte $35, $07
+	.byte $35, $08
+	.byte $35, $08
+	.byte $45, $08
+	.byte $45, $09
+	.byte $45, $09
+	.byte $46, $09
+	.byte $46, $09
+	.byte $56, $0a
+	.byte $56, $0a
+	.byte $56, $0a
+	.byte $56, $0b
+	.byte $57, $0b
+	.byte $67, $0b
+	.byte $67, $0b
+	.byte $67, $0c
+	.byte $67, $0c
+	.byte $67, $0c
+	.byte $78, $0d
+	.byte $78, $0d
+	.byte $78, $0d
+	.byte $78, $0e
+	.byte $88, $0e
+	.byte $89, $0e
+	.byte $89, $0f
+	.byte $99, $0f
+	.byte $00, $00
+	.byte $01, $00
+	.byte $11, $01
+	.byte $12, $01
+	.byte $12, $01
+	.byte $23, $02
+	.byte $23, $02
+	.byte $34, $03
+	.byte $34, $03
+	.byte $35, $03
+	.byte $45, $04
+	.byte $45, $04
+	.byte $56, $05
+	.byte $56, $05
+	.byte $57, $05
+	.byte $67, $06
+	.byte $68, $06
+	.byte $78, $07
+	.byte $79, $07
+	.byte $89, $08
+	.byte $8a, $08
+	.byte $9a, $09
+	.byte $9b, $09
+	.byte $ab, $0a
+	.byte $ac, $0a
+	.byte $bc, $0a
+	.byte $bd, $0b
+	.byte $cd, $0c
+	.byte $ce, $0c
+	.byte $de, $0d
+	.byte $df, $0d
+	.byte $ef, $0e
+	.byte $46, $03
+	.byte $46, $03
+	.byte $56, $03
+	.byte $56, $04
+	.byte $57, $04
+	.byte $57, $04
+	.byte $67, $04
+	.byte $68, $05
+	.byte $68, $05
+	.byte $78, $05
+	.byte $79, $05
+	.byte $79, $05
+	.byte $89, $06
+	.byte $8a, $06
+	.byte $8a, $06
+	.byte $9a, $06
+	.byte $9a, $07
+	.byte $9b, $07
+	.byte $ab, $07
+	.byte $ab, $08
+	.byte $ac, $08
+	.byte $ac, $08
+	.byte $bc, $08
+	.byte $bd, $09
+	.byte $bd, $09
+	.byte $cd, $09
+	.byte $cd, $0a
+	.byte $de, $0a
+	.byte $de, $0a
+	.byte $de, $0a
+	.byte $ef, $0b
+	.byte $ef, $0b
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+	.byte $00, $0d
+end_of_battle_palette_data:
