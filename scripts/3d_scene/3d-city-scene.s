@@ -165,7 +165,6 @@ start:
     ; jsr clear_vram_slow
     
     ; This clears (almost) the entire VRAM and sets it to the STARTING_BACKGROUND_COLOR
-    ; FIXME: you might want to change this color to WHITE at the beginning?
     jsr clear_screen_fast_4_bytes
     
     jsr load_polyfill_tables_and_code_into_fixed_ram
