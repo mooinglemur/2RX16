@@ -345,6 +345,10 @@ vsync:
 
 	jsr setup_our_interrupt_handler
 
+	jsr clear_first_96k_of_vram
+
+	MUSIC_SYNC $0B
+
 	lda #POLYGON_DATA_RAM_BANK
 	sta CURRENT_RAM_BANK
 	jsr setup_polygon_data_address
@@ -355,6 +359,45 @@ vsync:
 
 	rts
 
+.endproc
+
+.proc clear_first_96k_of_vram
+	lda #(6 << 1)
+	sta Vera::Reg::Ctrl
+
+	stz $9f29
+	stz $9f2a
+	stz $9f2b
+	stz $9f2c
+
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	lda #%01000000
+	sta Vera::Reg::FXCtrl
+
+	stz Vera::Reg::Ctrl
+	VERA_SET_ADDR $00000, 3
+
+	ldy #12
+	ldx #0
+loop:
+.repeat 8
+	stz Vera::Reg::Data0
+.endrepeat
+	dex
+	bne loop
+	dey
+	bne loop
+
+	lda #(2 << 1)
+	sta Vera::Reg::Ctrl
+
+	stz Vera::Reg::FXCtrl
+
+	stz Vera::Reg::Ctrl
+
+	rts
 .endproc
 
 .proc disable_layer1
