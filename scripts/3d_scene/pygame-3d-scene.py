@@ -21,7 +21,7 @@ from functools import cmp_to_key
 #  - Forward Axis: Y
 #  - Upward Axis: Z
 #  - Select: Normals, Materials->Export  (do NOT triangulate mesh!)
-#  - Select: Animation->Export, 1-100 (or 1-1802*4 for U2E or 1-522*4 for U2A)
+#  - Select: Animation->Export, 1-100 (or 1-1802*4 for U2E or 1-522*2 for U2A)
 #  - Filename: U2E_anim.obj/U2A_anim.obj  (this will genarate files with names: U2E_anim<frame_nr>.obj and U2E_anim<frame_nr>.mtl)
 # Before actually running this script: 
 #  - change the SCENE variable below
@@ -2071,7 +2071,7 @@ if SCENE == 'U2E':
     max_frame_nr = 1802*4
     increment_frame_by = 7
 else:
-    max_frame_nr = 522*4
+    max_frame_nr = 522*2
     increment_frame_by = 7
 
 if DEBUG_SORTING:
