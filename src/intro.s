@@ -337,6 +337,8 @@ vsync:
 
 	LOADFILE "U2A-POLYGONS.DAT", POLYGON_DATA_RAM_BANK, POLYGON_DATA_RAM_ADDRESS ; XXX fixme, need ring buffer management
 
+	jsr clear_first_96k_of_vram
+
 	jsr setup_vera_for_layer1_bitmap_general
 
 	; We start with showing buffer 1 while filling buffer 0
@@ -344,8 +346,6 @@ vsync:
 	stz BUFFER_NR
 
 	jsr setup_our_interrupt_handler
-
-	jsr clear_first_96k_of_vram
 
 	MUSIC_SYNC $0B
 
