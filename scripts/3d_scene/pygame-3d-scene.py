@@ -75,9 +75,7 @@ fx_state = {}
 if SCENE == 'U2E':
     fov_degrees = 40
 else:
-    # FIXME: manually adjusted, is it correct?
-    #fov_degrees = 48
-    fov_degrees = 24
+    fov_degrees = 48
     
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1

@@ -195,6 +195,10 @@ def create_animation_frames():
             else:
                 obj.hide_viewport = True
                 
+            # FIXME: Forcing the mothership to be always visible
+            if (object_name == 'Sippi'): 
+                obj.hide_viewport = False
+            
             obj.keyframe_insert('hide_viewport', frame=frame_nr_in_blender)
             obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender)
             obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender)
