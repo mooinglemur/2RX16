@@ -335,7 +335,7 @@ vsync:
 	jsr generate_y_to_address_table_0
 	jsr generate_y_to_address_table_1
 
-	LOADFILE "U2A-POLYGONS.DAT", POLYGON_DATA_RAM_BANK, POLYGON_DATA_RAM_ADDRESS ; XXX fixme, need ring buffer management
+	LOADFILE "U2A-POLYGONS.DAT", POLYGON_DATA_RAM_BANK, POLYGON_DATA_RAM_ADDRESS
 
 	jsr clear_first_96k_of_vram
 
