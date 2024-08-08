@@ -62,8 +62,8 @@ LOAD              = $FFD5  ; Load a file into main memory or VRAM
 
 ; -- VRAM addresses --
 
-MAPDATA_VRAM_ADDRESS  = $11000  ; should be aligned to 1kB
-TILEDATA_VRAM_ADDRESS = $13000  ; should be aligned to 1kB
+MAPDATA_VRAM_ADDRESS  = $1F000  ; should be aligned to 1kB
+TILEDATA_VRAM_ADDRESS = $10000  ; should be aligned to 1kB
 
 VERA_PALETTE          = $1FA00
 
@@ -357,6 +357,9 @@ wait_for_scanline_low:
 
 
 
+y_64_to_tiledata_offset:
+    .byte 0*24, 1*24, 2*24, 3*24 
+
   
 
 draw_bended_tilemap:
@@ -488,6 +491,37 @@ skip_hardcoded_data:
     ldx #0
     
 bend_copy_next_row_1:
+
+    lda #%00000100           ; DCSEL=2, ADDRSEL=0
+    sta VERA_CTRL
+
+
+    lda Y_SUB_PIXEL+1
+    and #%11000000    ; we want to know the y_pos % 64, so we take the top 2 bits
+; FIXME: rotate left instead?
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    
+    tay
+    lda y_64_to_tiledata_offset,y
+; FIXME!
+; FIXME!
+; FIXME!
+;    lda #2*24
+    sta TEMP_VAR
+
+    lda #(TILEDATA_VRAM_ADDRESS >> 9)
+; FIXME! clean this up!
+    ora TEMP_VAR
+    and #%11111100   ; only the 6 highest bits of the address can be set
+    ora #%00000010   ; clip = 1
+    sta VERA_FX_TILEBASE
+
+
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
 
@@ -518,14 +552,17 @@ bend_copy_next_row_1:
     sta VERA_FX_Y_POS_H      ; Y subpixel position[0] = 0,  Y pixel position high [10:8] = 000 or 111
     
     ; Setting the Subpixel X/Y positions
+ 
+; FIXME! 
+; FIXME! 
+; FIXME! 
+;    lda #%00001010           ; DCSEL=5, ADDRSEL=0
+;    sta VERA_CTRL
     
-    lda #%00001010           ; DCSEL=5, ADDRSEL=0
-    sta VERA_CTRL
-    
-    lda X_SUB_PIXEL
-    sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
-    lda Y_SUB_PIXEL
-    sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
+;    lda X_SUB_PIXEL
+;    sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
+;    lda Y_SUB_PIXEL
+;    sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
     
 
     ; Copy one row of pixels
