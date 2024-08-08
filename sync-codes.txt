@@ -60,6 +60,7 @@ $B0 = load water
 $BC = slide water down
 $C0 = transition to bounce
 $CC = end of MUSIC4
+$D1 = start city animation
 $D4 = ship flyby effect
 $E0 = credits
 
