@@ -158,6 +158,9 @@ STREAM_RAM_BANK:
 STREAM_ADDR:
 	.res 2
 
+TO_READ:
+	.res 3
+
 .segment "CRAFT_BSS"
 .segment "CRAFT_BSS_A"
 
@@ -205,6 +208,10 @@ entry:
 	stz BUFFER_NR
 
 	OPENFILE "U2E-POLYGONS.DAT"
+	sta TO_READ
+	stx TO_READ+1
+	sty TO_READ+2
+
 	ldx #1
 	jsr X16::Kernal::CHKIN
 
@@ -658,6 +665,8 @@ end:
 .endproc
 
 .proc stream_read
+	lda TO_READ+2
+	bmi err
 	lda STREAM_RAM_BANK
 	sec
 	sbc CURRENT_RAM_BANK
@@ -693,6 +702,8 @@ mp:
 	clc
 	jsr X16::Kernal::MACPTR
 	bcs gf
+	stx TMP1
+	sty TMP2
 	txa
 	adc STREAM_ADDR
 	sta STREAM_ADDR
@@ -708,16 +719,34 @@ mp:
 :	sty STREAM_RAM_BANK
 nowrap:
 	sta STREAM_ADDR+1
-	clc
+	; deduct from remaining count
+	lda TO_READ
+	sec
+	sbc TMP1
+	sta TO_READ
+	lda TO_READ+1
+	sbc TMP2
+	sta TO_READ+1
+	bcs :+
+	dec TO_READ+2
+	bmi file_is_done
+:	clc
 	rts
 below:
 	cmp #$ff
 	bne doread
+err:
 	sec
 done:
 	rts
 gf:
 	jmp graceful_fail
+file_is_done:
+	lda #1
+	jsr X16::Kernal::CLOSE
+	jsr X16::Kernal::CLRCHN
+	sec
+	rts
 .endproc
 
 .proc setup_vera_for_layer0_bitmap_general

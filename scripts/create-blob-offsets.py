@@ -89,12 +89,16 @@ with open(macro_include_open, 'w') as macro_file:
         macro_file.write(f"\tlda #${(entry[1] >> 16) & 0xff:02x}\n")
         macro_file.write(f"\tsta blobseekfn+4\n")
 
+        macro_file.write("\tjsr blobseek\n")
+        macro_file.write(f"\tlda #${entry[2] & 0xff:02x}\n")
+        macro_file.write(f"\tldx #${(entry[2] >> 8) & 0xff:02x}\n")
+        macro_file.write(f"\tldy #${(entry[2] >> 16) & 0xff:02x}\n")
+
         el = "else"
 
     macro_file.write(f".else\n")
     macro_file.write(f".error \"OPENFILE macro expansion failed\"\n")
     macro_file.write(f".endif\n")
 
-    macro_file.write("\tjsr blobseek\n")
     macro_file.write(".endmacro\n")
 
