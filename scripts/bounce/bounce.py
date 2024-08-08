@@ -14,7 +14,7 @@ source_left_padding = 70  # on the left of the source image there is a black 'pa
 tile_map_filename = "scripts/bounce/BOUNCE-TILEMAP.DAT"
 tile_pixel_data_filename = "scripts/bounce/BOUNCE-TILEDATA.DAT"
 # FIXME:
-# pos_and_rotate_filename = "scripts/bounce/BOUNCE-POS-ROTATE.DAT"
+# pos_and_bend_filename = "scripts/bounce/BOUNCE-POS-BEND.DAT"
 
 # We set the affine helper to a 32x32 map. 
 map_width = 32

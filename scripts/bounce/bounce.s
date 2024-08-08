@@ -63,7 +63,7 @@ LOAD              = $FFD5  ; Load a file into main memory or VRAM
 ; -- VRAM addresses --
 
 MAPDATA_VRAM_ADDRESS  = $13000  ; should be aligned to 1kB
-TILEDATA_VRAM_ADDRESS = $17000  ; should be aligned to 1kB
+TILEDATA_VRAM_ADDRESS = $15000  ; should be aligned to 1kB
 
 VERA_PALETTE          = $1FA00
 
@@ -85,8 +85,8 @@ X_SUB_PIXEL               = $40 ; 41 ; 42
 Y_SUB_PIXEL               = $43 ; 44 ; 45
 
 FRAME_NR                  = $48 ; 49
-POS_AND_ROTATE_DATA       = $4A ; 4B
-POS_AND_ROTATE_BANK       = $4C
+POS_AND_BEND_DATA         = $4A ; 4B
+POS_AND_BEND_BANK         = $4C
 
 COSINE_OF_ANGLE           = $51 ; 52
 SINE_OF_ANGLE             = $53 ; 54
@@ -97,17 +97,19 @@ TEMP_VAR                  = $55
 ; === RAM addresses ===
 
 COPY_ROW_CODE               = $8800
-POS_AND_ROTATE_RAM_ADDRESS  = $A000
+POS_AND_BEND_RAM_ADDRESS    = $A000
 
 ; === Other constants ===
 
 DESTINATION_PICTURE_POS_X = 0
 DESTINATION_PICTURE_POS_Y = 0
 
-POS_AND_ROTATE_START_BANK  = $01   ; There are 3 banks of pos and rotate data (banks 1-3)
+POS_AND_BEND_START_BANK  = $01
 
 
 start:
+
+; FIXME: clear VRAM/BUFFER!
 
     jsr setup_vera_for_layer0_bitmap
 
@@ -115,11 +117,11 @@ start:
     
     jsr load_tilemap_into_vram
     jsr load_tiledata_into_vram
-    ; FIXME: REMOVE: jsr load_pos_and_rotate_data_into_banked_ram
+    ; FIXME: REMOVE: jsr load_pos_and_bend_data_into_banked_ram
 
     jsr generate_copy_row_code
 
-    ; FIXME: REMOVE: jsr setup_and_draw_rotated_tilemap
+    jsr setup_and_draw_bouncing_tilemap
 
     ; We are not returning to BASIC here...
 infinite_loop:
@@ -136,7 +138,7 @@ setup_vera_for_layer0_bitmap:
     and #%10011111           ; Disable Layer 1 and sprites
     sta VERA_DC_VIDEO
 
-    lda #$20                 ; 4:1 scale (160 x 120 pixels on screen)
+    lda #$40                 ; 2:1 scale (320 x 240 pixels on screen)
     sta VERA_DC_HSCALE
     sta VERA_DC_VSCALE
     
@@ -209,7 +211,7 @@ next_packed_color_1:
 
 
 
-setup_and_draw_rotated_tilemap:
+setup_and_draw_bouncing_tilemap:
 
     ; Setup TO VRAM start address
     
@@ -222,7 +224,7 @@ setup_and_draw_rotated_tilemap:
     
     lda #(TILEDATA_VRAM_ADDRESS >> 9)
     and #%11111100   ; only the 6 highest bits of the address can be set
-    ; ora #%00000010   ; clip = 1 -> we are REPEATING. So no clipping.
+    ora #%00000010   ; clip = 1
     sta VERA_FX_TILEBASE
 
     lda #(MAPDATA_VRAM_ADDRESS >> 9)
@@ -236,21 +238,21 @@ setup_and_draw_rotated_tilemap:
     sta VERA_FX_CTRL
     
     
-    lda #POS_AND_ROTATE_START_BANK
-    sta POS_AND_ROTATE_BANK
+    lda #POS_AND_BEND_START_BANK
+    sta POS_AND_BEND_BANK
     sta RAM_BANK
     
     lda #0
     sta FRAME_NR
     sta FRAME_NR+1
     
-    lda #<POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA
-    lda #>POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA+1
+    lda #<POS_AND_BEND_RAM_ADDRESS
+    sta POS_AND_BEND_DATA
+    lda #>POS_AND_BEND_RAM_ADDRESS
+    sta POS_AND_BEND_DATA+1
     
     
-keep_rotating:
+keep_bouncing:
     lda #<(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
     sta VERA_ADDR_ZP_TO
     lda #>(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
@@ -259,7 +261,15 @@ keep_rotating:
     ; FIXME: replace this with a proper vsync-wait!
     jsr dumb_wait_for_vsync
     
-    jsr draw_rotated_tilemap
+    jsr draw_bended_tilemap
+    
+; FIXME!
+; FIXME!
+; FIXME!
+tmp_loop:
+    bra tmp_loop
+    
+    
     
     clc
     lda FRAME_NR
@@ -270,38 +280,38 @@ keep_rotating:
     sta FRAME_NR+1
     
     clc
-    lda POS_AND_ROTATE_DATA
+    lda POS_AND_BEND_DATA
     adc #10
-    sta POS_AND_ROTATE_DATA
-    lda POS_AND_ROTATE_DATA+1
+    sta POS_AND_BEND_DATA
+    lda POS_AND_BEND_DATA+1
     adc #0
-    sta POS_AND_ROTATE_DATA+1
+    sta POS_AND_BEND_DATA+1
     
     ; If we reached $BE00 we should switch to the next bank and start at $A000 again
-    lda POS_AND_ROTATE_DATA+1
+    lda POS_AND_BEND_DATA+1
     cmp #$BE
-    bne pos_and_rotate_bank_is_ok
+    bne pos_and_bend_bank_is_ok
     
-    lda #<POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA
-    lda #>POS_AND_ROTATE_RAM_ADDRESS
-    sta POS_AND_ROTATE_DATA+1
+    lda #<POS_AND_BEND_RAM_ADDRESS
+    sta POS_AND_BEND_DATA
+    lda #>POS_AND_BEND_RAM_ADDRESS
+    sta POS_AND_BEND_DATA+1
     
-    inc POS_AND_ROTATE_BANK
-    lda POS_AND_ROTATE_BANK
+    inc POS_AND_BEND_BANK
+    lda POS_AND_BEND_BANK
     sta RAM_BANK
     
-pos_and_rotate_bank_is_ok:
+pos_and_bend_bank_is_ok:
 
 ;    jsr wait_a_few_ms
     
     ; check if 2000 frames played (= $7D0)
     lda FRAME_NR+1
     cmp #$7
-    bne keep_rotating
+    bne keep_bouncing
     lda FRAME_NR
     cmp #$D0
-    bne keep_rotating
+    bne keep_bouncing
     
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
@@ -349,23 +359,29 @@ wait_for_scanline_low:
 
   
 
-draw_rotated_tilemap:
+draw_bended_tilemap:
+
+
+; FIXME!
+; FIXME!
+; FIXME!
+    bra do_hardcoded_data
 
     ldy #0
     
     ; cosine_rotate
-    lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_low
+    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_low
     sta COSINE_OF_ANGLE
     iny
-    lda (POS_AND_ROTATE_DATA), y   ; cosine_rotate_high
+    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_high
     sta COSINE_OF_ANGLE+1
     iny
     
     ; sine_rotate
-    lda (POS_AND_ROTATE_DATA), y   ; sine_rotate_low
+    lda (POS_AND_BEND_DATA), y   ; sine_rotate_low
     sta SINE_OF_ANGLE
     iny
-    lda (POS_AND_ROTATE_DATA), y   ; sine_rotate_high
+    lda (POS_AND_BEND_DATA), y   ; sine_rotate_high
     sta SINE_OF_ANGLE+1
     iny
 
@@ -373,30 +389,85 @@ draw_rotated_tilemap:
     sta VERA_CTRL
 
     ; starting X position
-    lda (POS_AND_ROTATE_DATA), y   ; x_position_sub
+    lda (POS_AND_BEND_DATA), y   ; x_position_sub
     sta X_SUB_PIXEL
     iny
     
-    lda (POS_AND_ROTATE_DATA), y   ; x_position_low
+    lda (POS_AND_BEND_DATA), y   ; x_position_low
     sta X_SUB_PIXEL+1
     iny
     
-    lda (POS_AND_ROTATE_DATA), y   ; x_position_high
+    lda (POS_AND_BEND_DATA), y   ; x_position_high
     sta X_SUB_PIXEL+2
     iny
     
     ; starting Y position
-    lda (POS_AND_ROTATE_DATA), y   ; y_position_sub
+    lda (POS_AND_BEND_DATA), y   ; y_position_sub
     sta Y_SUB_PIXEL
     iny
 
-    lda (POS_AND_ROTATE_DATA), y   ; y_position_low
+    lda (POS_AND_BEND_DATA), y   ; y_position_low
     sta Y_SUB_PIXEL+1
     iny
     
-    lda (POS_AND_ROTATE_DATA), y   ; y_position_high
+    lda (POS_AND_BEND_DATA), y   ; y_position_high
     sta Y_SUB_PIXEL+2
     iny
+    
+; FIXME!
+; FIXME!
+; FIXME!
+    bra skip_hardcoded_data
+
+; FIXME!
+; FIXME!
+; FIXME!
+do_hardcoded_data:    
+    
+
+
+    ; cosine_rotate
+    lda #0   ; cosine_rotate_low
+    sta COSINE_OF_ANGLE
+    lda #1   ; cosine_rotate_high
+    sta COSINE_OF_ANGLE+1
+    
+    ; sine_rotate
+    lda #0   ; sine_rotate_low
+    sta SINE_OF_ANGLE
+    lda #0   ; sine_rotate_high
+    sta SINE_OF_ANGLE+1
+
+    lda #%00000110           ; DCSEL=3, ADDRSEL=0
+    sta VERA_CTRL
+
+    ; starting X position
+    lda #0   ; x_position_sub
+    sta X_SUB_PIXEL
+    
+    lda #0   ; x_position_low
+    sta X_SUB_PIXEL+1
+    
+    lda #0   ; x_position_high
+    sta X_SUB_PIXEL+2
+    
+    ; starting Y position
+    lda #0   ; y_position_sub
+    sta Y_SUB_PIXEL
+
+    lda #0   ; y_position_low
+    sta Y_SUB_PIXEL+1
+    
+    lda #0   ; y_position_high
+    sta Y_SUB_PIXEL+2
+
+
+    
+    
+; FIXME!
+; FIXME!
+; FIXME!
+skip_hardcoded_data:
     
     lda COSINE_OF_ANGLE       ; X increment low
     asl
@@ -416,7 +487,7 @@ draw_rotated_tilemap:
 
     ldx #0
     
-rotate_copy_next_row_1:
+bend_copy_next_row_1:
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
 
@@ -488,8 +559,11 @@ rotate_copy_next_row_1:
     sta X_SUB_PIXEL+1
     
     inx
+; FIXME: this needs to change!
+; FIXME: this needs to change!
+; FIXME: this needs to change!
     cpx #100             ; nr of row we draw
-    bne rotate_copy_next_row_1
+    bne bend_copy_next_row_1
     
     lda #%00000000           ; DCSEL=0, ADDRSEL=0
     sta VERA_CTRL
@@ -559,14 +633,14 @@ tiledata_loaded:
     rts
 
 
-pos_and_rotate_filename:      .byte    "rotazoom-pos-rotate.dat" 
-end_pos_and_rotate_filename:
+pos_and_bend_filename:      .byte    "bouncing-pos-bend.dat" 
+end_pos_and_bend_filename:
 
-load_pos_and_rotate_data_into_banked_ram:
+load_pos_and_bend_data_into_banked_ram:
 
-    lda #(end_pos_and_rotate_filename-pos_and_rotate_filename) ; Length of filename
-    ldx #<pos_and_rotate_filename      ; Low byte of Fname address
-    ldy #>pos_and_rotate_filename      ; High byte of Fname address
+    lda #(end_pos_and_bend_filename-pos_and_bend_filename) ; Length of filename
+    ldx #<pos_and_bend_filename      ; Low byte of Fname address
+    ldy #>pos_and_bend_filename      ; High byte of Fname address
     jsr SETNAM
  
     lda #1            ; Logical file number
@@ -577,17 +651,17 @@ load_pos_and_rotate_data_into_banked_ram:
     
     jsr SETLFS
     
-    lda #POS_AND_ROTATE_START_BANK
+    lda #POS_AND_BEND_START_BANK
     sta RAM_BANK
     
     lda #0            ; load into Fixed RAM (current RAM Bank) (see https://github.com/X16Community/x16-docs/blob/master/X16%20Reference%20-%2004%20-%20KERNAL.md#function-name-load )
-    ldx #<POS_AND_ROTATE_RAM_ADDRESS
-    ldy #>POS_AND_ROTATE_RAM_ADDRESS
+    ldx #<POS_AND_BEND_RAM_ADDRESS
+    ldy #>POS_AND_BEND_RAM_ADDRESS
     jsr LOAD
-    bcc pos_and_rotate_loaded
+    bcc pos_and_bend_loaded
     ; FIXME: do proper error handling!
     stp
-pos_and_rotate_loaded:
+pos_and_bend_loaded:
 
     stz RAM_BANK
 
@@ -649,7 +723,7 @@ next_copy_instruction:
     lda #$9F         
     jsr add_code_byte
 
-    ; We use the cache for writing, we do not want a mask to we store 0 (stz)
+    ; We use the cache for writing, we do not want a mask so we store 0 (stz)
 
     ; -- stz VERA_DATA0 ($9F23)
     lda #$9C               ; stz ....
@@ -662,6 +736,9 @@ next_copy_instruction:
     jsr add_code_byte
 
     inx
+; FIXME: we need a different WIDTH here!
+; FIXME: we need a different WIDTH here!
+; FIXME: we need a different WIDTH here!
     cpx #160/4
     bne next_copy_instruction
 
@@ -690,99 +767,266 @@ done_adding_code_byte:
 
 palette_data:
   .byte $00, $00
-  .byte $34, $02
-  .byte $56, $04
-  .byte $68, $05
-  .byte $79, $06
-  .byte $79, $07
-  .byte $68, $06
-  .byte $57, $04
-  .byte $46, $03
-  .byte $34, $02
-  .byte $8a, $08
-  .byte $57, $05
-  .byte $35, $03
-  .byte $00, $03
-  .byte $00, $03
-  .byte $45, $03
-  .byte $9b, $08
-  .byte $00, $02
-  .byte $10, $04
-  .byte $20, $05
-  .byte $21, $06
-  .byte $21, $06
-  .byte $31, $07
-  .byte $32, $07
-  .byte $10, $05
-  .byte $10, $04
-  .byte $10, $04
-  .byte $42, $07
-  .byte $42, $08
-  .byte $43, $08
-  .byte $53, $09
-  .byte $53, $09
-  .byte $01, $00
-  .byte $23, $02
-  .byte $12, $01
-  .byte $11, $00
-  .byte $46, $04
-  .byte $8a, $07
-  .byte $67, $05
-  .byte $34, $03
-  .byte $78, $06
-  .byte $22, $01
+  .byte $aa, $0a
+  .byte $bb, $0b
+  .byte $88, $08
+  .byte $99, $09
+  .byte $cc, $0c
+  .byte $67, $06
+  .byte $9a, $09
+  .byte $dd, $0d
+  .byte $78, $07
   .byte $11, $01
-  .byte $23, $01
-  .byte $00, $01
-  .byte $31, $06
-  .byte $64, $0a
-  .byte $75, $0b
-  .byte $86, $0b
-  .byte $75, $0a
-  .byte $00, $04
-  .byte $97, $0c
-  .byte $64, $09
-  .byte $21, $05
-  .byte $53, $08
-  .byte $32, $06
+  .byte $77, $07
+  .byte $23, $02
+  .byte $56, $05
+  .byte $ff, $0f
+  .byte $bc, $0b
+  .byte $12, $01
+  .byte $45, $04
+  .byte $34, $03
+  .byte $21, $04
+  .byte $ee, $0e
+  .byte $55, $05
   .byte $10, $03
-  .byte $54, $09
-  .byte $76, $0b
-  .byte $65, $0a
-  .byte $a8, $0d
-  .byte $98, $0c
-  .byte $a9, $0d
-  .byte $86, $0c
+  .byte $42, $06
+  .byte $94, $0d
+  .byte $33, $03
+  .byte $64, $08
+  .byte $84, $0c
+  .byte $53, $07
+  .byte $a5, $0d
+  .byte $86, $0a
+  .byte $83, $0c
+  .byte $b6, $0e
+  .byte $75, $09
+  .byte $31, $05
+  .byte $54, $08
+  .byte $73, $0b
+  .byte $b7, $0d
+  .byte $a5, $0e
+  .byte $97, $0b
+  .byte $32, $05
+  .byte $53, $08
+  .byte $c9, $0e
+  .byte $a9, $0c
   .byte $b9, $0d
-  .byte $b9, $0e
-  .byte $00, $05
-  .byte $ba, $0e
-  .byte $10, $06
-  .byte $20, $07
-  .byte $30, $07
-  .byte $60, $0a
-  .byte $30, $08
-  .byte $40, $08
-  .byte $a0, $0d
-  .byte $d0, $0f
-  .byte $90, $0c
-  .byte $d0, $0e
-  .byte $b0, $0e
-  .byte $40, $09
-  .byte $b0, $0d
-  .byte $c0, $0e
-  .byte $80, $0b
-  .byte $70, $0b
-  .byte $41, $09
-  .byte $ca, $0e
-  .byte $cb, $0e
-  .byte $cb, $0f
-  .byte $41, $08
-  .byte $60, $09
-  .byte $60, $0b
-  .byte $20, $06
+  .byte $21, $03
+  .byte $83, $0b
+  .byte $32, $06
+  .byte $c8, $0d
+  .byte $76, $0a
+  .byte $10, $04
+  .byte $de, $0d
+  .byte $62, $09
+  .byte $98, $0b
+  .byte $da, $0e
+  .byte $a6, $0e
+  .byte $75, $0a
+  .byte $62, $0a
+  .byte $31, $06
+  .byte $ab, $09
+  .byte $23, $01
+  .byte $c7, $0e
+  .byte $b5, $0f
+  .byte $ba, $0d
+  .byte $43, $05
+  .byte $eb, $0f
   .byte $89, $07
-  .byte $35, $02
+  .byte $d9, $0f
+  .byte $ec, $0e
+  .byte $87, $09
+  .byte $84, $0b
+  .byte $02, $00
+  .byte $45, $03
+  .byte $a8, $0b
+  .byte $93, $0d
+  .byte $41, $06
+  .byte $67, $05
+  .byte $76, $09
+  .byte $a6, $0d
+  .byte $55, $06
+  .byte $b8, $0e
+  .byte $24, $02
+  .byte $ac, $09
+  .byte $97, $0c
+  .byte $a7, $0b
+  .byte $73, $0c
+  .byte $46, $04
+  .byte $cd, $0b
+  .byte $98, $0c
+  .byte $00, $02
+  .byte $cb, $0d
+  .byte $68, $06
+  .byte $46, $03
+  .byte $a3, $0e
+  .byte $94, $0e
+  .byte $ca, $0e
+  .byte $93, $0e
+  .byte $44, $06
+  .byte $fd, $0f
+  .byte $42, $08
+  .byte $fb, $0f
+  .byte $61, $0b
+  .byte $24, $01
+  .byte $8a, $08
+  
+; FIXME: we dont need all these non-colors!
+; FIXME: we dont need all these non-colors!
+; FIXME: we dont need all these non-colors!
+  
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
+  .byte $00, $00
 end_of_palette_data:
 
 
