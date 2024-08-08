@@ -27,8 +27,8 @@ from functools import cmp_to_key
 #  - change the SCENE variable below
 #  - run from root repo directory: python .\scripts\3d_scene\pygame-3d-scene.py
 
-#SCENE = 'U2E'
-SCENE = 'U2A'
+SCENE = 'U2E'
+#SCENE = 'U2A'
 
 
 polygon_data_file = 'scripts/3d_scene/' + SCENE + '-POLYGONS.DAT'
@@ -2066,8 +2066,8 @@ increment_frame_by = 2
 
 # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
 if SCENE == 'U2E':
-    max_frame_nr = 1802*4
-    increment_frame_by = 7
+    max_frame_nr = 1802*17
+    increment_frame_by = 30
 else:
     max_frame_nr = 522*2
     increment_frame_by = 7

@@ -109,11 +109,11 @@ def load_animation_file():
 
 def create_animation_frames():
     nr_of_frames = 1802
-    nr_of_frames_in_blender = nr_of_frames * 4
+    nr_of_frames_in_blender = nr_of_frames * 17
     bpy.context.scene.frame_end = nr_of_frames_in_blender
 
     for frame_nr in range(1,nr_of_frames+1):
-        frame_nr_in_blender = (frame_nr-1)*4 + 1
+        frame_nr_in_blender = (frame_nr-1)*17 + 1
         
         # Camera
         object_nr = 0
