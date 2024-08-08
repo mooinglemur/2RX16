@@ -62,8 +62,8 @@ LOAD              = $FFD5  ; Load a file into main memory or VRAM
 
 ; -- VRAM addresses --
 
-MAPDATA_VRAM_ADDRESS  = $13000  ; should be aligned to 1kB
-TILEDATA_VRAM_ADDRESS = $15000  ; should be aligned to 1kB
+MAPDATA_VRAM_ADDRESS  = $11000  ; should be aligned to 1kB
+TILEDATA_VRAM_ADDRESS = $13000  ; should be aligned to 1kB
 
 VERA_PALETTE          = $1FA00
 
@@ -562,7 +562,7 @@ bend_copy_next_row_1:
 ; FIXME: this needs to change!
 ; FIXME: this needs to change!
 ; FIXME: this needs to change!
-    cpx #100             ; nr of row we draw
+    cpx #200             ; nr of rows we draw
     bne bend_copy_next_row_1
     
     lda #%00000000           ; DCSEL=0, ADDRSEL=0
@@ -739,7 +739,7 @@ next_copy_instruction:
 ; FIXME: we need a different WIDTH here!
 ; FIXME: we need a different WIDTH here!
 ; FIXME: we need a different WIDTH here!
-    cpx #160/4
+    cpx #240/4
     bne next_copy_instruction
 
     ; -- rts --

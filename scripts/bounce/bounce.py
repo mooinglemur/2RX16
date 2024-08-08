@@ -1,4 +1,5 @@
 from PIL import Image
+from PIL import Image
 import pygame
 import hashlib
 import math
@@ -178,21 +179,6 @@ tilemap_asm_string = ""
 tile_map_flat = []
 for tile_y in range(map_height):
     tilemap_asm_string += "  .byte "
-    for tile_x in range(map_width):
-        tile_index = tile_map[tile_y][tile_x]
-        tile_map_flat.append(tile_index)
-        tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
-    for tile_x in range(map_width):
-        tile_index = tile_map[tile_y][tile_x]
-        tile_map_flat.append(tile_index)
-        tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
-    tilemap_asm_string += "\n"
-for tile_y in range(map_height):
-    tilemap_asm_string += "  .byte "
-    for tile_x in range(map_width):
-        tile_index = tile_map[tile_y][tile_x]
-        tile_map_flat.append(tile_index)
-        tilemap_asm_string += "$" + format(tile_index,"02x") + ", "
     for tile_x in range(map_width):
         tile_index = tile_map[tile_y][tile_x]
         tile_map_flat.append(tile_index)
