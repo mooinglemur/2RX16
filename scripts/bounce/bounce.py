@@ -93,20 +93,20 @@ tiles_pixel_data = []
 # The rest of the 32x32 map is filled with 0's
 
 # Adding the black tile data
-tile_pixel_data = []
+black_tile_pixel_data = []
 tile_pixels_as_string = ""
 for y_in_tile in range(8):
     for x_in_tile in range(8):
         pixel_color = 0 # BLACK
         tile_pixels_as_string += str(pixel_color)
-        tile_pixel_data.append(pixel_color)
+        black_tile_pixel_data.append(pixel_color)
         
-tiles_pixel_data.append(tile_pixel_data)
+tiles_pixel_data.append(black_tile_pixel_data)
 unique_tiles[tile_pixels_as_string] = tile_index
 tile_index += 1
 
 # Adding the black tile with white border data
-tile_pixel_data = []
+border_tile_pixel_data = []
 tile_pixels_as_string = ""
 for y_in_tile in range(8):
     for x_in_tile in range(8):
@@ -115,9 +115,9 @@ for y_in_tile in range(8):
         else:
             pixel_color = BLACK
         tile_pixels_as_string += str(pixel_color)
-        tile_pixel_data.append(pixel_color)
+        border_tile_pixel_data.append(pixel_color)
         
-tiles_pixel_data.append(tile_pixel_data)
+tiles_pixel_data.append(border_tile_pixel_data)
 unique_tiles[tile_pixels_as_string] = tile_index
 tile_index += 1
 
@@ -139,17 +139,32 @@ for tile_y in range(content_map_height):
             tiles_pixel_data.append(tile_pixel_data)
             tile_map[tile_y][tile_x] = tile_index
             tile_index += 1
-
-    # We add one tile with left border
+            
+    # We add one tile to the row with left border
     tile_map[tile_y].append([])
     tile_map[tile_y][content_map_width] = 1  # tile index of the left-border tile
     
-    # We fill with black tiles
+    # We fill the row with black tiles
     for tile_x in range(content_map_width+1, map_width):
         tile_map[tile_y].append([])
         tile_map[tile_y][tile_x] = 0  # tile index of the black tile
-            
-    # FIXME: we also need to add dummy tiles_pixel_data to fill up to % 2048 bytes
+
+    if (tile_y % 8 == 7):
+        # At the last row of each 8-rows we need to do the following:
+        
+        # We need to add 6 dummy tiles_pixel_data to fill up to % 2048 bytes
+        tiles_pixel_data.append(black_tile_pixel_data)
+        tiles_pixel_data.append(black_tile_pixel_data)
+        tiles_pixel_data.append(black_tile_pixel_data)
+        tiles_pixel_data.append(black_tile_pixel_data)
+        tiles_pixel_data.append(black_tile_pixel_data)
+        tiles_pixel_data.append(black_tile_pixel_data)
+        
+        # We add the black and border tile to the tiles_pixel_data
+        tiles_pixel_data.append(black_tile_pixel_data)
+        tiles_pixel_data.append(border_tile_pixel_data)
+        # We reset tile_index to 2
+        tile_index = 2
 
 
 for tile_y in range(content_map_height, map_height):
