@@ -9,22 +9,26 @@ PRINT_TILEDATA_AS_ASM = False  # otherwise write to DAT file
 source_image_filename = "assets/bounce/ICEKNGDM_320x200.png"
 source_image_width = 320
 source_image_height = 200
+source_left_padding = 70  # on the left of the source image there is a black 'padding' columns, we should exclude this
 
 tile_map_filename = "scripts/bounce/BOUNCE-TILEMAP.DAT"
 tile_pixel_data_filename = "scripts/bounce/BOUNCE-TILEDATA.DAT"
 # FIXME:
 # pos_and_rotate_filename = "scripts/bounce/BOUNCE-POS-ROTATE.DAT"
 
-# Note: we want to end up with a 32x32 tile map, so we first create a 16x16 tile map and replicate it four times!
-# A full 32x32 tile map (256x256 pixels) is not possible, due to the amount of unique tiles that requires.
-# FIXME!
+# We set the affine helper to a 32x32 map. 
 map_width = 32
-map_height = 25
+map_height = 32
+content_map_width = 23 # There are 23 8x8 tiles with actual content, the 24th contains a white line at the left, the rest is black.
+content_map_height = 25
 
+# FIXME: hardcoded indexes! (works for now)
+BLACK = 0
+WHITE = 14
 
 # creating a image object for the background
 im = Image.open(source_image_filename)
-# FIXME: is this correct?
+# TODO: is this correct?
 im = im.convert('P', palette=Image.ADAPTIVE, colors=256)
 px = im.load()
 palette_bytes = im.getpalette()
@@ -80,16 +84,52 @@ unique_tiles = {}
 tile_map = []
 tiles_pixel_data = []
 
+# We create a map of 32x32. 
+# Every 8 rows the tile_indexes start at 0 again: in the asm we set the 'FX Tile Base Address' to a new series of tile data
+# Each row of tiles contains 23 unique tiles (tile indexes 2-24, 25-47, 48-60, etc) + 1 non-unique tile (tile index 1, which has a border on the left) + 8 black tiles (tile index 0)
+#   After 8 rows the tile_index is reset to 2 again
+#   for the FOUR tile_pixel_data's, each time a 0 and 1 tile is added initially
+#   The FOURTH tile_pixel_data contains only 1 row (3*8 rows + 1 row = 25 rows = 200 pixels high)
+# The rest of the 32x32 map is filled with 0's
 
-for tile_y in range(map_height):
+# Adding the black tile data
+tile_pixel_data = []
+tile_pixels_as_string = ""
+for y_in_tile in range(8):
+    for x_in_tile in range(8):
+        pixel_color = 0 # BLACK
+        tile_pixels_as_string += str(pixel_color)
+        tile_pixel_data.append(pixel_color)
+        
+tiles_pixel_data.append(tile_pixel_data)
+unique_tiles[tile_pixels_as_string] = tile_index
+tile_index += 1
+
+# Adding the black tile with white border data
+tile_pixel_data = []
+tile_pixels_as_string = ""
+for y_in_tile in range(8):
+    for x_in_tile in range(8):
+        if (x_in_tile == 0):
+            pixel_color = WHITE
+        else:
+            pixel_color = BLACK
+        tile_pixels_as_string += str(pixel_color)
+        tile_pixel_data.append(pixel_color)
+        
+tiles_pixel_data.append(tile_pixel_data)
+unique_tiles[tile_pixels_as_string] = tile_index
+tile_index += 1
+
+for tile_y in range(content_map_height):
     tile_map.append([])
-    for tile_x in range(map_width):
+    for tile_x in range(content_map_width):
         tile_map[tile_y].append([])
         tile_pixels_as_string = ""
         tile_pixel_data = []
         for y_in_tile in range(8):
             for x_in_tile in range(8):
-                pixel_color = px[tile_x*8+x_in_tile, tile_y*8+y_in_tile]
+                pixel_color = px[source_left_padding + tile_x*8+x_in_tile, tile_y*8+y_in_tile]
                 tile_pixels_as_string += str(pixel_color)
                 tile_pixel_data.append(pixel_color)
         if (tile_pixels_as_string in unique_tiles):
@@ -99,6 +139,24 @@ for tile_y in range(map_height):
             tiles_pixel_data.append(tile_pixel_data)
             tile_map[tile_y][tile_x] = tile_index
             tile_index += 1
+
+    # We add one tile with left border
+    tile_map[tile_y].append([])
+    tile_map[tile_y][content_map_width] = 1  # tile index of the left-border tile
+    
+    # We fill with black tiles
+    for tile_x in range(content_map_width+1, map_width):
+        tile_map[tile_y].append([])
+        tile_map[tile_y][tile_x] = 0  # tile index of the black tile
+            
+    # FIXME: we also need to add dummy tiles_pixel_data to fill up to % 2048 bytes
+
+
+for tile_y in range(content_map_height, map_height):
+    tile_map.append([])
+    for tile_x in range(map_width):
+        tile_map[tile_y].append([])
+        tile_map[tile_y][tile_x] = 0  # tile index of the black tile
 
 
 '''
@@ -161,8 +219,8 @@ print("nr of unique tiles: " + str(len(unique_tiles.keys())))
 '''
 
 
-screen_width = 320
-screen_height = 200
+screen_width = map_width*8
+screen_height = map_height*8
 scale = 3
 
 background_color = (0,0,0)
@@ -181,35 +239,11 @@ def run():
     
     screen.fill(background_color)
     
-    '''
-    for source_y in range(128):
-        for source_x in range(128):
-
-            y_screen = source_y
-            x_screen = source_x
-            
-            pixel_color = colors_12bit[new_pixels[source_y][source_x]]
-            
-            pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale*2, y_screen*scale*2, scale*2, scale*2))
-    '''
-
-    # black_tile_string = '0' * 64
-    # empty_tile_index = unique_tiles[black_tile_string]
-
     for tile_y in range(map_height):
         for tile_x in range(map_width):
             
             tile_index = tile_map[tile_y][tile_x]
             tile_data = tiles_pixel_data[tile_index]
-            
-            '''
-            if (tile_index != empty_tile_index):
-                tile_bg_color = (0x33, 0x00, 0x33)
-                pygame.draw.rect(screen, tile_bg_color, pygame.Rect(tile_x*8*scale, tile_y*8*scale, 8*scale, 8*scale))
-            
-            grid_color = (0x33, 0x33, 0x33)
-            pygame.draw.rect(screen, grid_color, pygame.Rect(tile_x*8*scale, tile_y*8*scale, 8*scale, 8*scale), 1)
-            '''
             
             for y_in_tile in range(8):
                 for x_in_tile in range(8):
@@ -244,8 +278,6 @@ def run():
             #if event.type == pygame.MOUSEMOTION: 
                 # newrect.center = event.pos
             '''
-            
-
         
         pygame.display.update()
         
