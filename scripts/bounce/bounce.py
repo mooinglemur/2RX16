@@ -174,7 +174,6 @@ for tile_y in range(content_map_height, map_height):
         tile_map[tile_y][tile_x] = 0  # tile index of the black tile
 
 
-'''
 tilemap_asm_string = ""
 tile_map_flat = []
 for tile_y in range(map_height):
@@ -209,9 +208,7 @@ else:
     tableFile.write(bytearray(tile_map_flat))
     tableFile.close()
     print("tile map written to file: " + tile_map_filename)
-'''
 
-'''
 tiles_pixel_asm_string = ""
 tile_pixel_data_flat = []
 for tile_pixel_data in tiles_pixel_data:
@@ -231,7 +228,6 @@ else:
     print("tile data written to file: " + tile_pixel_data_filename)
 
 print("nr of unique tiles: " + str(len(unique_tiles.keys())))
-'''
 
 
 screen_width = map_width*8

@@ -500,7 +500,7 @@ rotate_copy_next_row_1:
 
 
 
-tilemap_filename:      .byte    "rotazoom-tilemap.dat" 
+tilemap_filename:      .byte    "bounce-tilemap.dat" 
 end_tilemap_filename:
 
 load_tilemap_into_vram:
@@ -530,7 +530,7 @@ tilemap_loaded:
 
 
 
-tiledata_filename:      .byte    "rotazoom-tiledata.dat" 
+tiledata_filename:      .byte    "bounce-tiledata.dat" 
 end_tiledata_filename:
 
 load_tiledata_into_vram:
