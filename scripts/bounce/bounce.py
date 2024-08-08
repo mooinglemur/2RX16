@@ -256,9 +256,11 @@ def run():
     
     for tile_y in range(map_height):
         for tile_x in range(map_width):
+        
+            sub_map_index = tile_y // 8
             
             tile_index = tile_map[tile_y][tile_x]
-            tile_data = tiles_pixel_data[tile_index]
+            tile_data = tiles_pixel_data[sub_map_index*192+tile_index]
             
             for y_in_tile in range(8):
                 for x_in_tile in range(8):
