@@ -88,8 +88,8 @@ FRAME_NR                  = $48 ; 49
 POS_AND_BEND_DATA         = $4A ; 4B
 POS_AND_BEND_BANK         = $4C
 
-COSINE_OF_ANGLE           = $51 ; 52
-SINE_OF_ANGLE             = $53 ; 54
+X_INCREMENT               = $51 ; 52
+Y_INCREMENT               = $53 ; 54
 
 TEMP_VAR                  = $55
 
@@ -372,20 +372,20 @@ draw_bended_tilemap:
 
     ldy #0
     
-    ; cosine_rotate
+    ; x increment
     lda (POS_AND_BEND_DATA), y   ; cosine_rotate_low
-    sta COSINE_OF_ANGLE
+    sta X_INCREMENT
     iny
     lda (POS_AND_BEND_DATA), y   ; cosine_rotate_high
-    sta COSINE_OF_ANGLE+1
+    sta X_INCREMENT+1
     iny
     
-    ; sine_rotate
+    ; y increment
     lda (POS_AND_BEND_DATA), y   ; sine_rotate_low
-    sta SINE_OF_ANGLE
+    sta Y_INCREMENT
     iny
     lda (POS_AND_BEND_DATA), y   ; sine_rotate_high
-    sta SINE_OF_ANGLE+1
+    sta Y_INCREMENT+1
     iny
 
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
@@ -429,17 +429,17 @@ do_hardcoded_data:
     
 
 
-    ; cosine_rotate
-    lda #0   ; cosine_rotate_low
-    sta COSINE_OF_ANGLE
-    lda #1   ; cosine_rotate_high
-    sta COSINE_OF_ANGLE+1
+    ; x_increment
+    lda #200   ; x_increment_low
+    sta X_INCREMENT
+    lda #0   ; x_increment_high
+    sta X_INCREMENT+1
     
-    ; sine_rotate
-    lda #0   ; sine_rotate_low
-    sta SINE_OF_ANGLE
-    lda #0   ; sine_rotate_high
-    sta SINE_OF_ANGLE+1
+    ; y_increment
+    lda #40  ; y_increment_low
+    sta Y_INCREMENT
+    lda #1   ; y_increment_high
+    sta Y_INCREMENT+1
 
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
@@ -472,18 +472,20 @@ do_hardcoded_data:
 ; FIXME!
 skip_hardcoded_data:
     
-    lda COSINE_OF_ANGLE       ; X increment low
+    lda X_INCREMENT           ; X increment low
     asl
     sta VERA_FX_X_INCR_L
-    lda COSINE_OF_ANGLE+1
+    lda X_INCREMENT+1
     rol                      
     and #%01111111            ; increment is only 15 bits long
     sta VERA_FX_X_INCR_H
-    
-    lda SINE_OF_ANGLE
+
+; FIXME: no need to set this again each row!    
+    ; y_increment this always 0 within one row
+    lda #0
     asl
     sta VERA_FX_Y_INCR_L      ; Y increment low
-    lda SINE_OF_ANGLE+1
+    lda #0
     rol
     and #%01111111            ; increment is only 15 bits long
     sta VERA_FX_Y_INCR_H
@@ -508,10 +510,6 @@ bend_copy_next_row_1:
     
     tay
     lda y_64_to_tiledata_offset,y
-; FIXME!
-; FIXME!
-; FIXME!
-;    lda #2*24
     sta TEMP_VAR
 
     lda #(TILEDATA_VRAM_ADDRESS >> 9)
@@ -552,17 +550,13 @@ bend_copy_next_row_1:
     sta VERA_FX_Y_POS_H      ; Y subpixel position[0] = 0,  Y pixel position high [10:8] = 000 or 111
     
     ; Setting the Subpixel X/Y positions
- 
-; FIXME! 
-; FIXME! 
-; FIXME! 
-;    lda #%00001010           ; DCSEL=5, ADDRSEL=0
-;    sta VERA_CTRL
+    lda #%00001010           ; DCSEL=5, ADDRSEL=0
+    sta VERA_CTRL
     
-;    lda X_SUB_PIXEL
-;    sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
-;    lda Y_SUB_PIXEL
-;    sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
+    lda X_SUB_PIXEL
+    sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
+    lda Y_SUB_PIXEL
+    sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
     
 
     ; Copy one row of pixels
@@ -579,28 +573,32 @@ bend_copy_next_row_1:
     adc #>(320)
     sta VERA_ADDR_ZP_TO+1
 
+; FIXME: this needs to change!?
     clc
     lda Y_SUB_PIXEL
-    adc COSINE_OF_ANGLE
+    adc Y_INCREMENT
     sta Y_SUB_PIXEL
     lda Y_SUB_PIXEL+1
-    adc COSINE_OF_ANGLE+1
+    adc Y_INCREMENT+1
     sta Y_SUB_PIXEL+1
-    
-    sec
-    lda X_SUB_PIXEL
-    sbc SINE_OF_ANGLE
-    sta X_SUB_PIXEL
-    lda X_SUB_PIXEL+1
-    sbc SINE_OF_ANGLE+1
-    sta X_SUB_PIXEL+1
+ 
+; FIXME: this needs to change! 
+;    sec
+;    lda X_SUB_PIXEL
+;    sbc SINE_OF_ANGLE
+;    sta X_SUB_PIXEL
+;    lda X_SUB_PIXEL+1
+;    sbc SINE_OF_ANGLE+1
+;    sta X_SUB_PIXEL+1
     
     inx
 ; FIXME: this needs to change!
 ; FIXME: this needs to change!
 ; FIXME: this needs to change!
     cpx #200             ; nr of rows we draw
-    bne bend_copy_next_row_1
+    beq bend_copy_done
+    jmp bend_copy_next_row_1
+bend_copy_done:    
     
     lda #%00000000           ; DCSEL=0, ADDRSEL=0
     sta VERA_CTRL
