@@ -315,8 +315,8 @@ def generate_frames ():
         framey1_scroll.append(y1)
         framey2_scroll.append(y2)
             
-    print(framey1_scroll)
-    print(framey2_scroll)
+    #print(framey1_scroll)
+    #print(framey2_scroll)
             
 
     # ===== Bouncing a few times =====
@@ -396,7 +396,12 @@ def generate_frames ():
 
     #print(framey1_bounce)
     #print(framey2_bounce)
+    
+    total_framey1 = framey1_scroll + framey1_bounce
+    total_framey2 = framey2_scroll + framey2_bounce
 
+    print(total_framey1)
+    print(total_framey2)
 
 
 generate_frames()
