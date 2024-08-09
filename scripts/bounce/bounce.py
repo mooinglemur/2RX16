@@ -400,11 +400,21 @@ def generate_frames ():
     total_framey1 = framey1_scroll + framey1_bounce
     total_framey2 = framey2_scroll + framey2_bounce
 
-    print(total_framey1)
-    print(total_framey2)
+    #print(total_framey1)
+    #print(total_framey2)
+    
+    total_frames = []
+    for frame_nr in  range(len(total_framey1)):
+        frame_info = {
+            'y1' : total_framey1[frame_nr],
+            'y2' : total_framey2[frame_nr],
+        }
+        total_frames.append(frame_info)
 
+    return total_frames
 
-generate_frames()
+total_frames = generate_frames()
+print(total_frames)
 
 
 screen_width = map_width*8
