@@ -216,6 +216,131 @@ else:
 print("nr of unique tiles: " + str(len(unique_tiles.keys())))
 
 
+
+'''
+    // Original calculation of y1 and y2 (per frame)
+
+	frame=0;
+	ysz=400*16; ysza=-460/6;
+	y=0;
+	y1=0; y1a=500;
+	y2=399*16; y2a=500;
+	mika=1;
+	for(frame=0;frame<200;frame++)
+	{	
+		if(!halt)
+		{
+			y1+=y1a;
+			y2+=y2a;
+	
+			y2a+=16;
+			if(y2>400*16)
+			{
+				y2-=y2a;
+				y2a=-y2a*mika/8;
+				if(mika<4) mika+=3;
+			}
+	
+			y1a+=16;
+			
+			la=a;
+			a=(y2-y1)-400*16;
+			if((a&0x8000)^(la&0x8000))
+			{
+				y1a=y1a*7/8;
+			}
+			y1a+=a/8;
+			y2a-=a/8;
+		}
+		
+		if(frame>90) 
+		{
+			if(y2>=399*16) 
+			{
+				y2=400*16;
+				halt=1;
+			}
+			else y2a=8;
+			y1=y2-400*16;
+		}
+
+		framey1[frame]=y1;
+		framey2[frame]=y2;
+	}
+	for(a=0;a<800;a++)
+	{
+		b=a/4;
+		c=a&3;
+		d=3-c;
+		framey1t[a]=(framey1[b]*d+framey1[b+1]*c)/3;
+		framey2t[a]=(framey2[b]*d+framey2[b+1]*c)/3;
+	}
+
+'''
+
+framey1 = []
+framey2 = []
+for frame in range(200):
+    framey1.append(None)
+    framey2.append(None)
+
+ysz = 400*16
+ysza = -460/6
+
+# FIXME: when is this used? y = 0
+
+y1 = 0
+y1a = 500
+
+y2 = 399*16
+y2a = 500
+
+mika = 1
+halt = False
+
+# FIXME: is this correct??
+a = 200
+
+for frame in range(200):
+
+    if(not halt):
+        y1 += y1a
+        y2 += y2a
+
+        y2a += 16
+        if(y2 > 400*16):
+            y2 -= y2a
+            y2a = -y2a * mika/8
+            if(mika < 4):
+                mika += 3
+        y1a += 16
+        
+        la = int(a)
+        a = int((y2-y1) - 400*16)
+        if((a&0x8000)^(la&0x8000)):
+            y1a = y1a*7/8
+        y1a += a/8
+        y2a -= a/8
+    
+    if(frame > 90):
+        if(y2 >= 399*16):
+            y2 = 400*16
+            halt = True
+        else:
+            y2a = 8
+            
+        y1 = y2 - 400*16
+
+    framey1[frame] = y1
+    framey2[frame] = y2
+
+
+print(framey1)
+print(framey2)
+
+# FIXME: calculate framey1t and framey2t!
+
+
 screen_width = map_width*8
 screen_height = map_height*8
 scale = 3
