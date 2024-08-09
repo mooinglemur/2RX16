@@ -464,7 +464,7 @@ def run():
                             pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
     
     frame_nr = 0
-    do_animate = False
+    do_animate = True
     while running:
         # TODO: We might want to set this to max?
         clock.tick(60)
