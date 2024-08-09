@@ -219,7 +219,19 @@ print("nr of unique tiles: " + str(len(unique_tiles.keys())))
 
 '''
     // Original calculation of y1 and y2 (per frame)
+    
+    // Scroll
+	a=64; y=400*64;
+	while(y>0)
+	{
+		y-=a;
+		a+=6;
+		if(y<0) y=0;
+		scrolly(y/64);
+		dis_waitb();
+	}
 
+    // Bounce
 	frame=0;
 	ysz=400*16; ysza=-460/6;
 	y=0;
@@ -278,67 +290,116 @@ print("nr of unique tiles: " + str(len(unique_tiles.keys())))
 
 '''
 
-framey1 = []
-framey2 = []
-for frame in range(200):
-    framey1.append(None)
-    framey2.append(None)
+def generate_frames ():
 
-ysz = 400*16
-ysza = -460/6
+    # ===== Scrolling down straight (no bending) =====
 
-# FIXME: when is this used? y = 0
+    framey1_scroll = []
+    framey2_scroll = []
 
-y1 = 0
-y1a = 500
-
-y2 = 399*16
-y2a = 500
-
-mika = 1
-halt = False
-
-# FIXME: is this correct??
-a = 200
-
-for frame in range(200):
-
-    if(not halt):
-        y1 += y1a
-        y2 += y2a
-
-        y2a += 16
-        if(y2 > 400*16):
-            y2 -= y2a
-            y2a = -y2a * mika/8
-            if(mika < 4):
-                mika += 3
-        y1a += 16
-        
-        la = int(a)
-        a = int((y2-y1) - 400*16)
-        if((a&0x8000)^(la&0x8000)):
-            y1a = y1a*7/8
-        y1a += a/8
-        y2a -= a/8
+    # We assume the initial frame is just above the screen
+    framey1_scroll.append(-400*16)
+    framey2_scroll.append(0)
     
-    if(frame > 90):
-        if(y2 >= 399*16):
-            y2 = 400*16
-            halt = True
-        else:
-            y2a = 8
+    a = 64
+    y = 400 * 64
+    while(y > 0):
+        y -= a
+        a += 6
+        if(y < 0):
+            y = 0
+        
+        y1 = - y/4
+        y2 = y1 + 400*16
+        
+        framey1_scroll.append(y1)
+        framey2_scroll.append(y2)
             
-        y1 = y2 - 400*16
+    print(framey1_scroll)
+    print(framey2_scroll)
+            
 
-    framey1[frame] = y1
-    framey2[frame] = y2
+    # ===== Bouncing a few times =====
+
+    ysz = 400*16
+    ysza = -460/6
+
+    y1 = 0
+    y1a = 500
+
+    y2 = 399*16
+    y2a = 500
+
+    mika = 1
+    halt = False
+
+    # FIXME: is this correct??
+    a = 200
+
+    framey1 = []
+    framey2 = []
+    for frame in range(200):
+        framey1.append(None)
+        framey2.append(None)
+
+        if(not halt):
+            y1 += y1a
+            y2 += y2a
+
+            y2a += 16
+            if(y2 > 400*16):
+                y2 -= y2a
+                y2a = -y2a * mika/8
+                if(mika < 4):
+                    mika += 3
+            y1a += 16
+            
+            la = int(a)
+            a = int((y2-y1) - 400*16)
+            if((a&0x8000)^(la&0x8000)):
+                y1a = y1a * 7/8
+            y1a += a/8
+            y2a -= a/8
+        
+        if(frame > 90):
+            if(y2 >= 399*16):
+                y2 = 400*16
+                halt = True
+            else:
+                y2a = 8
+                
+            y1 = y2 - 400*16
+
+        framey1[frame] = y1
+        framey2[frame] = y2
+
+    # FIXME: adding a 201th entry into the framey1 and framey2 array!
+    framey1.append(0)
+    framey2.append(6400)
+
+    #print(framey1)
+    #print(framey2)
+    
+    framey1_bounce = []
+    framey2_bounce = []
+    for a in range(800):
+        framey1_bounce.append(None)
+        framey2_bounce.append(None)
+        
+        b = int(a/4)
+        c = int(a&3)
+        d = int(3-c)
+        
+        framey1_bounce[a] = (framey1[b]*d + framey1[b+1]*c) / 3
+        framey2_bounce[a] = (framey2[b]*d + framey2[b+1]*c) / 3
 
 
-print(framey1)
-print(framey2)
+    #print(framey1_bounce)
+    #print(framey2_bounce)
 
-# FIXME: calculate framey1t and framey2t!
+
+
+generate_frames()
 
 
 screen_width = map_width*8
