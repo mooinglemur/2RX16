@@ -325,6 +325,7 @@ x16_inc = 1
         SCREEN                        := $FFED
         PLOT                          := $FFF0
         IOBASE                        := $FFF3
+        i2c_batch_write               := $FEB7
     .endscope
 
     .scope Math

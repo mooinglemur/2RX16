@@ -30,6 +30,8 @@ CHOREO_BANK = $20
 TECHNO_MAPBASE = $10000
 TECHNO_TILEBASE = $11000 ; (plus $1000 offset for each frame)
 
+KBFLASHDUR = 15
+
 .include "x16.inc"
 .include "macros.inc"
 
@@ -54,6 +56,8 @@ choreo_frames:
 old_syncval:
 	.res 1
 slide_off_pos:
+	.res 1
+kbflash:
 	.res 1
 
 .segment "MOIRE"
@@ -166,6 +170,11 @@ clearloop:
 	lda #$40
 	sta Vera::Reg::DCHScale
 	sta Vera::Reg::DCVScale
+
+	; restore num-lock only
+	lda #$ff
+	sta kbflash
+	jsr dokbflash
 
 	LOADFILE "PANICPIC.VBM", 0, $0000, 0 ; $00000 VRAM
 	LOADFILE "PANICPIC.PAL", 0, target_palette
@@ -378,7 +387,7 @@ creature_crt_fadeout:
 	stz Vera::Reg::DCHStart
 	lda #$a0
 	sta Vera::Reg::DCHStop
-	lda #21
+	lda #20
 	sta Vera::Reg::DCVStart
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
@@ -398,6 +407,8 @@ creature_crt_fadeout:
 	stz slide_off_pos
 
 	stz old_syncval
+
+	stz kbflash
 
 	lda #CHOREO_BANK
 	sta X16::Reg::RAMBank
@@ -421,7 +432,7 @@ creature_crt_fadeout:
 	; letterbox for 320x~200
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #21
+	lda #20
 	sta Vera::Reg::DCVStart
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
@@ -495,6 +506,8 @@ newframe:
 	jsr apply_palette_fade_step
 	jsr apply_palette_fade_step
 
+	jsr dokbflash
+
 	WAITVSYNC
 
 	lda syncval
@@ -505,6 +518,8 @@ after_slide:
 	cmp old_syncval
 	beq :+
 	jsr flashit
+	lda #KBFLASHDUR
+	sta kbflash
 :	jsr flush_palette
 
 	; point data 0 to top of screen
@@ -1044,6 +1059,45 @@ xoff:
 	.byte 0
 row:
 	.byte 0
+.endproc
+
+.proc dokbflash
+	lda kbflash
+	beq end
+	bmi restore
+	dec kbflash
+	beq neutral
+	cmp #KBFLASHDUR
+	bcc end
+	lda which
+	eor #3
+	sta which
+	sta command+2
+do_cmd:
+	ldx #$42
+	lda #<command
+	sta X16::Reg::r0L
+	lda #>command
+	sta X16::Reg::r0H
+	lda #<3
+	sta X16::Reg::r1L
+	lda #>3
+	sta X16::Reg::r1H
+	jsr X16::Kernal::i2c_batch_write
+end:
+	rts
+neutral:
+	lda #4
+	sta command+2
+	bra do_cmd
+restore:
+	lda #2
+	sta command+2
+	bra do_cmd
+which:
+	.byte 1
+command:
+	.byte $1a,$ed,$ff
 .endproc
 
 BLACK = $0000

@@ -101,7 +101,7 @@ entry:
 	; reset V-scroll offset
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #21
+	lda #20
 	sta Vera::Reg::DCVStart
 	stz Vera::Reg::Ctrl
 
@@ -147,7 +147,7 @@ end:
 	; reset V-scroll offset
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #21
+	lda #20
 	sta Vera::Reg::DCVStart
 	stz Vera::Reg::Ctrl
 
@@ -604,7 +604,7 @@ clearloop:
 	; letterbox for 320x~200
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #21
+	lda #20
 	sta Vera::Reg::DCVStart
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop

@@ -582,7 +582,7 @@ bottom:
 	; letterbox for 640x~400
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #21
+	lda #20
 	sta Vera::Reg::DCVStart
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop

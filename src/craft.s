@@ -101,6 +101,8 @@ LOAD_FILE = 1
 USE_JUMP_TABLE = 1
 DEBUG = 0
 
+NUMBER_OF_FRAMES = (1802*17/30)-2
+
 LAST_RING_BANK = $3F
 
 .segment "CRAFT_ZP": zeropage
@@ -237,8 +239,13 @@ entry:
 	MUSIC_SYNC $D4
 
 	ldx #0
-:	stz target_palette,x
-	stz target_palette3,x
+:	lda #$ff
+	sta target_palette,x
+	sta target_palette3,x
+	inx
+	lda #$0f
+	sta target_palette,x
+	sta target_palette3,x
 	inx
 	bne :-
 
@@ -489,9 +496,9 @@ draw_polygon_part_using_polygon_filler_and_jump_tables:
 ; FIXME: HARDCODED!
 ; FIXME when the 16-bit number goes negative we have detect the end, BUT this means the NR_OF_FRAMES should be initially filled with nr_of_frames-1 !
 ; FIXME: shoulnt this be 1030?
-    lda #<(1029)
+    lda #<NUMBER_OF_FRAMES
     sta NR_OF_FRAMES
-    lda #>(1029)
+    lda #>NUMBER_OF_FRAMES
     sta NR_OF_FRAMES+1
 
 	WAITVSYNC
