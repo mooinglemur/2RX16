@@ -457,7 +457,7 @@ for a in range(-10, 21+1):
     
     # FIXME: should we do SUB pixels? or FIXED to .5?
     x_pos = int(a) + 10
-    x_increment = row_width / x_width
+    x_increment = x_width / row_width
     
     # We need to pack the x_increment into:
     #   X Increment (-2:-9) (signed)
