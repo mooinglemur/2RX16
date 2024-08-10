@@ -534,12 +534,12 @@ draw_bended_tilemap:
     ldy #0
     
     ; x increment
-    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_low
-    sta X_INCREMENT
-    iny
-    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_high
-    sta X_INCREMENT+1
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_low
+;    sta X_INCREMENT
+;    iny
+;    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_high
+;    sta X_INCREMENT+1
+;    iny
     
     ; y increment
     lda (POS_AND_BEND_DATA), y   ; sine_rotate_low
@@ -553,30 +553,30 @@ draw_bended_tilemap:
     sta VERA_CTRL
 
     ; starting X position
-    lda (POS_AND_BEND_DATA), y   ; x_position_sub
-    sta X_SUB_PIXEL
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; x_position_sub
+;    sta X_SUB_PIXEL
+;    iny
     
-    lda (POS_AND_BEND_DATA), y   ; x_position_low
-    sta X_SUB_PIXEL+1
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; x_position_low
+;    sta X_SUB_PIXEL+1
+;    iny
     
-    lda (POS_AND_BEND_DATA), y   ; x_position_high
-    sta X_SUB_PIXEL+2
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; x_position_high
+;    sta X_SUB_PIXEL+2
+;    iny
     
     ; starting Y position
-    lda (POS_AND_BEND_DATA), y   ; y_position_sub
-    sta Y_SUB_PIXEL
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; y_position_sub
+;    sta Y_SUB_PIXEL
+;    iny
 
-    lda (POS_AND_BEND_DATA), y   ; y_position_low
-    sta Y_SUB_PIXEL+1
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; y_position_low
+;    sta Y_SUB_PIXEL+1
+;    iny
     
-    lda (POS_AND_BEND_DATA), y   ; y_position_high
-    sta Y_SUB_PIXEL+2
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; y_position_high
+;    sta Y_SUB_PIXEL+2
+;    iny
     
 ; FIXME!
 ; FIXME!
@@ -591,10 +591,10 @@ do_hardcoded_data:
 
 
     ; x_increment
-    lda #200   ; x_increment_low
-    sta X_INCREMENT
-    lda #0   ; x_increment_high
-    sta X_INCREMENT+1
+;    lda #200   ; x_increment_low
+;    sta X_INCREMENT
+;    lda #0   ; x_increment_high
+;    sta X_INCREMENT+1
     
     ; y_increment
     lda #40  ; y_increment_low
@@ -606,14 +606,14 @@ do_hardcoded_data:
     sta VERA_CTRL
 
     ; starting X position
-    lda #0   ; x_position_sub
-    sta X_SUB_PIXEL
+;    lda #0   ; x_position_sub
+;    sta X_SUB_PIXEL
     
-    lda #0   ; x_position_low
-    sta X_SUB_PIXEL+1
+;    lda #0   ; x_position_low
+;    sta X_SUB_PIXEL+1
     
-    lda #0   ; x_position_high
-    sta X_SUB_PIXEL+2
+;    lda #0   ; x_position_high
+;    sta X_SUB_PIXEL+2
     
     ; starting Y position
     lda #0   ; y_position_sub
@@ -633,13 +633,13 @@ do_hardcoded_data:
 ; FIXME!
 skip_hardcoded_data:
     
-    lda X_INCREMENT           ; X increment low
-    asl
-    sta VERA_FX_X_INCR_L
-    lda X_INCREMENT+1
-    rol                      
-    and #%01111111            ; increment is only 15 bits long
-    sta VERA_FX_X_INCR_H
+;    lda X_INCREMENT           ; X increment low
+;    asl
+;    sta VERA_FX_X_INCR_L
+;    lda X_INCREMENT+1
+;    rol                      
+;    and #%01111111            ; increment is only 15 bits long
+;    sta VERA_FX_X_INCR_H
 
 ; FIXME: no need to set this again each row!    
     ; y_increment this always 0 within one row
@@ -684,6 +684,19 @@ bend_copy_next_row_1:
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
 
+; FIXME: set X increment based on curve data!
+; FIXME: set X increment based on curve data!
+; FIXME: set X increment based on curve data!
+;    lda X_INCREMENT           ; X increment low
+;    asl
+;    sta VERA_FX_X_INCR_L
+;    lda X_INCREMENT+1
+;    rol                      
+;    and #%01111111            ; increment is only 15 bits long
+;    sta VERA_FX_X_INCR_H
+
+
+
     lda #%00110000           ; Setting auto-increment value to 4 byte increment (=%0011) 
     sta VERA_ADDR_BANK
     lda VERA_ADDR_ZP_TO+1
@@ -696,6 +709,10 @@ bend_copy_next_row_1:
     lda #%00001001           ; DCSEL=4, ADDRSEL=1
     sta VERA_CTRL
     
+; FIXME: set X position based on curve data!
+; FIXME: set X position based on curve data!
+; FIXME: set X position based on curve data!
+
     lda X_SUB_PIXEL+1
     sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
     

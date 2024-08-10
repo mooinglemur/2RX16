@@ -456,8 +456,20 @@ if (True):
     #xsc = (400-(y2-y1))/8
     xsc = (400-(y2-y1))/4
         
+# FIXME: we also need a table for all ROW WIDTHS!!
+# FIXME: we also need a table for all ROW WIDTHS!!
+# FIXME: we also need a table for all ROW WIDTHS!!
+
+ # (0 = max shrunk, 17? = straight, 17?+21 = max stretch)
         
+        
+# FIXME: curve_nr!? --> this is about the NR of HEIGHT!
+# FIXME: curve_nr!? --> this is about the NR of HEIGHT!
+# FIXME: curve_nr!? --> this is about the NR of HEIGHT!
+    curve_nr = 17+21  # FIXME ???
     curve_string = ""
+    curve_string += "  ; curve " + str(curve_nr) +"\n"
+    curve_string += "  .byte "
         
     for y_in_picture in range(int(y_height)):
     
@@ -491,14 +503,16 @@ if (True):
         x_increment_int_h = x_increment_int // 256  #  (5:-1)
         x_increment_int_l = x_increment_int % 256   # (-2:-9)
         
-        curve_string += "  .byte   "
-        curve_string += "$" + format(x_pos,"02x") + ",   "
-        curve_string += "$" + format(x_increment_int_h,"02x") + ",   "
-        curve_string += "$" + format(x_increment_int_l,"02x")
-        curve_string += "\n"
+# FIXME: we should ADD?? 17?? to the x_pos here?
+# FIXME: we should ADD?? 17?? to the x_pos here?
+# FIXME: we should ADD?? 17?? to the x_pos here?
+        curve_string += "$" + format(x_pos,"02x") + ", "
+        #curve_string += "$" + format(x_increment_int_h,"02x") + ",   "
+        #curve_string += "$" + format(x_increment_int_l,"02x")
         
 #        print(str(x_pos) + ':' + str(x_increment_int_h) + ':' + str(x_increment_int_l))
         
+    curve_string += "\n"
     print(curve_string)
 
 
