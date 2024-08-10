@@ -360,167 +360,20 @@ wait_for_scanline_low:
 y_64_to_tiledata_offset:
     .byte 0*24, 1*24, 2*24, 3*24 
 
-  
-; x positions and x increments per curve
-curve_data_0:
-       ; xpos, xinc_h, xinc_l
-  .byte   $00,   $02,   $00
-  .byte   $00,   $02,   $00
-  .byte   $00,   $02,   $00
-  .byte   $01,   $01,   $fa
-  .byte   $01,   $01,   $fa
-  .byte   $02,   $01,   $f4
-  .byte   $02,   $01,   $f4
-  .byte   $03,   $01,   $ef
-  .byte   $03,   $01,   $ef
-  .byte   $03,   $01,   $ef
-  .byte   $04,   $01,   $e9
-  .byte   $04,   $01,   $e9
-  .byte   $05,   $01,   $e4
-  .byte   $05,   $01,   $e4
-  .byte   $05,   $01,   $e4
-  .byte   $06,   $01,   $de
-  .byte   $06,   $01,   $de
-  .byte   $07,   $01,   $d9
-  .byte   $07,   $01,   $d9
-  .byte   $08,   $01,   $d3
-  .byte   $08,   $01,   $d3
-  .byte   $08,   $01,   $d3
-  .byte   $09,   $01,   $cd
-  .byte   $09,   $01,   $cd
-  .byte   $0a,   $01,   $c8
-  .byte   $0a,   $01,   $c8
-  .byte   $0a,   $01,   $c8
-  .byte   $0b,   $01,   $c2
-  .byte   $0b,   $01,   $c2
-  .byte   $0b,   $01,   $c2
-  .byte   $0c,   $01,   $bd
-  .byte   $0c,   $01,   $bd
-  .byte   $0c,   $01,   $bd
-  .byte   $0d,   $01,   $b7
-  .byte   $0d,   $01,   $b7
-  .byte   $0d,   $01,   $b7
-  .byte   $0e,   $01,   $b2
-  .byte   $0e,   $01,   $b2
-  .byte   $0e,   $01,   $b2
-  .byte   $0f,   $01,   $ac
-  .byte   $0f,   $01,   $ac
-  .byte   $0f,   $01,   $ac
-  .byte   $10,   $01,   $a6
-  .byte   $10,   $01,   $a6
-  .byte   $10,   $01,   $a6
-  .byte   $10,   $01,   $a6
-  .byte   $11,   $01,   $a1
-  .byte   $11,   $01,   $a1
-  .byte   $11,   $01,   $a1
-  .byte   $11,   $01,   $a1
-  .byte   $12,   $01,   $9b
-  .byte   $12,   $01,   $9b
-  .byte   $12,   $01,   $9b
-  .byte   $12,   $01,   $9b
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $15,   $01,   $8b
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $14,   $01,   $90
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $13,   $01,   $96
-  .byte   $12,   $01,   $9b
-  .byte   $12,   $01,   $9b
-  .byte   $12,   $01,   $9b
-  .byte   $12,   $01,   $9b
-  .byte   $11,   $01,   $a1
-  .byte   $11,   $01,   $a1
-  .byte   $11,   $01,   $a1
-  .byte   $11,   $01,   $a1
-  .byte   $10,   $01,   $a6
-  .byte   $10,   $01,   $a6
-  .byte   $10,   $01,   $a6
-  .byte   $10,   $01,   $a6
-  .byte   $0f,   $01,   $ac
-  .byte   $0f,   $01,   $ac
-  .byte   $0f,   $01,   $ac
-  .byte   $0e,   $01,   $b2
-  .byte   $0e,   $01,   $b2
-  .byte   $0e,   $01,   $b2
-  .byte   $0d,   $01,   $b7
-  .byte   $0d,   $01,   $b7
-  .byte   $0d,   $01,   $b7
-  .byte   $0c,   $01,   $bd
-  .byte   $0c,   $01,   $bd
-  .byte   $0c,   $01,   $bd
-  .byte   $0b,   $01,   $c2
-  .byte   $0b,   $01,   $c2
-  .byte   $0b,   $01,   $c2
-  .byte   $0a,   $01,   $c8
-  .byte   $0a,   $01,   $c8
-  .byte   $09,   $01,   $cd
-  .byte   $09,   $01,   $cd
-  .byte   $09,   $01,   $cd
-  .byte   $08,   $01,   $d3
-  .byte   $08,   $01,   $d3
-  .byte   $07,   $01,   $d9
-  .byte   $07,   $01,   $d9
-  .byte   $07,   $01,   $d9
-  .byte   $06,   $01,   $de
-  .byte   $06,   $01,   $de
-  .byte   $05,   $01,   $e4
-  .byte   $05,   $01,   $e4
-  .byte   $05,   $01,   $e4
-  .byte   $04,   $01,   $e9
-  .byte   $04,   $01,   $e9
-  .byte   $03,   $01,   $ef
-  .byte   $03,   $01,   $ef
-  .byte   $02,   $01,   $f4
-  .byte   $02,   $01,   $f4
-  .byte   $02,   $01,   $f4
-  .byte   $01,   $01,   $fa
-  .byte   $01,   $01,   $fa
-  .byte   $00,   $02,   $00
 
+x_pos_per_width:
+  .byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $0a, $0b, $0c, $0d, $0e, $0f, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $1a, $1b, $1c, $1d, $1e, $1f
+
+x_inc_low_per_width:
+  .byte $c8, $cd, $d3, $d9, $de, $e4, $e9, $ef, $f4, $fa, $00, $05, $0b, $10, $16, $1b, $21, $26, $2c, $32, $37, $3d, $42, $48, $4d, $53, $59, $5e, $64, $69, $6f, $74
+
+x_inc_high_per_width:
+  .byte $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02
+
+  
+; curve data (containing a series of width indexes)
+curve_data:
+  .byte $0a, $0a, $0a, $0b, $0b, $0c, $0c, $0d, $0d, $0d, $0e, $0e, $0f, $0f, $0f, $10, $10, $11, $11, $12, $12, $12, $13, $13, $14, $14, $14, $15, $15, $15, $16, $16, $16, $17, $17, $17, $18, $18, $18, $19, $19, $19, $1a, $1a, $1a, $1a, $1b, $1b, $1b, $1b, $1c, $1c, $1c, $1c, $1d, $1d, $1d, $1d, $1d, $1e, $1e, $1e, $1e, $1e, $1e, $1e, $1e, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1e, $1e, $1e, $1e, $1e, $1e, $1e, $1d, $1d, $1d, $1d, $1d, $1d, $1c, $1c, $1c, $1c, $1b, $1b, $1b, $1b, $1a, $1a, $1a, $1a, $19, $19, $19, $18, $18, $18, $17, $17, $17, $16, $16, $16, $15, $15, $15, $14, $14, $13, $13, $13, $12, $12, $11, $11, $11, $10, $10, $0f, $0f, $0f, $0e, $0e, $0d, $0d, $0c, $0c, $0c, $0b, $0b, $0a
 
   
 draw_bended_tilemap:
@@ -684,18 +537,13 @@ bend_copy_next_row_1:
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
 
-; FIXME: set X increment based on curve data!
-; FIXME: set X increment based on curve data!
-; FIXME: set X increment based on curve data!
-;    lda X_INCREMENT           ; X increment low
-;    asl
-;    sta VERA_FX_X_INCR_L
-;    lda X_INCREMENT+1
-;    rol                      
-;    and #%01111111            ; increment is only 15 bits long
-;    sta VERA_FX_X_INCR_H
-
-
+; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
+    lda x_inc_low_per_width,x 
+    sta VERA_FX_X_INCR_L
+    
+; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
+    lda x_inc_high_per_width,x 
+    sta VERA_FX_X_INCR_H
 
     lda #%00110000           ; Setting auto-increment value to 4 byte increment (=%0011) 
     sta VERA_ADDR_BANK
@@ -709,20 +557,27 @@ bend_copy_next_row_1:
     lda #%00001001           ; DCSEL=4, ADDRSEL=1
     sta VERA_CTRL
     
+;    lda X_SUB_PIXEL+1
+;    sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
+    
+;    lda X_SUB_PIXEL+2
+;    and #%00000111
+;    sta VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
+
+
 ; FIXME: set X position based on curve data!
 ; FIXME: set X position based on curve data!
 ; FIXME: set X position based on curve data!
 
-    lda X_SUB_PIXEL+1
+; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
+    lda x_pos_per_width,x 
     sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
+    stz VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
     
-    lda X_SUB_PIXEL+2
-    and #%00000111
-    sta VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
 
     lda Y_SUB_PIXEL+1
     sta VERA_FX_Y_POS_L      ; Y pixel position low [7:0]
-    
+
     lda Y_SUB_PIXEL+2
     and #%00000111
     sta VERA_FX_Y_POS_H      ; Y subpixel position[0] = 0,  Y pixel position high [10:8] = 000 or 111

@@ -437,9 +437,48 @@ print(highest_y1_frame_nr)
 
 # Generate bend tables
 
-# FIXME: just ONE bend table for now!
-# FIXME: just ONE bend table for now!
-# FIXME: just ONE bend table for now!
+x_width = 184 # approx!
+min_width = 164  # a = -10
+max_width = 226  # a =  21
+nr_of_widths = (max_width+2 - min_width) // 2
+
+x_pos_string = "x_pos_per_width:\n"
+x_pos_string += "  .byte "
+
+x_inc_low_string = "x_inc_low_per_width:\n"
+x_inc_low_string += "  .byte "
+
+x_inc_high_string = "x_inc_high_per_width:\n"
+x_inc_high_string += "  .byte "
+
+for a in range(-10, 21+1):
+
+    row_width = int(x_width + int(a)*2)
+    
+    # FIXME: should we do SUB pixels? or FIXED to .5?
+    x_pos = int(a) + 10
+    x_increment = row_width / x_width
+    
+    # We need to pack the x_increment into:
+    #   X Increment (-2:-9) (signed)
+    #   X Increment  (5:-1) (signed)
+    # So we first make sure we keep the bit -1:-9 by multiplying with 512 and rounding down
+    x_increment_int = int(x_increment * 512)
+    x_increment_int_h = x_increment_int // 256  #  (5:-1)
+    x_increment_int_l = x_increment_int % 256   # (-2:-9)
+    
+    x_pos_string += "$" + format(x_pos,"02x") + ", "
+    x_inc_low_string += "$" + format(x_increment_int_l,"02x") + ", "
+    x_inc_high_string += "$" + format(x_increment_int_h,"02x") + ", "
+    
+    # print(str(x_pos) + ':' + str(x_increment_int_h) + ':' + str(x_increment_int_l))
+
+print(x_pos_string)
+print("\n")
+print(x_inc_low_string)
+print("\n")
+print(x_inc_high_string)
+print("\n")
 
 if (True):
     highest_y1_frame_nr = 95
@@ -448,19 +487,12 @@ if (True):
     y1 = frame_info['y1']/16
     y2 = frame_info['y2']/16
     
-    x_width = 184 # approx!
     y_start = y1 / 2
     y_end = y2 / 2
     y_height = y_end - y_start
     
     #xsc = (400-(y2-y1))/8
     xsc = (400-(y2-y1))/4
-        
-# FIXME: we also need a table for all ROW WIDTHS!!
-# FIXME: we also need a table for all ROW WIDTHS!!
-# FIXME: we also need a table for all ROW WIDTHS!!
-
- # (0 = max shrunk, 17? = straight, 17?+21 = max stretch)
         
         
 # FIXME: curve_nr!? --> this is about the NR of HEIGHT!
@@ -473,44 +505,13 @@ if (True):
         
     for y_in_picture in range(int(y_height)):
     
-# FIXME!
         y = y_start + y_in_picture
         
-        # Only side borders:
-        #pygame.draw.rect(screen, pixel_color, pygame.Rect(x_start*scale, (y + top_border)*scale, scale, scale), 1*scale)
-        #pygame.draw.rect(screen, pixel_color, pygame.Rect((x_start+x_width)*scale, (y + top_border)*scale, scale, scale), 1*scale)
-        
-        # Filled:
-        
-
         b = y_in_picture / y_height
-        # TODO: +0.5?
-        a = (math.sin(b*math.pi)*xsc)
-        # TODO: *even* number of pixels? a&=~1 ?
-
-        # row_width = int(x_width + int(a)*2)
-        # row_start = int(x_start - int(a))
+        a = (math.sin(b*math.pi)*xsc)  # TODO: +0.5?
         
-        # FIXME: should we do HALF pixels?
-        x_pos = int(a)
-        x_increment = (x_width - int(a)*2) / x_width
-        
-        # We need to pack the x_increment into:
-        #   X Increment (-2:-9) (signed)
-        #   X Increment  (5:-1) (signed)
-        # So we first make sure we keep the bit -1:-9 by multiplying with 512 and rounding down
-        x_increment_int = int(x_increment * 512)
-        x_increment_int_h = x_increment_int // 256  #  (5:-1)
-        x_increment_int_l = x_increment_int % 256   # (-2:-9)
-        
-# FIXME: we should ADD?? 17?? to the x_pos here?
-# FIXME: we should ADD?? 17?? to the x_pos here?
-# FIXME: we should ADD?? 17?? to the x_pos here?
-        curve_string += "$" + format(x_pos,"02x") + ", "
-        #curve_string += "$" + format(x_increment_int_h,"02x") + ",   "
-        #curve_string += "$" + format(x_increment_int_l,"02x")
-        
-#        print(str(x_pos) + ':' + str(x_increment_int_h) + ':' + str(x_increment_int_l))
+        width_index = int(a) + 10
+        curve_string += "$" + format(width_index,"02x") + ", "
         
     curve_string += "\n"
     print(curve_string)
@@ -563,6 +564,11 @@ def run():
                             pygame.draw.rect(screen, pixel_color, pygame.Rect(x_screen*scale, y_screen*scale, scale, scale))
     
     frame_nr = 0
+    
+    lowest_x_width = 10000
+    highest_x_width = 0
+    
+    
     do_animate = True
     while running:
         # TODO: We might want to set this to max?
@@ -594,8 +600,14 @@ def run():
         frame_info = total_frames[frame_nr]
         
         if (frame_nr < len(total_frames)-1):
-            if (frame_nr < 95):
-                frame_nr += 1
+            # if (frame_nr < 95):
+# FIXME: we have too many frames??
+            frame_nr += 1
+            # print(frame_nr)
+        else:
+            print(lowest_x_width)
+            print(highest_x_width)
+            
         
         
         pixel_color = (0xFF, 0xFF, 0x00)
@@ -627,13 +639,16 @@ def run():
             # Filled:
             
             b = y_in_picture / y_height
-            # TODO: +0.5?
-            a = (math.sin(b*math.pi)*xsc)
-            # TODO: *even* number of pixels? a&=~1 ?
+            a = (math.sin(b*math.pi)*xsc) # TODO: +0.5?
 
             row_width = int(x_width + int(a)*2)
             row_start = int(x_start - int(a))
             
+            if row_width < lowest_x_width:
+                lowest_x_width = row_width
+            if row_width > highest_x_width:
+                highest_x_width = row_width
+
             pygame.draw.rect(screen, pixel_color, pygame.Rect(row_start*scale, (y + top_border)*scale, row_width*scale, scale), 1*scale)
             
             
