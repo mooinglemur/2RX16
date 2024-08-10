@@ -418,6 +418,74 @@ def generate_frames ():
 total_frames = generate_frames()
 #print(total_frames)
 
+'''
+# FIXME: HACK!
+highest_y1 = 0
+highest_y1_frame_nr = 0
+for frame_nr, frame_info in enumerate(total_frames):
+    y1 = frame_info['y1']
+    
+    #print(y1)
+    
+    if (y1 > highest_y1):
+        highest_y1 = y1
+        highest_y1_frame_nr = frame_nr
+        
+        # print(str(highest_y1)+':'+str(highest_y1_frame_nr))
+print(highest_y1_frame_nr)
+'''
+
+# Generate bend tables
+
+# FIXME: just ONE bend table for now!
+# FIXME: just ONE bend table for now!
+# FIXME: just ONE bend table for now!
+
+if (True):
+    highest_y1_frame_nr = 95
+    frame_info = total_frames[highest_y1_frame_nr]
+
+    y1 = frame_info['y1']/16
+    y2 = frame_info['y2']/16
+    
+    x_width = 184 # approx!
+    y_start = y1 / 2
+    y_end = y2 / 2
+    y_height = y_end - y_start
+    
+    #xsc = (400-(y2-y1))/8
+    xsc = (400-(y2-y1))/4
+        
+    for y_in_picture in range(int(y_height)):
+    
+# FIXME!
+        y = y_start + y_in_picture
+        
+        # Only side borders:
+        #pygame.draw.rect(screen, pixel_color, pygame.Rect(x_start*scale, (y + top_border)*scale, scale, scale), 1*scale)
+        #pygame.draw.rect(screen, pixel_color, pygame.Rect((x_start+x_width)*scale, (y + top_border)*scale, scale, scale), 1*scale)
+        
+        # Filled:
+        
+
+        b = y_in_picture / y_height
+        # TODO: +0.5?
+        a = (math.sin(b*math.pi)*xsc)
+        # TODO: *even* number of pixels? a&=~1 ?
+
+        # row_width = int(x_width + int(a)*2)
+        # row_start = int(x_start - int(a))
+        
+        # FIXME: should we do HALF pixels?
+        x_pos = int(a)
+        x_increment = (x_width - int(a)*2) / x_width
+        
+        print(str(x_pos) + ':' + str(x_increment))
+        
+
+
+
+
 if (SHOW_TILE_MAP):
     screen_width = map_width*8
     screen_height = map_height*8
@@ -495,7 +563,8 @@ def run():
         frame_info = total_frames[frame_nr]
         
         if (frame_nr < len(total_frames)-1):
-            frame_nr += 1
+            if (frame_nr < 95):
+                frame_nr += 1
         
         
         pixel_color = (0xFF, 0xFF, 0x00)
@@ -512,7 +581,8 @@ def run():
         y_end = y2 / 2
         y_height = y_end - y_start
         
-        xsc = (400-(y2-y1))/8
+        xsc = (400-(y2-y1))/4
+        # xsc = (400-(y2-y1))/8
             
         # pygame.draw.rect(screen, pixel_color, pygame.Rect(x_start*scale, (y_start + top_border)*scale, x_width*scale, y_height*scale), 1*scale)
         for y_in_picture in range(int(y_height)):
@@ -526,12 +596,12 @@ def run():
             # Filled:
             
             b = y_in_picture / y_height
-            # FIXME: +0.5?
+            # TODO: +0.5?
             a = (math.sin(b*math.pi)*xsc)
-            # FIXME: *even* number of pixels? a&=~1 ?
+            # TODO: *even* number of pixels? a&=~1 ?
 
-            row_width = x_width + a*2
-            row_start = x_start - a
+            row_width = int(x_width + int(a)*2)
+            row_start = int(x_start - int(a))
             
             pygame.draw.rect(screen, pixel_color, pygame.Rect(row_start*scale, (y + top_border)*scale, row_width*scale, scale), 1*scale)
             
