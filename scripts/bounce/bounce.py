@@ -456,6 +456,9 @@ if (True):
     #xsc = (400-(y2-y1))/8
     xsc = (400-(y2-y1))/4
         
+        
+    curve_string = ""
+        
     for y_in_picture in range(int(y_height)):
     
 # FIXME!
@@ -480,9 +483,23 @@ if (True):
         x_pos = int(a)
         x_increment = (x_width - int(a)*2) / x_width
         
-        print(str(x_pos) + ':' + str(x_increment))
+        # We need to pack the x_increment into:
+        #   X Increment (-2:-9) (signed)
+        #   X Increment  (5:-1) (signed)
+        # So we first make sure we keep the bit -1:-9 by multiplying with 512 and rounding down
+        x_increment_int = int(x_increment * 512)
+        x_increment_int_h = x_increment_int // 256  #  (5:-1)
+        x_increment_int_l = x_increment_int % 256   # (-2:-9)
         
-
+        curve_string += "  .byte   "
+        curve_string += "$" + format(x_pos,"02x") + ",   "
+        curve_string += "$" + format(x_increment_int_h,"02x") + ",   "
+        curve_string += "$" + format(x_increment_int_l,"02x")
+        curve_string += "\n"
+        
+#        print(str(x_pos) + ':' + str(x_increment_int_h) + ':' + str(x_increment_int_l))
+        
+    print(curve_string)
 
 
 
