@@ -539,13 +539,15 @@ bend_copy_next_row_1:
 
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
+    
+    ldy curve_data, x
 
 ; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
-    lda x_inc_low_per_width,x 
+    lda x_inc_low_per_width,y
     sta VERA_FX_X_INCR_L
     
 ; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
-    lda x_inc_high_per_width,x 
+    lda x_inc_high_per_width,y
     sta VERA_FX_X_INCR_H
 
     lda #%00110000           ; Setting auto-increment value to 4 byte increment (=%0011) 
@@ -573,7 +575,7 @@ bend_copy_next_row_1:
 ; FIXME: set X position based on curve data!
 
 ; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
-    lda x_pos_per_width,x 
+    lda x_pos_per_width,y
     sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
     stz VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
     
