@@ -371,6 +371,7 @@ x_inc_low_per_width:
 
 x_inc_high_per_width:
   .byte $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $02, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01
+  
 
   
 ; curve data (containing a series of width indexes)
@@ -588,7 +589,9 @@ bend_copy_next_row_1:
     lda #%00001010           ; DCSEL=5, ADDRSEL=0
     sta VERA_CTRL
     
-    lda X_SUB_PIXEL
+    ; lda X_SUB_PIXEL
+; FIXME: correct to set this to .5?
+    lda #$80        
     sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
     lda Y_SUB_PIXEL
     sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
