@@ -510,9 +510,16 @@ for y_height in range(min_y_height, max_y_height+1):
     #xsc = (400-(y2-y1))/8
     xsc = (200-(y_height+0.5))/2
     
+# FIXME: +0.5?
+    y_incr = 200 / y_height
+    y_incr_int = int(y_incr * 256)
+    y_incr_int_h = y_incr_int // 256  #  (7:0)
+    y_incr_int_l = y_incr_int % 256   # (-1:-8)
+    
     curve_nr = y_height - min_y_height
     curve_string = ""
     curve_string += "  ; curve " + str(curve_nr) +"\n"
+    curve_string += "  .byte " + "$" + format(y_incr_int_l,"02x") + ", " + "$" + format(y_incr_int_h,"02x") + " ; y_increment\n"
     curve_string += "  .byte "
         
     for y_in_picture in range(int(y_height)):

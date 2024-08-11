@@ -375,10 +375,10 @@ x_inc_high_per_width:
   
 ; curve data (containing a series of width indexes)
 curve_data:
-  .byte $0a, $0a, $0a, $0b, $0b, $0c, $0c, $0d, $0d, $0d, $0e, $0e, $0f, $0f, $10, $10, $10, $11, $11, $12, $12, $12, $13, $13, $14, $14, $14, $15, $15, $15, $16, $16, $17, $17, $17, $18, $18, $18, $19, $19, $19, $19, $1a, $1a, $1a, $1b, $1b, $1b, $1b, $1c, $1c, $1c, $1c, $1d, $1d, $1d, $1d, $1d, $1e, $1e, $1e, $1e, $1e, $1e, $1e, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1e, $1e, $1e, $1e, $1e, $1e, $1e, $1d, $1d, $1d, $1d, $1d, $1c, $1c, $1c, $1c, $1b, $1b, $1b, $1b, $1a, $1a, $1a, $19, $19, $19, $19, $18, $18, $18, $17, $17, $17, $16, $16, $15, $15, $15, $14, $14, $14, $13, $13, $12, $12, $12, $11, $11, $10, $10, $10, $0f, $0f, $0e, $0e, $0d, $0d, $0d, $0c, $0c, $0b, $0b, $0a, $0a  
-
+  .byte $48, $01 ; y_increment
+  .byte $0a, $0a, $0a, $0b, $0b, $0c, $0c, $0d, $0d, $0d, $0e, $0e, $0f, $0f, $10, $10, $10, $11, $11, $12, $12, $12, $13, $13, $14, $14, $14, $15, $15, $15, $16, $16, $17, $17, $17, $18, $18, $18, $19, $19, $19, $19, $1a, $1a, $1a, $1b, $1b, $1b, $1b, $1c, $1c, $1c, $1c, $1d, $1d, $1d, $1d, $1d, $1e, $1e, $1e, $1e, $1e, $1e, $1e, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1f, $1e, $1e, $1e, $1e, $1e, $1e, $1e, $1d, $1d, $1d, $1d, $1d, $1c, $1c, $1c, $1c, $1b, $1b, $1b, $1b, $1a, $1a, $1a, $19, $19, $19, $19, $18, $18, $18, $17, $17, $17, $16, $16, $15, $15, $15, $14, $14, $14, $13, $13, $12, $12, $12, $11, $11, $10, $10, $10, $0f, $0f, $0e, $0e, $0d, $0d, $0d, $0c, $0c, $0b, $0b, $0a, $0a
+  
 draw_bended_tilemap:
-
 
 ; FIXME!
 ; FIXME!
@@ -403,34 +403,9 @@ draw_bended_tilemap:
     sta Y_INCREMENT+1
     iny
 
-    lda #%00000110           ; DCSEL=3, ADDRSEL=0
-    sta VERA_CTRL
+;    lda #%00000110           ; DCSEL=3, ADDRSEL=0
+;    sta VERA_CTRL
 
-    ; starting X position
-;    lda (POS_AND_BEND_DATA), y   ; x_position_sub
-;    sta X_SUB_PIXEL
-;    iny
-    
-;    lda (POS_AND_BEND_DATA), y   ; x_position_low
-;    sta X_SUB_PIXEL+1
-;    iny
-    
-;    lda (POS_AND_BEND_DATA), y   ; x_position_high
-;    sta X_SUB_PIXEL+2
-;    iny
-    
-    ; starting Y position
-;    lda (POS_AND_BEND_DATA), y   ; y_position_sub
-;    sta Y_SUB_PIXEL
-;    iny
-
-;    lda (POS_AND_BEND_DATA), y   ; y_position_low
-;    sta Y_SUB_PIXEL+1
-;    iny
-    
-;    lda (POS_AND_BEND_DATA), y   ; y_position_high
-;    sta Y_SUB_PIXEL+2
-;    iny
     
 ; FIXME!
 ; FIXME!
@@ -442,33 +417,22 @@ draw_bended_tilemap:
 ; FIXME!
 do_hardcoded_data:    
     
-
-
-    ; x_increment
-;    lda #200   ; x_increment_low
-;    sta X_INCREMENT
-;    lda #0   ; x_increment_high
-;    sta X_INCREMENT+1
     
     ; y_increment
-    lda #40  ; y_increment_low
+ 
+; FIXME: what should we do with x? 
+    ldx #0
+    
+    lda curve_data, x
+    ; lda #40  ; y_increment_low
     sta Y_INCREMENT
-    lda #1   ; y_increment_high
+    lda curve_data+1, x
+    ; lda #1   ; y_increment_high
     sta Y_INCREMENT+1
 
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
 
-    ; starting X position
-;    lda #0   ; x_position_sub
-;    sta X_SUB_PIXEL
-    
-;    lda #0   ; x_position_low
-;    sta X_SUB_PIXEL+1
-    
-;    lda #0   ; x_position_high
-;    sta X_SUB_PIXEL+2
-    
     ; starting Y position
     lda #0   ; y_position_sub
     sta Y_SUB_PIXEL
@@ -538,13 +502,13 @@ bend_copy_next_row_1:
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
     
-    ldy curve_data, x
+    ; We use x to determine the width index (within a curve), THEN lookup the x_pos/x_incr based on the width index
+; FIXME: should we do +2 here, or -2 above?
+    ldy curve_data+2, x
 
-; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
     lda x_inc_low_per_width,y
     sta VERA_FX_X_INCR_L
     
-; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
     lda x_inc_high_per_width,y
     sta VERA_FX_X_INCR_H
 
@@ -559,20 +523,7 @@ bend_copy_next_row_1:
     
     lda #%00001001           ; DCSEL=4, ADDRSEL=1
     sta VERA_CTRL
-    
-;    lda X_SUB_PIXEL+1
-;    sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
-    
-;    lda X_SUB_PIXEL+2
-;    and #%00000111
-;    sta VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
 
-
-; FIXME: set X position based on curve data!
-; FIXME: set X position based on curve data!
-; FIXME: set X position based on curve data!
-
-; FIXME: TEMP SOLUTION! use x to determine the width index, THEN lookup the pos based on THAT!
     lda x_pos_per_width,y
     sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
     stz VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
