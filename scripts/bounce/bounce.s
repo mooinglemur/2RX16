@@ -636,12 +636,6 @@ draw_bended_tilemap:
     lda (LOAD_ADDRESS), y
     sta Y_INCREMENT+1
 
-    ldy #0
-    
-; FIXME: needed??
-    lda #%00000110           ; DCSEL=3, ADDRSEL=0
-    sta VERA_CTRL
-
     ; starting Y position
     lda #$80   ; y_position_sub  ; FIXME: correct that this is set to 0.5?
     sta Y_SUB_PIXEL
@@ -650,6 +644,8 @@ draw_bended_tilemap:
     lda #0   ; y_position_high
     sta Y_SUB_PIXEL+2
 
+    lda #%00000110           ; DCSEL=3, ADDRSEL=0
+    sta VERA_CTRL
 
     ; y_increment this always 0 within one row
     lda #0
@@ -730,8 +726,7 @@ bend_copy_next_row_1:
     sta VERA_CTRL
     
     ; lda X_SUB_PIXEL
-; FIXME: correct to set this to .5?
-    lda #$80        
+    lda #$80    ; TODO: correct to set this to .5?
     sta VERA_FX_X_POS_S      ; X pixel position low [-1:-8]
     lda Y_SUB_PIXEL
     sta VERA_FX_Y_POS_S      ; Y pixel position low [-1:-8]
