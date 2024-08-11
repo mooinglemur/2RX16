@@ -101,6 +101,7 @@ TEMP_VAR                  = $55
 ; === RAM addresses ===
 
 COPY_ROW_CODE               = $8800
+CLEAR_ROW_CODE              = $9200
 POS_AND_BEND_RAM_ADDRESS    = $A000
 
 ; === Other constants ===
@@ -124,6 +125,7 @@ start:
     ; FIXME: REMOVE: jsr load_pos_and_bend_data_into_banked_ram
 
     jsr generate_copy_row_code
+    jsr generate_clear_row_code
 
     jsr setup_and_draw_bouncing_tilemap
 
@@ -623,23 +625,33 @@ draw_bended_tilemap:
     lda (FRAME_BOTTOM_Y_ADDRESS), y
     sta TEMP_VAR
     
+    beq done_clearing_lines
     
-; FIXME: clear a number of rows using!
-; FIXME: clear a number of rows using!
-; FIXME: clear a number of rows using!
+clear_next_line:
+    
+    lda #%00110000           ; Setting auto-increment value to 4 byte increment (=%0011) 
+    sta VERA_ADDR_BANK
+    lda VERA_ADDR_ZP_TO+1
+    sta VERA_ADDR_HIGH
+    lda VERA_ADDR_ZP_TO
+    sta VERA_ADDR_LOW
+    
     ; Clear one row of pixels
-;    jsr CLEAR_ROW_CODE
+    jsr CLEAR_ROW_CODE
 
     ; We decrement our VERA_ADDR_ZP_TO with 320
-;    sec
-;    lda VERA_ADDR_ZP_TO
-;    sbc #<(320)
-;    sta VERA_ADDR_ZP_TO
-;    lda VERA_ADDR_ZP_TO+1
-;    sbc #>(320)
-;    sta VERA_ADDR_ZP_TO+1
+    sec
+    lda VERA_ADDR_ZP_TO
+    sbc #<(320)
+    sta VERA_ADDR_ZP_TO
+    lda VERA_ADDR_ZP_TO+1
+    sbc #>(320)
+    sta VERA_ADDR_ZP_TO+1
     
+    dec TEMP_VAR
+    bne clear_next_line
     
+done_clearing_lines:
    
     ; Calculate the address to the (current frame) curve index 
     
@@ -677,7 +689,7 @@ draw_bended_tilemap:
     ; starting Y position
     lda #$80   ; y_position_sub  ; FIXME: correct that this is set to 0.5?
     sta Y_SUB_PIXEL
-    lda #200   ; y_position_low
+    lda #199   ; y_position_low
     sta Y_SUB_PIXEL+1
     lda #0   ; y_position_high
     sta Y_SUB_PIXEL+2
@@ -984,6 +996,46 @@ next_copy_instruction:
 
     rts
 
+
+
+
+generate_clear_row_code:
+
+    lda #<CLEAR_ROW_CODE
+    sta CODE_ADDRESS
+    lda #>CLEAR_ROW_CODE
+    sta CODE_ADDRESS+1
+    
+    ldy #0                 ; generated code byte counter
+    
+    ldx #0                 ; counts nr of clear instructions
+
+next_clear_instruction:
+
+    ; We use the cache for writing, we do not want a mask so we store 0 (stz)
+
+    ; -- stz VERA_DATA0 ($9F23)
+    lda #$9C               ; stz ....
+    jsr add_code_byte
+
+    lda #$23               ; $23
+    jsr add_code_byte
+    
+    lda #$9F               ; $9F
+    jsr add_code_byte
+
+    inx
+; FIXME: we need a different WIDTH here!
+; FIXME: we need a different WIDTH here!
+; FIXME: we need a different WIDTH here!
+    cpx #240/4
+    bne next_clear_instruction
+
+    ; -- rts --
+    lda #$60
+    jsr add_code_byte
+
+    rts
 
     
 add_code_byte:
