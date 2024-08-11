@@ -124,15 +124,22 @@ tiles_pixel_data.append(border_tile_pixel_data)
 unique_tiles[tile_pixels_as_string] = tile_index
 tile_index += 1
 
+nr_of_left_border_tiles = 4
 for tile_y in range(content_map_height):
     tile_map.append([])
-    for tile_x in range(content_map_width):
+    
+    # On the left we add 3 black tiles
+    for tile_x in range(nr_of_left_border_tiles):
+        tile_map[tile_y].append([])
+        tile_map[tile_y][tile_x] = 0  # tile index of the black tile
+        
+    for tile_x in range(nr_of_left_border_tiles, content_map_width+nr_of_left_border_tiles):
         tile_map[tile_y].append([])
         tile_pixels_as_string = ""
         tile_pixel_data = []
         for y_in_tile in range(8):
             for x_in_tile in range(8):
-                pixel_color = px[source_left_padding + tile_x*8+x_in_tile, tile_y*8+y_in_tile]
+                pixel_color = px[source_left_padding + (tile_x-nr_of_left_border_tiles)*8+x_in_tile, tile_y*8+y_in_tile]
                 tile_pixels_as_string += str(pixel_color)
                 tile_pixel_data.append(pixel_color)
         if (tile_pixels_as_string in unique_tiles):
@@ -145,10 +152,10 @@ for tile_y in range(content_map_height):
             
     # We add one tile to the row with left border
     tile_map[tile_y].append([])
-    tile_map[tile_y][content_map_width] = 1  # tile index of the left-border tile
+    tile_map[tile_y][nr_of_left_border_tiles+content_map_width] = 1  # tile index of the left-border tile
     
     # We fill the row with black tiles
-    for tile_x in range(content_map_width+1, map_width):
+    for tile_x in range(nr_of_left_border_tiles+content_map_width+1, map_width):
         tile_map[tile_y].append([])
         tile_map[tile_y][tile_x] = 0  # tile index of the black tile
 
