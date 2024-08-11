@@ -32,6 +32,8 @@ VERA_DC_HSCALE    = $9F2A  ; DCSEL=0
 VERA_DC_VSCALE    = $9F2B  ; DCSEL=0
 VERA_DC_BORDER    = $9F2C  ; DCSEL=0
 
+VERA_DC_HSTART    = $9F29  ; DCSEL=1
+VERA_DC_HSTOP     = $9F2A  ; DCSEL=1
 VERA_DC_VSTART    = $9F2B  ; DCSEL=1
 VERA_DC_VSTOP     = $9F2C  ; DCSEL=1
 
@@ -104,7 +106,7 @@ POS_AND_BEND_RAM_ADDRESS    = $A000
 ; === Other constants ===
 
 DESTINATION_PICTURE_POS_X = 0
-DESTINATION_PICTURE_POS_Y = 0
+DESTINATION_PICTURE_BOTTOM_POS_Y = 199  ; We draw from bottom to top
 
 POS_AND_BEND_START_BANK  = $01
 
@@ -170,6 +172,11 @@ setup_vera_for_layer0_bitmap:
     sta VERA_DC_VSTART
     lda #400/2+20-1
     sta VERA_DC_VSTOP
+
+    lda #22
+    sta VERA_DC_HSTART
+    lda #286/2-1
+    sta VERA_DC_HSTOP
     
     rts
     
@@ -255,9 +262,9 @@ setup_and_draw_bouncing_tilemap:
     
     
 keep_bouncing:
-    lda #<(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
+    lda #<(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_BOTTOM_POS_Y*320)
     sta VERA_ADDR_ZP_TO
-    lda #>(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_POS_Y*320)
+    lda #>(DESTINATION_PICTURE_POS_X+DESTINATION_PICTURE_BOTTOM_POS_Y*320)
     sta VERA_ADDR_ZP_TO+1
     
     
@@ -317,9 +324,17 @@ pos_and_bend_bank_is_ok:
     ; check if 2000 frames played (= $7D0)
     lda FRAME_NR+1
 ; FIXME!
+; FIXME!
+; FIXME!
+; FIXME!
+; FIXME!
     cmp #$7
     bne keep_bouncing
     lda FRAME_NR
+; FIXME!
+; FIXME!
+; FIXME!
+; FIXME!
 ; FIXME!
     cmp #$D0
     bne keep_bouncing
@@ -639,7 +654,7 @@ draw_bended_tilemap:
     ; starting Y position
     lda #$80   ; y_position_sub  ; FIXME: correct that this is set to 0.5?
     sta Y_SUB_PIXEL
-    lda #0   ; y_position_low
+    lda #200   ; y_position_low
     sta Y_SUB_PIXEL+1
     lda #0   ; y_position_high
     sta Y_SUB_PIXEL+2
@@ -735,32 +750,31 @@ bend_copy_next_row_1:
     ; Copy one row of pixels
     jsr COPY_ROW_CODE
     
-    ; FIXME: HACK we are ASSUMING we never reach the second part of VRAM here! (VERA_ADDR_ZP_TO+2 is not used here!)
-    
-    ; We increment our VERA_ADDR_ZP_TO with 320
-    clc
-    lda VERA_ADDR_ZP_TO
-    adc #<(320)
-    sta VERA_ADDR_ZP_TO
-    lda VERA_ADDR_ZP_TO+1
-    adc #>(320)
-    sta VERA_ADDR_ZP_TO+1
-
-; FIXME: this needs to change!?
-    clc
+    ; We decrement our our sub pixels
+    sec
     lda Y_SUB_PIXEL
-    adc Y_INCREMENT
+    sbc Y_INCREMENT
     sta Y_SUB_PIXEL
     lda Y_SUB_PIXEL+1
-    adc Y_INCREMENT+1
+    sbc Y_INCREMENT+1
     sta Y_SUB_PIXEL+1
  
+    ; FIXME: HACK we are ASSUMING we never reach the second part of VRAM here! (VERA_ADDR_ZP_TO+2 is not used here!)
+    
+    ; We decrement our VERA_ADDR_ZP_TO with 320
+    sec
+    lda VERA_ADDR_ZP_TO
+    sbc #<(320)
+    sta VERA_ADDR_ZP_TO
+    lda VERA_ADDR_ZP_TO+1
+    sbc #>(320)
+    sta VERA_ADDR_ZP_TO+1
+    
+    ; When we reach the top of the screen we get a negative address. If we do we stop.
+    bcc bend_copy_done
+
     iny
-; FIXME: this needs to change!
-; FIXME: this needs to change!
-; FIXME: this needs to change!
-    cpy #200             ; nr of rows we draw
-    beq bend_copy_done
+    
     jmp bend_copy_next_row_1
 bend_copy_done:    
     
