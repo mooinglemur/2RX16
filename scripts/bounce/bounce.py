@@ -13,11 +13,8 @@ source_image_width = 320
 source_image_height = 200
 source_left_padding = 70  # on the left of the source image there is a black 'padding' columns, we should exclude this
 
-
 tile_map_filename = "scripts/bounce/BOUNCE-TILEMAP.DAT"
 tile_pixel_data_filename = "scripts/bounce/BOUNCE-TILEDATA.DAT"
-# FIXME:
-# pos_and_bend_filename = "scripts/bounce/BOUNCE-POS-BEND.DAT"
 
 # We set the affine helper to a 32x32 map. 
 map_width = 32
@@ -43,10 +40,6 @@ colors_12bit = []
 byte_index = 0
 
 
-# IMPORTANT: we ONLY take the first 32 colors
-# FIXME!?
-# FIXME!?
-# FIXME!?
 nr_of_palette_bytes = 3*256
 while (byte_index < nr_of_palette_bytes):
     
@@ -230,73 +223,72 @@ print("nr of unique tiles: " + str(len(unique_tiles.keys())))
     // Original calculation of y1 and y2 (per frame)
     
     // Scroll
-a=64; y=400*64;
-while(y>0)
-{
-y-=a;
-a+=6;
-if(y<0) y=0;
-scrolly(y/64);
-dis_waitb();
-}
-
+    a=64; y=400*64;
+    while(y>0)
+    {
+        y-=a;
+        a+=6;
+        if(y<0) y=0;
+        scrolly(y/64);
+        dis_waitb();
+    }
+    
     // Bounce
-frame=0;
-ysz=400*16; ysza=-460/6;
-y=0;
-y1=0; y1a=500;
-y2=399*16; y2a=500;
-mika=1;
-for(frame=0;frame<200;frame++)
-{
-if(!halt)
-{
-y1+=y1a;
-y2+=y2a;
+    frame=0;
+    ysz=400*16; ysza=-460/6;
+    y=0;
+    y1=0; y1a=500;
+    y2=399*16; y2a=500;
+    mika=1;
+    for(frame=0;frame<200;frame++)
+    {    
+        if(!halt)
+        {
+            y1+=y1a;
+            y2+=y2a;
+    
+            y2a+=16;
+            if(y2>400*16)
+            {
+                y2-=y2a;
+                y2a=-y2a*mika/8;
+                if(mika<4) mika+=3;
+            }
+    
+            y1a+=16;
+            
+            la=a;
+            a=(y2-y1)-400*16;
+            if((a&0x8000)^(la&0x8000))
+            {
+                y1a=y1a*7/8;
+            }
+            y1a+=a/8;
+            y2a-=a/8;
+        }
+        
+        if(frame>90) 
+        {
+            if(y2>=399*16) 
+            {
+                y2=400*16;
+                halt=1;
+            }
+            else y2a=8;
+            y1=y2-400*16;
+        }
 
-y2a+=16;
-if(y2>400*16)
-{
-y2-=y2a;
-y2a=-y2a*mika/8;
-if(mika<4) mika+=3;
-}
-
-y1a+=16;
-
-la=a;
-a=(y2-y1)-400*16;
-if((a&0x8000)^(la&0x8000))
-{
-y1a=y1a*7/8;
-}
-y1a+=a/8;
-y2a-=a/8;
-}
-
-if(frame>90) 
-{
-if(y2>=399*16) 
-{
-y2=400*16;
-halt=1;
-}
-else y2a=8;
-y1=y2-400*16;
-}
-
-framey1[frame]=y1;
-framey2[frame]=y2;
-}
-for(a=0;a<800;a++)
-{
-b=a/4;
-c=a&3;
-d=3-c;
-framey1t[a]=(framey1[b]*d+framey1[b+1]*c)/3;
-framey2t[a]=(framey2[b]*d+framey2[b+1]*c)/3;
-}
-
+        framey1[frame]=y1;
+        framey2[frame]=y2;
+    }
+    for(a=0;a<800;a++)
+    {
+        b=a/4;
+        c=a&3;
+        d=3-c;
+        framey1t[a]=(framey1[b]*d+framey1[b+1]*c)/3;
+        framey2t[a]=(framey2[b]*d+framey2[b+1]*c)/3;
+    }
 '''
 
 def generate_frames ():
@@ -547,7 +539,8 @@ y_bottom_start_string += "  .byte "
 curve_indexes_string = "frame_curve_indexes:\n"
 curve_indexes_string += "  .byte "
 
-for frame_nr in range(len(total_frames)):
+# for frame_nr in range(len(total_frames)):
+for frame_nr in range(450):  # The first original 450 frames contain movement, after that nothing happens.
 
     frame_info = total_frames[frame_nr]
 
@@ -556,7 +549,7 @@ for frame_nr in range(len(total_frames)):
     
     y_start = y1 / 2
     y_end = y2 / 2
-# FIXME: +0.5?
+    # FIXME: +0.5?
     y_height = int(y_end - y_start)
     
     curve_nr = y_height - min_y_height
