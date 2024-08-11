@@ -617,6 +617,29 @@ draw_bended_tilemap:
     lda #>frame_y_bottom_start
     adc FRAME_NR+1
     sta FRAME_BOTTOM_Y_ADDRESS+1
+    
+    ; Get the y bottom start
+    ldy #0
+    lda (FRAME_BOTTOM_Y_ADDRESS), y
+    sta TEMP_VAR
+    
+    
+; FIXME: clear a number of rows using!
+; FIXME: clear a number of rows using!
+; FIXME: clear a number of rows using!
+    ; Clear one row of pixels
+;    jsr CLEAR_ROW_CODE
+
+    ; We decrement our VERA_ADDR_ZP_TO with 320
+;    sec
+;    lda VERA_ADDR_ZP_TO
+;    sbc #<(320)
+;    sta VERA_ADDR_ZP_TO
+;    lda VERA_ADDR_ZP_TO+1
+;    sbc #>(320)
+;    sta VERA_ADDR_ZP_TO+1
+    
+    
    
     ; Calculate the address to the (current frame) curve index 
     
