@@ -380,88 +380,41 @@ curve_data:
   
 draw_bended_tilemap:
 
-; FIXME!
-; FIXME!
-; FIXME!
-    bra do_hardcoded_data
 
-    ldy #0
-    
-    ; x increment
-;    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_low
-;    sta X_INCREMENT
-;    iny
-;    lda (POS_AND_BEND_DATA), y   ; cosine_rotate_high
-;    sta X_INCREMENT+1
-;    iny
+;    ldy #0
     
     ; y increment
-    lda (POS_AND_BEND_DATA), y   ; sine_rotate_low
-    sta Y_INCREMENT
-    iny
-    lda (POS_AND_BEND_DATA), y   ; sine_rotate_high
-    sta Y_INCREMENT+1
-    iny
+;    lda (POS_AND_BEND_DATA), y   ; sine_rotate_low
+;    sta Y_INCREMENT
+;    iny
+;    lda (POS_AND_BEND_DATA), y   ; sine_rotate_high
+;    sta Y_INCREMENT+1
+;    iny
 
-;    lda #%00000110           ; DCSEL=3, ADDRSEL=0
-;    sta VERA_CTRL
-
-    
-; FIXME!
-; FIXME!
-; FIXME!
-    bra skip_hardcoded_data
-
-; FIXME!
-; FIXME!
-; FIXME!
-do_hardcoded_data:    
-    
+   
     
     ; y_increment
  
-; FIXME: what should we do with x? 
-    ldx #0
+    ldy #0
     
-    lda curve_data, x
-    ; lda #40  ; y_increment_low
+    lda curve_data, y
     sta Y_INCREMENT
-    lda curve_data+1, x
-    ; lda #1   ; y_increment_high
+    lda curve_data+1, y
     sta Y_INCREMENT+1
 
+; FIXME: needed??
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
 
     ; starting Y position
-; FIXME: correct that this is set to 0.5?
-    lda #$80   ; y_position_sub
-    ;lda #0   ; y_position_sub
+    lda #$80   ; y_position_sub  ; FIXME: correct that this is set to 0.5?
     sta Y_SUB_PIXEL
-
     lda #0   ; y_position_low
     sta Y_SUB_PIXEL+1
-    
     lda #0   ; y_position_high
     sta Y_SUB_PIXEL+2
 
 
-    
-    
-; FIXME!
-; FIXME!
-; FIXME!
-skip_hardcoded_data:
-    
-;    lda X_INCREMENT           ; X increment low
-;    asl
-;    sta VERA_FX_X_INCR_L
-;    lda X_INCREMENT+1
-;    rol                      
-;    and #%01111111            ; increment is only 15 bits long
-;    sta VERA_FX_X_INCR_H
-
-; FIXME: no need to set this again each row!    
     ; y_increment this always 0 within one row
     lda #0
     asl
@@ -471,17 +424,16 @@ skip_hardcoded_data:
     and #%01111111            ; increment is only 15 bits long
     sta VERA_FX_Y_INCR_H
 
-    ldx #0
+    ldy #0
     
 bend_copy_next_row_1:
 
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
 
-
     lda Y_SUB_PIXEL+1
     and #%11000000    ; we want to know the y_pos % 64, so we take the top 2 bits
-; FIXME: rotate left instead?
+    ; FIXME: rotate left instead?
     lsr
     lsr
     lsr
@@ -489,12 +441,11 @@ bend_copy_next_row_1:
     lsr
     lsr
     
-    tay
-    lda y_64_to_tiledata_offset,y
+    tax
+    lda y_64_to_tiledata_offset, x
     sta TEMP_VAR
 
     lda #(TILEDATA_VRAM_ADDRESS >> 9)
-; FIXME! clean this up!
     ora TEMP_VAR
     and #%11111100   ; only the 6 highest bits of the address can be set
     ora #%00000010   ; clip = 1
@@ -506,12 +457,12 @@ bend_copy_next_row_1:
     
     ; We use x to determine the width index (within a curve), THEN lookup the x_pos/x_incr based on the width index
 ; FIXME: should we do +2 here, or -2 above?
-    ldy curve_data+2, x
+    ldx curve_data+2, y
 
-    lda x_inc_low_per_width,y
+    lda x_inc_low_per_width, x
     sta VERA_FX_X_INCR_L
     
-    lda x_inc_high_per_width,y
+    lda x_inc_high_per_width, x
     sta VERA_FX_X_INCR_H
 
     lda #%00110000           ; Setting auto-increment value to 4 byte increment (=%0011) 
@@ -526,7 +477,7 @@ bend_copy_next_row_1:
     lda #%00001001           ; DCSEL=4, ADDRSEL=1
     sta VERA_CTRL
 
-    lda x_pos_per_width,y
+    lda x_pos_per_width, x
     sta VERA_FX_X_POS_L      ; X pixel position low [7:0]
     stz VERA_FX_X_POS_H      ; X subpixel position[0] = 0, X pixel position high [10:8] = 000 or 111
     
@@ -573,20 +524,11 @@ bend_copy_next_row_1:
     adc Y_INCREMENT+1
     sta Y_SUB_PIXEL+1
  
-; FIXME: this needs to change! 
-;    sec
-;    lda X_SUB_PIXEL
-;    sbc SINE_OF_ANGLE
-;    sta X_SUB_PIXEL
-;    lda X_SUB_PIXEL+1
-;    sbc SINE_OF_ANGLE+1
-;    sta X_SUB_PIXEL+1
-    
-    inx
+    iny
 ; FIXME: this needs to change!
 ; FIXME: this needs to change!
 ; FIXME: this needs to change!
-    cpx #200             ; nr of rows we draw
+    cpy #200             ; nr of rows we draw
     beq bend_copy_done
     jmp bend_copy_next_row_1
 bend_copy_done:    

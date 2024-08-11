@@ -488,29 +488,16 @@ print(x_inc_high_string)
 print("\n")
 
 
-# FIXME: HACK!
 min_y_height = 156
-max_y_height = 156
+max_y_height = 220
 
 # All possible curves based on y_height
 for y_height in range(min_y_height, max_y_height+1):
-    #highest_y1_frame_nr = 95
-    #frame_nr = highest_y1_frame_nr
-    #frame_info = total_frames[frame_nr]
-
-    #y1 = frame_info['y1']/16
-    #y2 = frame_info['y2']/16
-    
-    #y_start = y1 / 2
-    #y_end = y2 / 2
-    #y_height = y_end - y_start
-    
-    #print(y_height)
     
     #xsc = (400-(y2-y1))/8
     xsc = (200-(y_height+0.5))/2
     
-# FIXME: +0.5?
+    # FIXME: +0.5?
     y_incr = 200 / y_height
     y_incr_int = int(y_incr * 256)
     y_incr_int_h = y_incr_int // 256  #  (7:0)
@@ -536,6 +523,12 @@ for y_height in range(min_y_height, max_y_height+1):
     print(curve_string)
 
 # Curve per frame:
+y_bottom_start_string = "y_bottom_start:\n"
+y_bottom_start_string += "  .byte "
+
+curve_indexes_string = "curve_indexes:\n"
+curve_indexes_string += "  .byte "
+
 for frame_nr in range(len(total_frames)):
 
     frame_info = total_frames[frame_nr]
@@ -550,8 +543,13 @@ for frame_nr in range(len(total_frames)):
     
     curve_nr = y_height - min_y_height
     
-    # TODO: print y_start, curve_nr per frame
+    y_bottom_start_string += str(200 - int(y_end)) + ', '
+    curve_indexes_string += str(curve_nr) + ', '
 
+print(y_bottom_start_string)
+print("\n")
+print(curve_indexes_string)
+print("\n")
 
 if (SHOW_TILE_MAP):
     screen_width = map_width*8
@@ -657,7 +655,7 @@ def run():
         x_width = 184 # approx!
         y_start = y1 / 2
         y_end = y2 / 2
-        y_height = y_end - y_start
+        y_height = int(y_end - y_start)
         
         #xsc = (400-(y2-y1))/8
         #xsc = (400-(y2-y1))/4
