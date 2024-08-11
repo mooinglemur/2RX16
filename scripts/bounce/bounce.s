@@ -434,7 +434,9 @@ do_hardcoded_data:
     sta VERA_CTRL
 
     ; starting Y position
-    lda #0   ; y_position_sub
+; FIXME: correct that this is set to 0.5?
+    lda #$80   ; y_position_sub
+    ;lda #0   ; y_position_sub
     sta Y_SUB_PIXEL
 
     lda #0   ; y_position_low
