@@ -526,10 +526,10 @@ for y_height in range(min_y_height, max_y_height+1):
     print(curve_string)
 
 # Curve per frame:
-y_bottom_start_string = "y_bottom_start:\n"
+y_bottom_start_string = "frame_y_bottom_start:\n"
 y_bottom_start_string += "  .byte "
 
-curve_indexes_string = "curve_indexes:\n"
+curve_indexes_string = "frame_curve_indexes:\n"
 curve_indexes_string += "  .byte "
 
 for frame_nr in range(len(total_frames)):
