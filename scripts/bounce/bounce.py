@@ -506,7 +506,6 @@ for y_height in range(min_y_height, max_y_height+1):
     curve_nr = y_height - min_y_height
     curve_string = ""
     curve_string += "  ; curve " + str(curve_nr) +"\n"
-    curve_string += "  .byte " + "$" + format(y_incr_int_l,"02x") + ", " + "$" + format(y_incr_int_h,"02x") + " ; y_increment\n"
     curve_string += "  .byte "
         
     for y_in_picture in range(int(y_height)):
@@ -519,7 +518,11 @@ for y_height in range(min_y_height, max_y_height+1):
         width_index = int(a) + 10
         curve_string += "$" + format(width_index,"02x") + ", "
         
-    curve_string += "\n"
+    for y_fill in range(int(y_height), 254):
+        curve_string += "$" + format(10, "02x") + ", "
+        
+    curve_string += "$" + format(y_incr_int_l,"02x") + ", " + "$" + format(y_incr_int_h,"02x") + " ; y_increment (last two bytes)\n"
+    #curve_string += "\n"
     print(curve_string)
 
 # Curve per frame:
