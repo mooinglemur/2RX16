@@ -491,6 +491,9 @@ print("\n")
 min_y_height = 156
 max_y_height = 220
 
+
+curves_flat_data = []
+
 # All possible curves based on y_height
 for y_height in range(min_y_height, max_y_height+1):
     
@@ -517,13 +520,25 @@ for y_height in range(min_y_height, max_y_height+1):
         
         width_index = int(a) + 10
         curve_string += "$" + format(width_index,"02x") + ", "
+        curves_flat_data.append(width_index)
         
     for y_fill in range(int(y_height), 254):
         curve_string += "$" + format(10, "02x") + ", "
+        curves_flat_data.append(10)
         
     curve_string += "$" + format(y_incr_int_l,"02x") + ", " + "$" + format(y_incr_int_h,"02x") + " ; y_increment (last two bytes)\n"
+    curves_flat_data.append(y_incr_int_l)
+    curves_flat_data.append(y_incr_int_h)
+    
     #curve_string += "\n"
-    print(curve_string)
+    # print(curve_string)
+
+curve_data_filename = 'scripts/bounce/CURVES.DAT'
+curveFile = open(curve_data_filename, "wb")
+curveFile.write(bytearray(curves_flat_data))
+curveFile.close()
+print("curve data written to file: " + curve_data_filename)
+
 
 # Curve per frame:
 y_bottom_start_string = "frame_y_bottom_start:\n"
@@ -546,8 +561,10 @@ for frame_nr in range(len(total_frames)):
     
     curve_nr = y_height - min_y_height
     
-    y_bottom_start_string += str(200 - int(y_end)) + ', '
-    curve_indexes_string += str(curve_nr) + ', '
+    # FIXME: now exporting every other frame...
+    if (frame_nr % 2 == 0):
+        y_bottom_start_string += str(200 - int(y_end)) + ', '
+        curve_indexes_string += str(curve_nr) + ', '
 
 print(y_bottom_start_string)
 print("\n")
