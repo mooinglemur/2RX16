@@ -401,6 +401,13 @@ draw_bended_tilemap:
     sta Y_INCREMENT
     lda curve_data+1, y
     sta Y_INCREMENT+1
+    
+; FIXME: should we do +2 here, or -2 above?
+    lda #<(curve_data+2)
+    sta LOAD_ADDRESS
+    lda #>(curve_data+2)
+    sta LOAD_ADDRESS+1
+
 
 ; FIXME: needed??
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
@@ -455,9 +462,9 @@ bend_copy_next_row_1:
     lda #%00000110           ; DCSEL=3, ADDRSEL=0
     sta VERA_CTRL
     
-    ; We use x to determine the width index (within a curve), THEN lookup the x_pos/x_incr based on the width index
-; FIXME: should we do +2 here, or -2 above?
-    ldx curve_data+2, y
+    ; We use y to determine the width index (within a curve), THEN lookup the x_pos/x_incr based on the width index
+    lda (LOAD_ADDRESS), y
+    tax
 
     lda x_inc_low_per_width, x
     sta VERA_FX_X_INCR_L
