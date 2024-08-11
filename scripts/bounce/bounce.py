@@ -487,32 +487,37 @@ print("\n")
 print(x_inc_high_string)
 print("\n")
 
-if (True):
-    highest_y1_frame_nr = 95
-    frame_info = total_frames[highest_y1_frame_nr]
 
-    y1 = frame_info['y1']/16
-    y2 = frame_info['y2']/16
+# FIXME: HACK!
+min_y_height = 156
+max_y_height = 156
+
+# All possible curves based on y_height
+for y_height in range(min_y_height, max_y_height+1):
+    #highest_y1_frame_nr = 95
+    #frame_nr = highest_y1_frame_nr
+    #frame_info = total_frames[frame_nr]
+
+    #y1 = frame_info['y1']/16
+    #y2 = frame_info['y2']/16
     
-    y_start = y1 / 2
-    y_end = y2 / 2
-    y_height = y_end - y_start
+    #y_start = y1 / 2
+    #y_end = y2 / 2
+    #y_height = y_end - y_start
+    
+    #print(y_height)
     
     #xsc = (400-(y2-y1))/8
-    xsc = (400-(y2-y1))/4
-        
-        
-# FIXME: curve_nr!? --> this is about the NR of HEIGHT!
-# FIXME: curve_nr!? --> this is about the NR of HEIGHT!
-# FIXME: curve_nr!? --> this is about the NR of HEIGHT!
-    curve_nr = 17+21  # FIXME ???
+    xsc = (200-(y_height+0.5))/2
+    
+    curve_nr = y_height - min_y_height
     curve_string = ""
     curve_string += "  ; curve " + str(curve_nr) +"\n"
     curve_string += "  .byte "
         
     for y_in_picture in range(int(y_height)):
     
-        y = y_start + y_in_picture
+        # y = y_start + y_in_picture
         
         b = y_in_picture / y_height
         a = (math.sin(b*math.pi)*xsc)  # TODO: +0.5?
@@ -523,6 +528,22 @@ if (True):
     curve_string += "\n"
     print(curve_string)
 
+# Curve per frame:
+for frame_nr in range(len(total_frames)):
+
+    frame_info = total_frames[frame_nr]
+
+    y1 = frame_info['y1']/16
+    y2 = frame_info['y2']/16
+    
+    y_start = y1 / 2
+    y_end = y2 / 2
+# FIXME: +0.5?
+    y_height = int(y_end - y_start)
+    
+    curve_nr = y_height - min_y_height
+    
+    # TODO: print y_start, curve_nr per frame
 
 
 if (SHOW_TILE_MAP):
@@ -631,8 +652,9 @@ def run():
         y_end = y2 / 2
         y_height = y_end - y_start
         
-        xsc = (400-(y2-y1))/4
-        # xsc = (400-(y2-y1))/8
+        #xsc = (400-(y2-y1))/8
+        #xsc = (400-(y2-y1))/4
+        xsc = (200-(y_height+0.5))/2
             
         # pygame.draw.rect(screen, pixel_color, pygame.Rect(x_start*scale, (y_start + top_border)*scale, x_width*scale, y_height*scale), 1*scale)
         for y_in_picture in range(int(y_height)):
