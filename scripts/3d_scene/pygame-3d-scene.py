@@ -48,7 +48,7 @@ PRINT_PALETTE = False
 # FIXME!
 # FIXME!
 # FIXME!
-ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False # When turned on, this will not automatically turn off playback so no output file will be written!
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True # When turned on, this will not automatically turn off playback so no output file will be written!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
@@ -2062,15 +2062,17 @@ running = True
 
 frame_nr = 1
 # FIXME: we need proper interpolation! (now just dropping every other frame!
-increment_frame_by = 2
+org_increment_frame_by = 2
 
 # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
 if SCENE == 'U2E':
     max_frame_nr = 1802*17
-    increment_frame_by = 30
+    org_increment_frame_by = 30
 else:
     max_frame_nr = 522*2
-    increment_frame_by = 7
+    org_increment_frame_by = 7
+    
+increment_frame_by = org_increment_frame_by
 
 if DEBUG_SORTING:
     #frame_nr = 1000
@@ -2244,15 +2246,11 @@ while running:
         if event.type == pygame.KEYDOWN:
             if ALLOW_PAUSING_AND_REVERSE_PLAYBACK:
                 if event.key == pygame.K_RIGHT:
-                    increment_frame_by = 1
+                    increment_frame_by = org_increment_frame_by
                 if event.key == pygame.K_LEFT:
-                    increment_frame_by = -1
+                    increment_frame_by = -org_increment_frame_by
                 if event.key == pygame.K_SPACE:
                     increment_frame_by = 0
-                if event.key == pygame.K_PERIOD:
-                    frame_nr += 100
-                if event.key == pygame.K_COMMA:
-                    frame_nr -= 100
                 if event.key == pygame.K_PERIOD:
                     frame_nr += 100
                 if event.key == pygame.K_COMMA:
