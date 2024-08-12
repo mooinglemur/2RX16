@@ -49,6 +49,10 @@ PRINT_PALETTE = False
 # FIXME!
 # FIXME!
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False # When turned on, this will not automatically turn off playback so no output file will be written!
+# FIXME!
+PRINT_ERRORS = False
+PRINT_WARNINGS = False
+
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
@@ -1031,7 +1035,7 @@ def slope2bytes(slope):
         x1 /= 32
         x32 = 0x80
     x1 *= 512 # move significant fractional part to whole number
-    print(round(x1))
+    #print(round(x1))
     b1 = bytearray(round(x1).to_bytes(2, 'little', signed=True))
     b1[1] &= 0x7f
     b1[1] |= x32
@@ -1145,7 +1149,8 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
                 black_pixels[y*320+x] = 1
                 
     if nr_of_black_pixels_found > 0:
-        print("WARNING: FOUND BLACK PIXELS: " + str(nr_of_black_pixels_found))
+        if (PRINT_WARNINGS):
+            print("WARNING: FOUND BLACK PIXELS: " + str(nr_of_black_pixels_found))
         
     check_pxarray.close()
     
@@ -1227,7 +1232,7 @@ def first_and_second_vertex_have_same_x_and_y(vertex_indices, screen_vertices):
     second_vertex = screen_vertices[vertex_indices[1]]
     
     if (first_vertex[0] == second_vertex[0] and first_vertex[1] == second_vertex[1]):
-        print(str(first_vertex) + '-->' + str(second_vertex))
+        #print(str(first_vertex) + '-->' + str(second_vertex))
         return True
     else:
         return False
@@ -1411,7 +1416,8 @@ def combine_faces (screen_vertices, sorted_faces):
                     lies_on_screen_edges_by_vertex_index[vertex_index][edge_name] = True
                     
         if (face_min_x == face_max_x) or (face_min_y == face_max_y):
-            print("ERROR: face is invalid because it has no width or height!")
+            if (PRINT_ERRORS):
+                print("ERROR: face is invalid because it has no width or height!")
             merged_face['invalid'] = True
     
     cleaned_merged_faces = []
@@ -1461,10 +1467,12 @@ def combine_faces (screen_vertices, sorted_faces):
                 if (second_vertex_can_be_removed(cleaned_vertex_indices, lies_on_screen_edges_by_vertex_index)):
                     cleaned_vertex_indices.pop(1)
                 elif (first_and_second_vertex_have_same_x_and_y(cleaned_vertex_indices, screen_vertices)):
-                    print("WARNING: screen vertices have the same x AND y coordinate!")
+                    if (PRINT_WARNINGS):
+                        print("WARNING: screen vertices have the same x AND y coordinate!")
                     cleaned_vertex_indices.pop(1)
                     if (len(cleaned_vertex_indices) < 3):
-                        print("ERROR: not enough vertices in face anymore!")
+                        if (PRINT_ERRORS):
+                            print("ERROR: not enough vertices in face anymore!")
                         cleaned_merged_face['invalid'] = True
                         break
                 else:
@@ -1548,7 +1556,8 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         x2 = int(fx_state['x2_pos'] / 512)
         
         if (x2-x1 < 0):
-            print("ERROR: NEGATIVE fill length!")
+            if (PRINT_ERRORS):
+                print("ERROR: NEGATIVE fill length!")
             return False
         
 # FIXME: what if x2 and x1 are the same? Wont that result in a draw -of one pixel- IN REVERSE?
@@ -1653,14 +1662,16 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
         nr_of_vertices_to_remove = len(top_vertex_indices) - 2
         #print(str(vertex_indices)+'>>'+str(top_vertex_indices))
         while nr_of_vertices_to_remove > 0:
-            print("WARNING: removing redundant top vertice!")
+            if (PRINT_WARNINGS):
+                print("WARNING: removing redundant top vertice!")
             vertex_indices.pop(1)
             nr_of_vertices_to_remove -= 1
             
         #print_vertices(vertex_indices, screen_vertices)
             
         if len(vertex_indices) < 3:
-            print("ERROR: less than 3 vertices left over.")
+            if (PRINT_ERRORS):
+                print("ERROR: less than 3 vertices left over.")
 # FIXME: can we fix/prevent this?
             return None
 
@@ -1805,7 +1816,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
         polygon_bytes.append(nr_of_lines_to_draw)
 
         if (not draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)):
-            print("ERROR: not adding polygon to polygon stream since it encountered an error during drawing!")
+            if (PRINT_ERRORS):
+                print("ERROR: not adding polygon to polygon stream since it encountered an error during drawing!")
 # FIXME: can we fix/prevent this?
             return None
         current_y_position += nr_of_lines_to_draw
@@ -1829,7 +1841,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
 
             polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
             
@@ -1855,7 +1868,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
                 
@@ -1881,7 +1895,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
 
             polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
                 
@@ -1904,7 +1919,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
                 
@@ -2001,7 +2017,9 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
                 polygon_bytes = fx_sim_draw_polygon(frame_buffer, color_idx, face['vertex_indices'], screen_vertices, polygon_type_stats, colors)
                 # FIXME: do something REAL with the file_data!
                 if polygon_bytes is None:
-                    print(face)
+                    if (PRINT_WARNINGS):
+                        print('WARNING: face did not result in polygon bytes!')
+                        print(face)
                 else:
                     nr_of_polygons_in_frame += 1
                     frame_bytes += polygon_bytes
