@@ -48,7 +48,7 @@ PRINT_PALETTE = False
 # FIXME!
 # FIXME!
 # FIXME!
-ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True # When turned on, this will not automatically turn off playback so no output file will be written!
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False # When turned on, this will not automatically turn off playback so no output file will be written!
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
@@ -445,6 +445,8 @@ def transform_objects_into_view_space(world_objects, camera_info):
     
     up_dir = camera_info['up_dir']
     looking_dir = camera_info['looking_dir']
+    #print('====> LOOKING DIR:' + str(looking_dir))
+    #print('====> UP DIR:' + str(up_dir))
     new_forward = np.negative(looking_dir)  # I think we need to negate because we want the forward direction (of the camera) to be *negative* Z
     
     up_dot_forward = np.dot(np.array(up_dir), np.array(new_forward))
@@ -2064,10 +2066,14 @@ frame_nr = 1
 # FIXME: we need proper interpolation! (now just dropping every other frame!
 org_increment_frame_by = 2
 
+problematic_camera_frame_nr = None
+
 # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
 if SCENE == 'U2E':
     max_frame_nr = 1802*17
     org_increment_frame_by = 30
+    problematic_camera_frame_nr = 945*17
+    
 else:
     max_frame_nr = 522*2
     org_increment_frame_by = 7
@@ -2079,11 +2085,11 @@ if DEBUG_SORTING:
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
 #    frame_nr = 1      # ALWAYS *ODD*!!
-    frame_nr = 1001*4      # ALWAYS *ODD*!!
+    frame_nr = 944*17      # ALWAYS *ODD*!!
     # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
-    max_frame_nr = 1802*4
+    max_frame_nr = 1802*17
 #    max_frame_nr = 1802*4
-    increment_frame_by = 7
+#    increment_frame_by = 7
 
 material_info = load_material_info()
 mat_info = material_info['mat_info']
@@ -2309,7 +2315,9 @@ while running:
             filtered_object_faces = []
             for object_face_index, object_face in enumerate(object_faces):
 
-                # FIXME: HARDCODED: Problematic face on ship
+# FIXME: HARDCODED: Problematic face on ship
+# FIXME: HARDCODED: Problematic face on ship
+# FIXME: HARDCODED: Problematic face on ship
                 if (object_face_index != 36):  
                     continue
                     
@@ -2327,6 +2335,22 @@ while running:
     camera_box = triangulated_world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
     del triangulated_world_objects['CameraBox']
+
+    if (problematic_camera_frame_nr is not None):
+        problematic_frame_diff = frame_nr - problematic_camera_frame_nr
+        if (problematic_frame_diff >= 0 and problematic_frame_diff < 30):
+            # LOOKING DIR:[ 0.0611, -0.3791, -0.9233]
+            # LOOKING DIR:[-0.3508, -0.144,  -0.9253]  FRAME 945 IS WRONG!
+            # LOOKING DIR:[ 0.0384, -0.3726, -0.9272]
+            
+            # UP DIR:[0.0265, -0.9241, 0.3812]
+            # UP DIR:[-0.8995, -0.2232, 0.3757]
+            # UP DIR:[-0.0441, -0.9276, 0.371]            
+
+            # FIXME: VERY UGLY HARDCODED FIX! We just take avg of frame 944 and 946 for x and y (and keep the z component)
+            camera_info['looking_dir'] = [ 0.04975, -0.37585, -0.9253]
+            camera_info['up_dir'] = [ -0.0088, -0.92585, 0.3757]
+
     
     if PRINT_PROGRESS: print("Transform into view space")
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
