@@ -725,8 +725,8 @@ for (object_index, object_file_index) in enumerate(objects_and_material_info['ob
     objects_by_name[u2_object['name']] = u2_object
     objects.append(u2_object)
     
-    #if (u2_object['name'] == '"s01"'):
-    #    print(u2_object['vertices'])
+    if (u2_object['name'] == 'KDETAIL04'):
+        print(u2_object['vertices'])
 
 # Adding manual objects (to fill in the sky- and ground- gaps)
 if (scene_name == 'U2E'):

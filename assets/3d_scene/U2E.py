@@ -85,6 +85,42 @@ def load_city_object_file():
         files=[{"name":file_to_import, "name":file_to_import}], 
         forward_axis='Y', 
         up_axis='Z')
+        
+        
+def load_kdetail04_object_file():
+
+    # Removing the old/original object
+    objs = [bpy.context.scene.objects['KDETAIL04']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+        
+    # Importing the new object
+    file_to_import = "KDETAIL04.obj"
+    print('- Importing the obj file: ' + file_to_import)
+    bpy.ops.wm.obj_import(
+        filepath=file_to_import, 
+        directory=base_dir, 
+        files=[{"name":file_to_import, "name":file_to_import}], 
+        forward_axis='Y', 
+        up_axis='Z')
+        
+
+def load_kdetail12_object_file():
+
+    # Removing the old/original object
+    objs = [bpy.context.scene.objects['KDETAIL12']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+        
+    # Importing the new object
+    file_to_import = "KDETAIL12.obj"
+    print('- Importing the obj file: ' + file_to_import)
+    bpy.ops.wm.obj_import(
+        filepath=file_to_import, 
+        directory=base_dir, 
+        files=[{"name":file_to_import, "name":file_to_import}], 
+        forward_axis='Y', 
+        up_axis='Z')
 
 
 def load_object_names_file():
@@ -206,6 +242,8 @@ cls()
 clean_scene()
 create_camera()
 load_city_object_file()
+load_kdetail04_object_file()
+load_kdetail12_object_file()
 objects_xyz_and_matrix_per_frame = load_animation_file()
 object_nr_to_name = load_object_names_file()
 create_animation_frames()
