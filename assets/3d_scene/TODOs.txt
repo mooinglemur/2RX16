@@ -1,0 +1,11 @@
+CHANGES:
+- characters on top of buildings
+  - KDETAIL04  (FC)
+  - KDETAIL12  (93)
+- end text (X16)?
+
+BUGs:
+- ship disappears during forest
+- wall has glitch after forest
+- colors roundabout (+ glitches?)
+- T has black glitch
