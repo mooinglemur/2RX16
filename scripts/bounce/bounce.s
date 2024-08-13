@@ -949,7 +949,6 @@ palette_data:
   .byte $61, $0b
   .byte $24, $01
   .byte $8a, $08
-  
   .byte $00, $00
   .byte $00, $00
   .byte $00, $00

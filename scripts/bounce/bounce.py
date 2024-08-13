@@ -23,8 +23,9 @@ content_map_width = 23 # There are 23 8x8 tiles with actual content, the 24th co
 content_map_height = 25
 
 # FIXME: hardcoded indexes! (works for now)
-BLACK = 0
+BACKGROUND = 0
 WHITE = 14
+FADEBLE_BLACK = 0x80
 
 # creating a image object for the background
 im = Image.open(source_image_filename)
@@ -43,16 +44,23 @@ byte_index = 0
 nr_of_palette_bytes = 3*256
 while (byte_index < nr_of_palette_bytes):
     
-    red = palette_bytes[byte_index]
-    byte_index += 1
-    green = palette_bytes[byte_index]
-    byte_index += 1
-    blue = palette_bytes[byte_index]
-    byte_index += 1
-    
-    red = red & 0xF0
-    green = green & 0xF0
-    blue = blue & 0xF0
+    # HACK: forcing $80 to be black
+    if byte_index == FADEBLE_BLACK*3:
+        red = 0
+        green = 0
+        blue = 0
+        byte_index += 3
+    else:
+        red = palette_bytes[byte_index]
+        byte_index += 1
+        green = palette_bytes[byte_index]
+        byte_index += 1
+        blue = palette_bytes[byte_index]
+        byte_index += 1
+        
+        red = red & 0xF0
+        green = green & 0xF0
+        blue = blue & 0xF0
     
     colors_12bit.append((red, green, blue))
     
@@ -93,7 +101,7 @@ black_tile_pixel_data = []
 tile_pixels_as_string = ""
 for y_in_tile in range(8):
     for x_in_tile in range(8):
-        pixel_color = 0 # BLACK
+        pixel_color = BACKGROUND
         tile_pixels_as_string += str(pixel_color)
         black_tile_pixel_data.append(pixel_color)
         
@@ -109,7 +117,7 @@ for y_in_tile in range(8):
         if (x_in_tile == 0):
             pixel_color = WHITE
         else:
-            pixel_color = BLACK
+            pixel_color = BACKGROUND
         tile_pixels_as_string += str(pixel_color)
         border_tile_pixel_data.append(pixel_color)
         
@@ -133,6 +141,9 @@ for tile_y in range(content_map_height):
         for y_in_tile in range(8):
             for x_in_tile in range(8):
                 pixel_color = px[source_left_padding + (tile_x-nr_of_left_border_tiles)*8+x_in_tile, tile_y*8+y_in_tile]
+                # HACK: we force black pixels (in the image) to be fadeble black
+                if (pixel_color == 0):
+                    pixel_color = FADEBLE_BLACK
                 tile_pixels_as_string += str(pixel_color)
                 tile_pixel_data.append(pixel_color)
         if (tile_pixels_as_string in unique_tiles):
