@@ -6,5 +6,4 @@ CHANGES:
 BUGs:
 - ship disappears during forest
 - wall has glitch after forest
-- colors roundabout (+ glitches?)
-- T has black glitch
+- colors high building 'roundabout' (+ glitches?)

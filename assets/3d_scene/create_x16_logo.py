@@ -149,7 +149,7 @@ def generate_triangles ():
         point["z"] += translate_z
     
     # We need the points to be smaller in the engine, so we divide by
-    scale_down = 5
+    scale_down = 4
     for point_index, point in enumerate(points):
         point["x"] /= scale_down
         point["y"] /= scale_down
