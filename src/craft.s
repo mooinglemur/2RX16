@@ -105,7 +105,7 @@ LOAD_FILE = 1
 USE_JUMP_TABLE = 1
 DEBUG = 0
 
-NUMBER_OF_FRAMES = (1802*17/30)-2
+NUMBER_OF_FRAMES = (1802*5/9)-2
 
 LAST_RING_BANK = $3F
 
@@ -1196,9 +1196,17 @@ setup_next_sprite:
 
 .proc generate_y_to_address_table_0
     ; Buffer 0 starts at $00000
-    stz VRAM_ADDRESS
-    stz VRAM_ADDRESS+1
-    stz VRAM_ADDRESS+2
+	; +25*320
+	; = $01F40
+
+	BUF0=$01F40
+
+    lda #<BUF0
+    sta VRAM_ADDRESS
+    lda #>BUF0
+    sta VRAM_ADDRESS+1
+	lda #^BUF0
+    sta VRAM_ADDRESS+2
 
     ; First entry
     ldy #0
@@ -1238,12 +1246,16 @@ generate_next_y_to_address_entry_0:
 
 .proc generate_y_to_address_table_1
     ; Buffer 1 starts at 31*2048 + 640 = 64128 = $0FA80
+	; Plus 25*320
+	; = $119C0
+	BUF1 = $119C0
 
-    lda #$80
+    lda #<BUF1
     sta VRAM_ADDRESS
-    lda #$FA
+    lda #>BUF1
     sta VRAM_ADDRESS+1
-    stz VRAM_ADDRESS+2
+	lda #^BUF1
+    sta VRAM_ADDRESS+2
 
     ; First entry
     ldy #0
