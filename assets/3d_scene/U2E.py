@@ -105,6 +105,27 @@ def load_kdetail04_object_file():
         up_axis='Z')
         
 
+def load_logo_object_file():
+
+    # Removing the old/original object
+    objs = [bpy.context.scene.objects['logo']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+
+    objs = [bpy.context.scene.objects['fcirto']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+        
+    # Importing the new object
+    file_to_import = "X16_logo.obj"
+    print('- Importing the obj file: ' + file_to_import)
+    bpy.ops.wm.obj_import(
+        filepath=file_to_import, 
+        directory=base_dir, 
+        files=[{"name":file_to_import, "name":file_to_import}], 
+        forward_axis='Y', 
+        up_axis='Z')
+
 def load_kdetail12_object_file():
 
     # Removing the old/original object
@@ -147,6 +168,8 @@ def create_animation_frames():
     nr_of_frames = 1802
     nr_of_frames_in_blender = nr_of_frames * 17
     bpy.context.scene.frame_end = nr_of_frames_in_blender
+    
+    logo_was_turned_visible = False
 
     for frame_nr in range(1,nr_of_frames+1):
         frame_nr_in_blender = (frame_nr-1)*17 + 1
@@ -206,6 +229,10 @@ def create_animation_frames():
             #dump(objects_xyz_and_matrix_per_frame[str(frame_nr)])
 
             object_name = object_nr_to_name[str(object_nr)]
+            
+            if (object_name == 'fcirto'):
+                object_name = 'logo'
+            
             obj = bpy.data.objects[object_name]
             
             if (str(object_nr) not in objects_xyz_and_matrix_per_frame[str(frame_nr)]):
@@ -228,9 +255,12 @@ def create_animation_frames():
             
             if object_xyz_and_matrix['visible']:
                 obj.hide_viewport = False
+                if object_name == 'logo':
+                    logo_was_turned_visible = True
             else:
-                obj.hide_viewport = True
-                
+                if (object_name != 'logo' or not logo_was_turned_visible):
+                    obj.hide_viewport = True
+            
             obj.keyframe_insert('hide_viewport', frame=frame_nr_in_blender)
             obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender)
             obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender)
@@ -242,6 +272,7 @@ cls()
 clean_scene()
 create_camera()
 load_city_object_file()
+load_logo_object_file()
 load_kdetail04_object_file()
 load_kdetail12_object_file()
 objects_xyz_and_matrix_per_frame = load_animation_file()

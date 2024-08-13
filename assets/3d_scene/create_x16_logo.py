@@ -127,10 +127,16 @@ def generate_triangles ():
     points.append({ "x" : base_points[6][0], "y" : base_points[6][1], "z" : 0 })
     points.append({ "x" : base_points[7][0], "y" : base_points[7][1], "z" : 0 })
     
-    # FIXME: extrude these points!
-    
-    
-    
+    z_extrude = - 10 * 5
+    points.append({ "x" : base_points[0][0], "y" : base_points[0][1], "z" : z_extrude })
+    points.append({ "x" : base_points[1][0], "y" : base_points[1][1], "z" : z_extrude })
+    points.append({ "x" : base_points[2][0], "y" : base_points[2][1], "z" : z_extrude })
+    points.append({ "x" : base_points[3][0], "y" : base_points[3][1], "z" : z_extrude })
+    points.append({ "x" : base_points[4][0], "y" : base_points[4][1], "z" : z_extrude })
+    points.append({ "x" : base_points[5][0], "y" : base_points[5][1], "z" : z_extrude })
+    points.append({ "x" : base_points[6][0], "y" : base_points[6][1], "z" : z_extrude })
+    points.append({ "x" : base_points[7][0], "y" : base_points[7][1], "z" : z_extrude })
+
     nr_of_points_in_one_wing = len(points)
 
     # Translate origin
@@ -143,7 +149,7 @@ def generate_triangles ():
         point["z"] += translate_z
     
     # We need the points to be smaller in the engine, so we divide by
-    scale_down = 47
+    scale_down = 5
     for point_index, point in enumerate(points):
         point["x"] /= scale_down
         point["y"] /= scale_down
@@ -184,7 +190,14 @@ def generate_triangles ():
     ]
     '''
 
+
+# FIXME: make QUADS instead!
+# FIXME: make QUADS instead!
+# FIXME: make QUADS instead!
+
+# FIXME: get rid of these color indexes!
     triangles_raw_one_side = [
+        # Front faces
         [ 1,  0,  2,   1],
         [ 1,  2,  3,   2],
         [ 3,  2,  6,   3],
@@ -192,6 +205,24 @@ def generate_triangles ():
         [ 5,  4,  6,   5],
         [ 5,  6,  7,   6],
     ]
+    
+    extruded_faces_by_point_indexes = [
+        [2, 0],
+        [0, 1],
+        [1, 3],
+        [3, 4],
+        [4, 5],
+        [5, 7],
+        [7, 6],
+        [6, 2],
+    ]
+    
+    extruded_triangles_raw_one_side = []
+    for extruded_faces in extruded_faces_by_point_indexes:
+        extruded_triangles_raw_one_side.append([ extruded_faces[0], extruded_faces[1], extruded_faces[0]+8, 1 ])
+        extruded_triangles_raw_one_side.append([ extruded_faces[0]+8, extruded_faces[1], extruded_faces[1]+8, 1 ])
+    
+    triangles_raw_one_side = triangles_raw_one_side + extruded_triangles_raw_one_side
     
     triangles_raw = []
     for triangle_raw in triangles_raw_one_side:
@@ -222,6 +253,7 @@ def generate_triangles ():
         pt3 = points[triangle_point_indexes[2]]
         color_index = triangle_point_indexes[3] * 16
 
+        '''
         # Calculate the normal of the points using the CROSS PRODUCT
         
         a = { "x": pt3['x'] - pt1['x'], "y": pt3['y'] - pt1['y'], "z": pt3['z'] - pt1['z'] }
@@ -250,10 +282,11 @@ def generate_triangles ():
             normal_vector = { 'x' : cross_product['x'] / length_normal,
                               'y' : cross_product['y'] / length_normal,
                               'z' : cross_product['z'] / length_normal }
-        
+        '''
         
         # FIXME: We should reverse the order of the points in order to create a clockwise winding
-        triangle_points = [pt2, pt1, pt3, normal_vector ]
+        # triangle_points = [pt2, pt1, pt3, normal_vector ]
+        triangle_points = [pt2, pt1, pt3]
         triangle_points_indexes = [triangle_point_indexes[1], triangle_point_indexes[0], triangle_point_indexes[2]]
         triangles.append({ "triangle_points_indexes" : triangle_points_indexes, "triangle_points" : triangle_points, "clr" : color_index})
             
@@ -273,9 +306,9 @@ def generate_obj_text_for_triangles(object_name, points, triangles):
     
     obj_text += "o " + object_name + "\n"
     for vertex_nr, point in enumerate(points):
-        vertex_x = point['x']
-        vertex_y = point['y']
-        vertex_z = point['z']
+        vertex_x = point['x'] - 330
+        vertex_y = -point['y'] - 20
+        vertex_z = point['z'] + 13
         
         obj_text += "v "
         obj_text += str(vertex_x)
@@ -303,7 +336,9 @@ def generate_obj_text_for_triangles(object_name, points, triangles):
 # FIXME: which name should we use?
 object_name = 'logo'
 (obj_text, nr_of_vertices) = generate_obj_text_for_triangles(object_name, points, triangles)
-print(obj_text)
+
+with open("assets/3d_scene/X16_logo.obj", "w") as obj_file:
+    obj_file.write(obj_text)
 
 
 def run():
@@ -315,7 +350,7 @@ def run():
         tri_points = tri["triangle_points"]
         triangle_color = color_by_index[(tri["clr"]//16) % 8] 
         
-        sc = 1.2 * 30 # scale (approximating z ~ 8)
+        sc = 3 # scale
         
         pygame.draw.polygon(screen, triangle_color, [
             [tri_points[0]["x"]*sc+screen_width/2, tri_points[0]["y"]*sc+screen_height/2], 

@@ -240,7 +240,7 @@ def load_vertices_and_faces(frame_nr):
             line_parts = line.split()
             current_material_name = line_parts[1]
             # FIXME: HACK to fix the material name when importing manually edited objects in Blender!
-            if (current_material_name == 'RED_HOUSE.001' or current_material_name == 'RED_HOUSE.002'):
+            if (current_material_name == 'RED_HOUSE.001' or current_material_name == 'RED_HOUSE.002' or current_material_name == 'RED_HOUSE.003'):
                 current_material_name = 'RED_HOUSE'
             
         elif line.startswith('vn '):
