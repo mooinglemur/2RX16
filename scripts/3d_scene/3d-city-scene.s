@@ -218,10 +218,10 @@ draw_all_frames:
 
 ; FIXME: HARDCODED!
 ; FIXME when the 16-bit number goes negative we have detect the end, BUT this means the NR_OF_FRAMES should be initially filled with nr_of_frames-1 !
-; FIXME: shoulnt this be 1022?
-    lda #<(1021)
+; FIXME: shoulnt this be 1001?
+    lda #<(1000)
     sta NR_OF_FRAMES
-    lda #>(1021)
+    lda #>(1000)
     sta NR_OF_FRAMES+1
 
 ; FIXME: replace this with something proper!
