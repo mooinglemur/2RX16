@@ -2091,9 +2091,9 @@ problematic_camera_frame_nr = None
 
 # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
 if SCENE == 'U2E':
-    max_frame_nr = 1802*17
-    org_increment_frame_by = 30
-    problematic_camera_frame_nr = 945*17
+    max_frame_nr = 1802*5
+    org_increment_frame_by = 9
+    problematic_camera_frame_nr = 945*5
     
 else:
     max_frame_nr = 522*2
@@ -2359,7 +2359,7 @@ while running:
 
     if (problematic_camera_frame_nr is not None):
         problematic_frame_diff = frame_nr - problematic_camera_frame_nr
-        if (problematic_frame_diff >= 0 and problematic_frame_diff < 30):
+        if (problematic_frame_diff >= 0 and problematic_frame_diff < org_increment_frame_by):
             # LOOKING DIR:[ 0.0611, -0.3791, -0.9233]
             # LOOKING DIR:[-0.3508, -0.144,  -0.9253]  FRAME 945 IS WRONG!
             # LOOKING DIR:[ 0.0384, -0.3726, -0.9272]

@@ -166,13 +166,13 @@ def load_animation_file():
 
 def create_animation_frames():
     nr_of_frames = 1802
-    nr_of_frames_in_blender = nr_of_frames * 17
+    nr_of_frames_in_blender = nr_of_frames * 5
     bpy.context.scene.frame_end = nr_of_frames_in_blender
     
     logo_was_turned_visible = False
 
     for frame_nr in range(1,nr_of_frames+1):
-        frame_nr_in_blender = (frame_nr-1)*17 + 1
+        frame_nr_in_blender = (frame_nr-1)*5 + 1
         
         # Camera
         object_nr = 0
