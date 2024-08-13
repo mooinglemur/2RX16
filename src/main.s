@@ -618,6 +618,10 @@ tmp3:
 
 .endproc
 
+; comment this out (or uncomment) if the assert below triggers due to
+; unfortunate page alignment
+.res 10
+
 .proc measure_machine_speed: near
 	WAITVSYNC
 	; grab the least significant byte of the timer

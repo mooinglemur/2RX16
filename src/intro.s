@@ -813,12 +813,16 @@ draw_polygon_part_using_polygon_filler_and_jump_tables:
 .endproc
 
 .proc generate_y_to_address_table_0
+	; due to a quirk of earlier design, we're a pixel high in the tile map
+	; so our Y start is at 24 instead of 25
+	BUF0 = FRAME_BUFFER_0_ADDR + (24*320)
 
-	lda #<FRAME_BUFFER_0_ADDR
+	lda #<BUF0
 	sta VRAM_ADDRESS
-	lda #>FRAME_BUFFER_0_ADDR
+	lda #>BUF0
 	sta VRAM_ADDRESS+1
-	stz VRAM_ADDRESS+2
+	lda #^BUF0
+	sta VRAM_ADDRESS+2
 
 	; First entry
 	ldy #0
@@ -857,12 +861,16 @@ generate_next_y_to_address_entry_0:
 .endproc
 
 .proc generate_y_to_address_table_1
+	; due to a quirk of earlier design, we're a pixel high in the tile map
+	; so our Y start is at 24 instead of 25
+	BUF1 = FRAME_BUFFER_1_ADDR + (24*320)
 
-	lda #<FRAME_BUFFER_1_ADDR
+	lda #<BUF1
 	sta VRAM_ADDRESS
-	lda #>FRAME_BUFFER_1_ADDR
+	lda #>BUF1
 	sta VRAM_ADDRESS+1
-	stz VRAM_ADDRESS+2
+	lda #^BUF1
+	sta VRAM_ADDRESS+2
 
 	; First entry
 	ldy #0
@@ -1063,9 +1071,9 @@ blackpal:
 	; letterbox for 320x~200
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #20
+	lda #21 ; instead of 20 to force tile alignment which was wrongly set to a multiple of 4
 	sta Vera::Reg::DCVStart
-	lda #($f0 - 20 - 1)
+	lda #221
 	sta Vera::Reg::DCVStop
 	stz Vera::Reg::DCHStart
 	lda #$a0
@@ -1527,9 +1535,10 @@ tile2bmploop:
 	lda #%00000010  ; DCSEL=1
 	sta Vera::Reg::Ctrl
 
-	lda #20
+	sta Vera::Reg::Ctrl
+	lda #21 ; instead of 20 to force tile alignment which was wrongly set to a multiple of 4
 	sta Vera::Reg::DCVStart
-	lda #192+20-1
+	lda #200 ; cuts off some noise later
 	sta Vera::Reg::DCVStop
 
 	stz Vera::Reg::Ctrl
@@ -2120,7 +2129,7 @@ exit:
 
 	lda #20
 	sta Vera::Reg::DCVStart
-	lda #200+20-1
+	lda #220
 	sta Vera::Reg::DCVStop
 
 	stz Vera::Reg::Ctrl
