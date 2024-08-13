@@ -30,9 +30,10 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 clock = pygame.time.Clock()
 
 
-def run():
 
-    screen.fill(background_color)
+
+
+def generate_triangles ():
 
     '''
     colors_hex = [
@@ -253,12 +254,62 @@ def run():
         
         # FIXME: We should reverse the order of the points in order to create a clockwise winding
         triangle_points = [pt2, pt1, pt3, normal_vector ]
-        triangles.append({ "triangle_points" : triangle_points, "clr" : color_index})
+        triangle_points_indexes = [triangle_point_indexes[1], triangle_point_indexes[0], triangle_point_indexes[2]]
+        triangles.append({ "triangle_points_indexes" : triangle_points_indexes, "triangle_points" : triangle_points, "clr" : color_index})
             
     # print(points)
     # print(triangles)
     
+    return (points, triangles)
+
+
+
+
+def generate_obj_text_for_triangles(object_name, points, triangles):
+
+    vertex_index_start = 1
     
+    obj_text = ""
+    
+    obj_text += "o " + object_name + "\n"
+    for vertex_nr, point in enumerate(points):
+        vertex_x = point['x']
+        vertex_y = point['y']
+        vertex_z = point['z']
+        
+        obj_text += "v "
+        obj_text += str(vertex_x)
+        obj_text += " "
+        obj_text += str(vertex_y)
+        obj_text += " "
+        obj_text += str(vertex_z)
+        obj_text += "\n"
+    
+    obj_text += "usemtl " 
+    obj_text += "RED_HOUSE"
+    obj_text += "\n"
+    
+    nr_of_vertices = len(points)
+    
+    for triangle in triangles:
+        obj_text += "f "
+        obj_text += ' '.join(str(vertex_index+vertex_index_start) for vertex_index in triangle['triangle_points_indexes'])
+        obj_text += "\n"
+        
+    return (obj_text, nr_of_vertices)
+
+
+(points, triangles) = generate_triangles()
+# FIXME: which name should we use?
+object_name = 'logo'
+(obj_text, nr_of_vertices) = generate_obj_text_for_triangles(object_name, points, triangles)
+print(obj_text)
+
+
+def run():
+
+    screen.fill(background_color)
+
     for triangle_index in range(0, len(triangles)):
         tri = triangles[triangle_index]
         tri_points = tri["triangle_points"]
