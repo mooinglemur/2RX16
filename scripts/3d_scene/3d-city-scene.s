@@ -961,14 +961,14 @@ setup_vera_for_layer0_bitmap_buffer_0:
     lda #0
     sta VERA_L0_TILEBASE
 
-    ; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
+    ; Setting VSTART/VSTOP so that we have 150 rows on screen (320x150 pixels on screen)
 
     lda #%00000010  ; DCSEL=1
     sta VERA_CTRL
    
-    lda #20
+    lda #45
     sta VERA_DC_VSTART
-    lda #400/2+20-1
+    lda #150+45-1
     sta VERA_DC_VSTOP
     
     rts
@@ -997,10 +997,10 @@ setup_vera_for_layer0_bitmap_buffer_1:
     lda #%00000010  ; DCSEL=1
     sta VERA_CTRL
    
-    lda #20-2  ; we show 2 lines of 'garbage' so the *actual* bitmap starts at 31*2048 + 640  (128 bytes after the *first* buffer ends)
+    lda #45-2  ; we show 2 lines of 'garbage' so the *actual* bitmap starts at 31*2048 + 640  (128 bytes after the *first* buffer ends)
     ; Note: we cover these 2 garbage-lines with five 64x64 black sprites (of which only the two last lines are actually black and have their sprite data pointed to the 128 bytes mentioned above)
     sta VERA_DC_VSTART
-    lda #400/2+20-1
+    lda #150+45-1
     sta VERA_DC_VSTOP
     
     rts

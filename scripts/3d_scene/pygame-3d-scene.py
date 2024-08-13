@@ -70,7 +70,7 @@ DEBUG_RESERSE_SORTING = False
 DRAW_INTERSECTION_POINTS = False
 
 screen_width = 320
-screen_height = 200
+screen_height = 150
 scale = 3          # this is only used to scale up the screen in pygame
 
 fx_state = {}
@@ -84,8 +84,8 @@ else:
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1
 RIGHT_EDGE_X = +1
-BOTTOM_EDGE_Y = -1 * (200/320)
-TOP_EDGE_Y = +1 * (200/320)
+BOTTOM_EDGE_Y = -1 * (150/320)
+TOP_EDGE_Y = +1 * (150/320)
 
 Z_EDGE = -1.0   # this is the near plane
 
@@ -1138,7 +1138,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
     # Checking all pixels in the check_triangle_visibility_buffer and see which face_indexes are still in there. We should ONLY draw these!
     visible_face_indexes = {}
     
-    black_pixels = 320*200*[0]
+    black_pixels = 320*150*[0]
     
     check_pxarray = pygame.PixelArray(check_triangle_visibility_buffer)
     
@@ -1410,7 +1410,7 @@ def combine_faces (screen_vertices, sorted_faces):
                 vertex_is_lying_on_edges.append('RIGHT')
             if (y == 0):
                 vertex_is_lying_on_edges.append('TOP')
-            if (y == 200):
+            if (y == 150):
                 vertex_is_lying_on_edges.append('BOTTOM')
                 
             if (len(vertex_is_lying_on_edges) > 0):
@@ -2565,7 +2565,7 @@ while running:
     
 
     if (DRAW_BLACK_PIXELS):
-        for y in range(200):
+        for y in range(150):
             for x in range(320):
                 if (black_pixels[y*320+x] == 1):
                     pixel_color = (0xFF, 0xFF, 0x00)
