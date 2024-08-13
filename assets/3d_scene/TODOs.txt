@@ -1,8 +1,7 @@
 CHANGES:
-- characters on top of buildings
-  - KDETAIL04  (FC)
-  - KDETAIL12  (93)
 - end text (X16)?
+  - fcirto (only ONE face??)  -> BECOMES visible FIRST! is removed LATER!
+  - logo                      -> BECOMES visible LATER!
 
 BUGs:
 - ship disappears during forest
