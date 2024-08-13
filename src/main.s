@@ -1,5 +1,8 @@
-.export syncval
+.exportzp syncval
 .exportzp blob_to_read, blob_target_ptr
+.exportzp SONG_BANK
+
+.export play_song
 
 .export galois16o
 
@@ -39,8 +42,6 @@
 start:
 	jmp main
 .segment "BSS"
-syncval:
-	.res 1
 
 .segment "ZEROPAGE"
 blob_to_read:
@@ -48,6 +49,8 @@ blob_to_read:
 blob_target_ptr:
 	.res 2
 music_interrupt_type:
+	.res 1
+syncval:
 	.res 1
 
 .segment "CODE"
@@ -68,7 +71,7 @@ scenevector := $9EFC
 .endscope
 
 ZSMKIT_BANK = 1
-SONG_BANK = 2
+SONG_BANK := 2
 
 SCENE = $4800
 
@@ -233,8 +236,6 @@ SCENE = $4800
 	ldx #1
 	jsr zsmkit::zsm_close
 .endif
-	LOADFILE "MUSIC5.ZSM", SONG_BANK, $a000
-
 	; set up 50 Hz VIA timer
 	lda #50
 	jsr setup_via_timer
@@ -245,7 +246,7 @@ SCENE = $4800
 	ldy #0
 	jsr zsmkit::zsm_set_int_rate
 
-	jsr play_song
+	; MUSIC5 is loaded inside CRAFT scene
 	LOADFILE "CRAFT.BIN", 0, SCENE
 	jsr SCENE
 

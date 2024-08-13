@@ -168,6 +168,8 @@ entry:
 
 	PALETTE_FADE_FULL 1
 
+	DISABLE_SPRITES
+
 	MUSIC_SYNC $B0
 
 	rts

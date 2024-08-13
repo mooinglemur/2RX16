@@ -20,6 +20,8 @@
 .import target_palette3
 .import target_palette4
 
+.importzp SONG_BANK
+.import play_song
 
 .macpack longbranch
 
@@ -42,6 +44,8 @@ VERA_DC_HSCALE    = $9F2A  ; DCSEL=0
 VERA_DC_VSCALE    = $9F2B  ; DCSEL=0
 VERA_DC_BORDER    = $9F2C  ; DCSEL=0
 
+VERA_DC_HSTART    = $9F29  ; DCSEL=1
+VERA_DC_HSTOP     = $9F2A  ; DCSEL=1
 VERA_DC_VSTART    = $9F2B  ; DCSEL=1
 VERA_DC_VSTOP     = $9F2C  ; DCSEL=1
 
@@ -189,11 +193,51 @@ CLEAR_256_BYTES_CODE:   ; takes up to 00F0+rts (256 bytes to clear = 80 * stz = 
 
 .segment "CRAFT"
 entry:
-	jsr copy_palette_from_index_0
+	LOADFILE "MUSIC5.ZSM", SONG_BANK, $a000
+
+	jsr play_song
+
+	WAITVSYNC 3
+
+	stz target_palette
+	stz target_palette+1
+	lda #$ff
+	sta target_palette+256
+	lda #$0f
+	sta target_palette+257
+
+	ldx #2
+:   lda #$ff
+	sta target_palette,x
+	inx
+	lda #$0f
+	sta target_palette,x
+	inx
+	bne :-
+
+	lda #0
+	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
+	lda #128
+	jsr setup_palette_fade3
+	lda #192
+	jsr setup_palette_fade4
+
+	PALETTE_FADE_FULL 1
+
+	WAITVSYNC 10
+
+	jsr setup_vera_for_cross_fade
+
 	jsr generate_clear_256_bytes_code
 
+	jsr cross_fade
 	; This clears (almost) the entire VRAM and sets it to the STARTING_BACKGROUND_COLOR
-	jsr clear_screen_fast_4_bytes
+;	jsr clear_screen_fast_4_bytes
+	jsr initialize_buffers
+
+	jsr copy_palette_from_index_0
 
 	LOADFILE "POLYFILL-8BIT-TBLS-AND-CODE.DAT", 0, POLYFILL_TBLS_AND_CODE_RAM_ADDRESS ; low RAM, python codegen
 
@@ -204,6 +248,8 @@ entry:
 	jsr setup_covering_sprites
 
 	jsr setup_vera_for_layer0_bitmap_general
+
+	WAITVSYNC
 
 	; We start with showing buffer 1 while filling buffer 0
 	jsr setup_vera_for_layer0_bitmap_buffer_1
@@ -261,6 +307,206 @@ entry:
 	PALETTE_FADE_FULL 1
 
 	rts
+
+.proc cross_fade
+	; white to black
+	stz target_palette+(2*$0f)
+	stz target_palette+(2*$0f)+1
+	ldy #$0f
+	lda #$ff
+	; stays white
+	sta target_palette+(2*$f0)
+	sty target_palette+(2*$f0)+1
+	; black to white
+	sta target_palette+(2*$ff)
+	sty target_palette+(2*$ff)+1
+
+	lda #0
+	jsr setup_palette_fade
+	lda #192
+	jsr setup_palette_fade4
+
+	PALETTE_FADE_FULL 2
+	rts
+.endproc
+
+.proc setup_vera_for_cross_fade
+	VERA_SET_ADDR ((Vera::VRAM_palette)+506), 1
+	; we're setting up 3 colors for the cross fade
+	; $0F = white -> black
+	; $F0 = stays white
+	; $FF = black -> white
+	; and $00 is always black
+	VERA_SET_ADDR ((Vera::VRAM_palette)+(2*$00)), 1
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+	VERA_SET_ADDR ((Vera::VRAM_palette)+(2*$0F)), 1
+	lda #$ff
+	sta Vera::Reg::Data0
+	lda #$0f
+	sta Vera::Reg::Data0
+	VERA_SET_ADDR ((Vera::VRAM_palette)+(2*$F0)), 1
+	lda #$ff
+	sta Vera::Reg::Data0
+	lda #$0f
+	sta Vera::Reg::Data0
+	VERA_SET_ADDR ((Vera::VRAM_palette)+(2*$FF)), 1
+	stz Vera::Reg::Data0
+	stz Vera::Reg::Data0
+
+	lda #(2 << 1) ; DCSEL = 2
+	sta Vera::Reg::Ctrl
+
+	lda #%01000000
+	sta Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	VERA_SET_ADDR $00000, 3
+
+	WAITVSYNC
+	; and now we have to rush the changes in
+    stz VERA_CTRL
+    lda #$40                 ; 2:1 scale (320 x 240 pixels on screen)
+    sta VERA_DC_HSCALE
+    sta VERA_DC_VSCALE
+
+	lda #(1 << 1)
+	sta VERA_CTRL
+
+	lda #20
+	sta VERA_DC_VSTART
+	lda #(240-20)
+	sta VERA_DC_VSTOP
+	stz VERA_DC_HSTART
+	lda #$a0
+	sta VERA_DC_HSTOP
+
+    ; -- Setup Layer 0 --
+    stz VERA_CTRL
+
+    ; Enable bitmap mode and color depth = 8bpp on layer 0
+    lda #(4+3)
+    sta VERA_L0_CONFIG
+
+	; Enable layer 0 only
+    lda VERA_DC_VIDEO
+    ora #%00010000           ; Enable Layer 0
+    and #%10011111           ; Disable Layer 1 and sprites
+    sta VERA_DC_VIDEO
+
+	; setup FX cache params
+	lda #(6 << 1) ; DCSEL = 6
+	sta Vera::Reg::Ctrl
+
+	stz VERA_FX_CACHE_L
+	stz VERA_FX_CACHE_M
+	stz VERA_FX_CACHE_H
+	stz VERA_FX_CACHE_U
+
+	; top section
+	ldy #25
+topthird:
+.repeat 16 ; black on left
+	stz Vera::Reg::Data0
+.endrepeat
+	lda #$0f ; white which will be black
+	sta VERA_FX_CACHE_H
+	sta VERA_FX_CACHE_U
+	stz Vera::Reg::Data0
+	sta VERA_FX_CACHE_L
+	sta VERA_FX_CACHE_M
+.repeat 45
+	stz Vera::Reg::Data0
+.endrepeat
+	stz VERA_FX_CACHE_U ; black on right
+	stz Vera::Reg::Data0
+	stz VERA_FX_CACHE_L
+	stz VERA_FX_CACHE_M
+	stz VERA_FX_CACHE_H
+.repeat 17
+	stz Vera::Reg::Data0
+.endrepeat
+	dey
+	jne topthird
+
+	lda #$ff
+	sta VERA_FX_CACHE_L
+	sta VERA_FX_CACHE_M
+	sta VERA_FX_CACHE_H
+	sta VERA_FX_CACHE_U
+
+	ldy #150
+middlethird:
+.repeat 16 ; black which will be white on left
+	stz Vera::Reg::Data0
+.endrepeat
+	lda #$f0 ; stays white
+	sta VERA_FX_CACHE_H
+	sta VERA_FX_CACHE_U
+	stz Vera::Reg::Data0
+	sta VERA_FX_CACHE_L
+	sta VERA_FX_CACHE_M
+.repeat 45
+	stz Vera::Reg::Data0
+.endrepeat
+	lda #$ff
+	sta VERA_FX_CACHE_U
+	stz Vera::Reg::Data0
+	sta VERA_FX_CACHE_L
+	sta VERA_FX_CACHE_M
+	sta VERA_FX_CACHE_H
+.repeat 17
+	stz Vera::Reg::Data0
+.endrepeat
+	dey
+	jne middlethird
+
+
+	stz VERA_FX_CACHE_L
+	stz VERA_FX_CACHE_M
+	stz VERA_FX_CACHE_H
+	stz VERA_FX_CACHE_U
+
+	; bottom section
+	ldy #24
+bottomthird:
+.repeat 16 ; black on left
+	stz Vera::Reg::Data0
+.endrepeat
+	lda #$0f ; white which will be black
+	sta VERA_FX_CACHE_H
+	sta VERA_FX_CACHE_U
+	stz Vera::Reg::Data0
+	sta VERA_FX_CACHE_L
+	sta VERA_FX_CACHE_M
+.repeat 45
+	stz Vera::Reg::Data0
+.endrepeat
+	stz VERA_FX_CACHE_U ; black on right
+	stz Vera::Reg::Data0
+	stz VERA_FX_CACHE_L
+	stz VERA_FX_CACHE_M
+	stz VERA_FX_CACHE_H
+.repeat 17
+	stz Vera::Reg::Data0
+.endrepeat
+	dey
+	jne bottomthird
+
+	; final row
+.repeat 80
+	stz Vera::Reg::Data0
+.endrepeat
+
+	; cancel fx
+	lda #(2 << 1) ; DCSEL = 2
+	sta Vera::Reg::Ctrl
+
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	rts
+.endproc
 
 .proc draw_polygon_fast
 
@@ -506,7 +752,7 @@ draw_polygon_part_using_polygon_filler_and_jump_tables:
 	sta lastjiffy
 
 draw_next_frame:
-	jsr stream_read
+	jsr lazy_read
 	lda CURRENT_RAM_BANK
 	sta RAM_BANK
 
@@ -555,17 +801,18 @@ draw_next_polygon:
     bne draw_next_polygon
 
 done_drawing_polygons:
-	WAITVSYNC
 	jsr X16::Kernal::RDTIM
 	sec
 	sbc lastjiffy
-	cmp #3
+	cmp #2
 	bcc pumpit
-	sta $9fb9
+	;sta $9fb9
 	lda lastjiffy
 	clc
 	adc #3
 	sta lastjiffy
+
+	WAITVSYNC
 
     ; Every frame we switch to which buffer we write to and which one we show
     lda #1
@@ -662,12 +909,33 @@ end:
 
 .proc stream_pump
 	jsr stream_read
+	bcs end
 	jsr stream_read
+	bcs end
 	jsr stream_read
+	bcs end
 	jsr stream_read
+	bcs end
 	jsr stream_read
+	bcs end
 	jsr stream_read
-	jsr stream_read
+	bcc continue
+end:
+	rts
+continue:
+	; fall through
+.endproc
+
+.proc lazy_read
+	lda STREAM_RAM_BANK
+	sec
+	sbc CURRENT_RAM_BANK
+	bcs :+
+	adc #(LAST_RING_BANK+1)-POLYGON_DATA_RAM_BANK
+:	sta $9fba
+	cmp #3
+	bcc stream_pump ; dangerously low
+
 	; fall through
 .endproc
 
@@ -1011,6 +1279,102 @@ generate_next_y_to_address_entry_1:
     bne generate_next_y_to_address_entry_1
 
     rts
+.endproc
+
+.proc initialize_buffers
+	; draw the white rectangle on both buffers, clear everything else
+	lda #(2 << 1) ; DCSEL = 2
+	sta Vera::Reg::Ctrl
+
+	lda #%01000000
+	sta Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	VERA_SET_ADDR $00000, 3
+
+	lda #(6 << 1) ; DCSEL = 6
+	sta Vera::Reg::Ctrl
+
+    stz VERA_FX_CACHE_L
+    stz VERA_FX_CACHE_M
+    stz VERA_FX_CACHE_H
+    stz VERA_FX_CACHE_U
+
+	ldy #8
+	ldx #208
+s0:
+	stz Vera::Reg::Data0
+	dex
+	bne s0
+	dey
+	bne s0
+
+	lda #$ff
+    sta VERA_FX_CACHE_L
+    sta VERA_FX_CACHE_M
+    sta VERA_FX_CACHE_H
+    sta VERA_FX_CACHE_U
+
+	ldy #47
+	ldx #224
+s1:
+	stz Vera::Reg::Data0
+	dex
+	bne s1
+	dey
+	bne s1
+
+    stz VERA_FX_CACHE_L
+    stz VERA_FX_CACHE_M
+    stz VERA_FX_CACHE_H
+    stz VERA_FX_CACHE_U
+
+	ldy #16
+	ldx #192
+s2:
+	stz Vera::Reg::Data0
+	dex
+	bne s2
+	dey
+	bne s2
+
+	lda #$ff
+    sta VERA_FX_CACHE_L
+    sta VERA_FX_CACHE_M
+    sta VERA_FX_CACHE_H
+    sta VERA_FX_CACHE_U
+
+	ldy #47
+	ldx #224
+s3:
+	stz Vera::Reg::Data0
+	dex
+	bne s3
+	dey
+	bne s3
+
+
+    stz VERA_FX_CACHE_L
+    stz VERA_FX_CACHE_M
+    stz VERA_FX_CACHE_H
+    stz VERA_FX_CACHE_U
+
+	ldy #8
+	ldx #208
+s4:
+	stz Vera::Reg::Data0
+	dex
+	bne s4
+	dey
+	bne s4
+
+	lda #(2 << 1) ; DCSEL = 2
+	sta Vera::Reg::Ctrl
+
+	stz Vera::Reg::FXCtrl
+	stz Vera::Reg::Ctrl
+
+	rts
 .endproc
 
 .proc clear_screen_fast_4_bytes
@@ -1389,5 +1753,5 @@ palette_data:
 	.byte $b5, $0e
 	.byte $b5, $0e
 	.byte $00, $00
-	.byte $b5, $0e
+	.byte $ff, $ff
 end_of_palette_data:

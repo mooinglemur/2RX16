@@ -18,7 +18,7 @@ macros_inc = 1
 .import blobseekfn
 
 .ifndef syncval
-.import syncval
+.importzp syncval
 .endif
 .import sprite_text_pos
 .import sprite_text_do
