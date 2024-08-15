@@ -48,7 +48,7 @@ PRINT_PALETTE = False
 # FIXME!
 # FIXME!
 # FIXME!
-ALLOW_PAUSING_AND_REVERSE_PLAYBACK = True # When turned on, this will not automatically turn off playback so no output file will be written!
+ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False # When turned on, this will not automatically turn off playback so no output file will be written!
 # FIXME!
 PRINT_ERRORS = False
 PRINT_WARNINGS = False
@@ -2339,8 +2339,8 @@ while running:
 # FIXME: HARDCODED: Problematic face on ship
 # FIXME: HARDCODED: Problematic face on ship
 # FIXME: HARDCODED: Problematic face on ship
-#                if (object_face_index != 36):  
-#                    continue
+                if (object_face_index != 36):  
+                    continue
                     
                 filtered_object_faces.append(object_face)
                 
