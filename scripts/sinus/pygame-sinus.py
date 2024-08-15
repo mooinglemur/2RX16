@@ -159,13 +159,13 @@ for i in range(256):
 print(".byte ", end="")
 
 for i in sintbl:
-    print(f"${int(i * 256) & 0xff:02x},", end="")
+    print(f"${int(i * 1024) & 0xff:02x},", end="")
 
 print("")
 
 print(".byte ", end="")
 
 for i in sintbl:
-    print(f"${int(i):02x},", end="")
+    print(f"${int(i * 4) & 0xff:02x},", end="")
 
 print("")
