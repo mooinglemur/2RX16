@@ -245,7 +245,7 @@ end_frame:
 
 	lda frame_nr
 	and #3
-	jne new_frame
+	bne scrolling
 
 	lda anim_nr
 	inc
@@ -254,8 +254,24 @@ end_frame:
 	lda #0
 :	sta anim_nr
 
+scrolling:
+	lda #(1 << 1)
+	sta Vera::Reg::Ctrl
+
 	lda syncval
 	cmp #$BC
+	bcs scroll_off
+
+	lda Vera::Reg::DCVStart
+	cmp #21
+	jcc new_frame
+	dec Vera::Reg::DCVStart
+	jmp new_frame
+
+scroll_off:
+	inc Vera::Reg::DCVStart
+	lda Vera::Reg::DCVStart
+	cmp #100
 	jcc new_frame
 
 	; clear FX state
@@ -306,7 +322,7 @@ end_frame:
 	; letterbox for 320x~200
 	lda #$02
 	sta Vera::Reg::Ctrl
-	lda #20
+	lda #100 ; slide in
 	sta Vera::Reg::DCVStart
 	lda #($f0 - 20)
 	sta Vera::Reg::DCVStop
