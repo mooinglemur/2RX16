@@ -2087,13 +2087,10 @@ frame_nr = 1
 # FIXME: we need proper interpolation! (now just dropping every other frame!
 org_increment_frame_by = 2
 
-problematic_camera_frame_nr = None
-
 # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
 if SCENE == 'U2E':
     max_frame_nr = 1802*5
     org_increment_frame_by = 9
-    problematic_camera_frame_nr = 945*5
     
 else:
     max_frame_nr = 522*2
@@ -2356,21 +2353,6 @@ while running:
     camera_box = triangulated_world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
     del triangulated_world_objects['CameraBox']
-
-    if (problematic_camera_frame_nr is not None):
-        problematic_frame_diff = frame_nr - problematic_camera_frame_nr
-        if (problematic_frame_diff >= 0 and problematic_frame_diff < org_increment_frame_by):
-            # LOOKING DIR:[ 0.0611, -0.3791, -0.9233]
-            # LOOKING DIR:[-0.3508, -0.144,  -0.9253]  FRAME 945 IS WRONG!
-            # LOOKING DIR:[ 0.0384, -0.3726, -0.9272]
-            
-            # UP DIR:[0.0265, -0.9241, 0.3812]
-            # UP DIR:[-0.8995, -0.2232, 0.3757]
-            # UP DIR:[-0.0441, -0.9276, 0.371]            
-
-            # FIXME: VERY UGLY HARDCODED FIX! We just take avg of frame 944 and 946 for x and y (and keep the z component)
-            camera_info['looking_dir'] = [ 0.04975, -0.37585, -0.9253]
-            camera_info['up_dir'] = [ -0.0088, -0.92585, 0.3757]
 
     
     if PRINT_PROGRESS: print("Transform into view space")
