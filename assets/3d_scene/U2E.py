@@ -170,17 +170,19 @@ def create_animation_frames():
     bpy.context.scene.frame_end = nr_of_frames_in_blender
     
     logo_was_turned_visible = False
+    
+    previous_frame_r_matrix_per_object_nr = {}
 
     for frame_nr in range(1,nr_of_frames+1):
         frame_nr_in_blender = (frame_nr-1)*5 + 1
+        
+        current_frame_r_matrix_per_object_nr = {}
         
         # Camera
         object_nr = 0
         if (str(object_nr) in objects_xyz_and_matrix_per_frame[str(frame_nr)]):
             
             object_xyz_and_matrix = objects_xyz_and_matrix_per_frame[str(frame_nr)][str(object_nr)]
-            object_name = object_nr_to_name[str(object_nr)]
-            obj = bpy.data.objects[object_name]
 
             # https://help.autodesk.com/view/3DSMAX/2023/ENU/?guid=GUID-BEADCF00-3BBA-4722-9D7D-C07C15F8A33B
             r3_m = object_xyz_and_matrix['m']
@@ -191,6 +193,7 @@ def create_animation_frames():
                 [ r3_m[0][2], r3_m[1][2], r3_m[2][2], r_xyz['z'] ],
                 [          0,          0,          0,          1 ],
             ]
+            current_frame_r_matrix_per_object_nr[str(object_nr)] = r_matrix
             
             r_rotate_180_x_matrix = [
                 [           1,           0,           0,              0 ],
@@ -198,13 +201,11 @@ def create_animation_frames():
                 [           0,           0,          -1,              0 ],
                 [           0,           0,           0,              1 ],
             ]
-            
-            
             r_matrix_corrected = np.matmul(r_rotate_180_x_matrix, r_matrix)
             
             r_inv = np.linalg.inv(r_matrix_corrected).tolist()
             
-            r_matrix = [
+            r_matrix_new = [
                 [ r_inv[0][0], r_inv[0][1], r_inv[0][2], r_inv[0][3] ],
                 [ r_inv[1][0], r_inv[1][1], r_inv[1][2], r_inv[1][3] ],
                 [ r_inv[2][0], r_inv[2][1], r_inv[2][2], r_inv[2][3] ],
@@ -212,7 +213,10 @@ def create_animation_frames():
             ]
             #r_matrix = r_inv
 
-            obj.matrix_world = mathutils.Matrix(r_matrix)
+            object_name = object_nr_to_name[str(object_nr)]
+            obj = bpy.data.objects[object_name]
+            
+            obj.matrix_world = mathutils.Matrix(r_matrix_new)
             
             #if (frame_nr == 10):
             #    print(obj.matrix_world)
@@ -226,17 +230,14 @@ def create_animation_frames():
         # All other objects
         for object_nr in range(1,58):
 
-            #dump(objects_xyz_and_matrix_per_frame[str(frame_nr)])
-
-            object_name = object_nr_to_name[str(object_nr)]
-            
-            if (object_name == 'fcirto'):
-                object_name = 'logo'
-            
-            obj = bpy.data.objects[object_name]
-            
             if (str(object_nr) not in objects_xyz_and_matrix_per_frame[str(frame_nr)]):
                 # There is no change for this object
+                
+                # We keep the same r_matrix for this object (if we had it) since it hasnt changed
+                if (str(object_nr) in previous_frame_r_matrix_per_object_nr):
+                    current_frame_r_matrix_per_object_nr[str(object_nr)] = previous_frame_r_matrix_per_object_nr[str(object_nr)]
+                    
+                # We dont change anything in blender, so we continue
                 continue
             
             object_xyz_and_matrix = objects_xyz_and_matrix_per_frame[str(frame_nr)][str(object_nr)]
@@ -250,6 +251,14 @@ def create_animation_frames():
                 [ r3_m[0][2], r3_m[1][2], r3_m[2][2], r_xyz['z'] ],
                 [          0,          0,          0,          1 ],
             ]
+            current_frame_r_matrix_per_object_nr[str(object_nr)] = r_matrix
+            
+            object_name = object_nr_to_name[str(object_nr)]
+            
+            if (object_name == 'fcirto'):
+                object_name = 'logo'
+            
+            obj = bpy.data.objects[object_name]
             
             obj.matrix_world = mathutils.Matrix(r_matrix)
             
@@ -265,6 +274,8 @@ def create_animation_frames():
             obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender)
             obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender)
 
+        # We remember the r_matrix from all the object of this frame (to interpolate towards the next frame)
+        previous_frame_r_matrix_per_object_nr = current_frame_r_matrix_per_object_nr
 
 
 cls()
