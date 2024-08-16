@@ -169,3 +169,25 @@ for i in sintbl:
     print(f"${int(i * 4) & 0xff:02x},", end="")
 
 print("")
+
+print(".byte ", end="")
+
+for i in range(64):
+    n = 63-i
+    s = 1+math.cos((n*math.pi/64)+math.pi)
+    s /= 2
+    s *= 128
+
+    print(f"${int(s) & 0xff:02x},", end="")
+
+for i in range(128):
+    print("$00,", end="")
+
+for i in range(64):
+    s = 1+math.cos((i*math.pi/64)+math.pi)
+    s /= 2
+    s *= 128
+
+    print(f"${int(s) & 0xff:02x},", end="")
+
+print("")

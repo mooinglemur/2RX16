@@ -1180,9 +1180,8 @@ prebgloop:
 	jne nosync
 	rts
 card1:
-	SPRITE_TEXT 1, 40, 60, 1, "A Commander X16"
-	SPRITE_TEXT 18, 70, 85, 1, "and VERA FX"
-	SPRITE_TEXT 36, 100, 110, 1, "showcase"
+	SPRITE_TEXT 1, 65, 60, 1, "A showcase by"
+	SPRITE_TEXT 18, 103, 85, 1, "TEAM FX"
 	jmp docolor
 card2:
 	SPRITE_TEXT 1, 82, 60, 1, "Presented at"
@@ -1304,8 +1303,7 @@ noscroll:
 	bne tbgscrollloop
 	rts
 card4:
-	SPRITE_TEXT 1, 110, 50, 1,  "VERA FX"
-	SPRITE_TEXT 18, 110, 80, 1, "JeffreyH"
+	SPRITE_TEXT 1, 40, 70, 1, "Second Reality X16"
 	jmp docolor1
 card5:
 	SPRITE_TEXT 1, 128, 40, 1, "Music"
@@ -1314,9 +1312,9 @@ card5:
 	jmp docolor1
 card6:
 	SPRITE_TEXT 1, 130, 40, 1, "Code"
-	SPRITE_TEXT 18, 80, 70, 1, "MooingLemur"
-	SPRITE_TEXT 36, 100, 100, 1, "JeffreyH"
-	bra docolor1
+	SPRITE_TEXT 36, 100, 70, 1, "JeffreyH"
+	SPRITE_TEXT 18, 80, 100, 1, "MooingLemur"
+	jmp docolor1
 card7:
 	SPRITE_TEXT 1, 90, 40, 1,    "Inspired by"
 	SPRITE_TEXT 18, 75, 70, 1,  "Second Reality"
