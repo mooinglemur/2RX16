@@ -241,10 +241,9 @@ sp:
 	bne sp
 .endmacro
 
-.macro SPRITE_TEXT spridx, xpos, ypos, palidx, text
+.macro SPRITE_TEXT xpos, ypos, palidx, text
 .local sprtxt
 .local cont
-	lda #spridx
 	ldx #xpos
 	ldy #ypos
 	jsr sprite_text_pos

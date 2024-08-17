@@ -1,8 +1,25 @@
 .import setup_palette_fade
+.import setup_palette_fade2
+.import setup_palette_fade3
+.import setup_palette_fade4
+
 .import apply_palette_fade_step
+.import apply_palette_fade_step2
+.import apply_palette_fade_step3
+.import apply_palette_fade_step4
+
 .import flush_palette
+.import flush_palette2
+.import flush_palette3
+.import flush_palette4
+
+.import sprite_text_pos_y400
+.import sprite_scroll_up
 
 .import target_palette
+.import target_palette2
+.import target_palette3
+.import target_palette4
 
 .import graceful_fail
 
@@ -18,6 +35,10 @@ MAX_EASE_ITER = 40
 .include "x16.inc"
 .include "macros.inc"
 
+.macro EMPTY_LINE
+	.byte 0,0,0
+.endmacro
+
 .macro EASE_ON
 	clc
 	jsr ease
@@ -28,36 +49,103 @@ MAX_EASE_ITER = 40
 	jsr ease
 .endmacro
 
+.segment "CREDITS_ZP": zeropage
+ptr1:
+	.res 2
+lines:
+	.res 1
+
 .segment "CREDITS"
 entry:
 	jsr setup_vera
 
 	jsr do_cards
+	jsr do_crawl
 
-	; about the duration of the music
-	ldy #30
+	; about 4 seconds
 	ldx #0
 :	phx
-	phy
 	WAITVSYNC
-	ply
 	plx
 	dex
 	bne :-
-	dey
-	bne :-
 
-	ldx #32
-:	stz target_palette-1,x
-	dex
+	ldx #0
+:	stz target_palette,x
+	stz target_palette3,x
+	inx
 	bne :-
 
 	lda #0
 	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
+	lda #128
+	jsr setup_palette_fade3
+	lda #192
+	jsr setup_palette_fade4
 
-	PALETTE_FADE 1
+
+	PALETTE_FADE_FULL 2
 
 	rts
+
+.proc do_crawl
+	WAITVSYNC
+
+	DISABLE_SPRITES
+
+	; load title font
+	LOADFILE "TITLEFONT.VTS", 0, $0000, 1
+
+	lda #%00001000 ; clear 240p
+	trb Vera::Reg::DCVideo
+
+	WAITVSYNC
+	; high res mode
+	stz Vera::Reg::Ctrl
+	lda #$80
+	sta Vera::Reg::DCHScale
+	sta Vera::Reg::DCVScale
+
+	lda #<(crawl_text-1)
+	sta ptr1
+	lda #>(crawl_text-1)
+	sta ptr1+1
+next_string:
+	INCPTR1
+	lda (ptr1)
+	tax
+	INCPTR1
+	lda (ptr1)
+	tay
+	bmi done
+	jsr sprite_text_pos_y400
+
+	INCPTR1
+	ldx ptr1
+	ldy ptr1+1
+	lda #15
+	jsr sprite_text_do
+
+advance_ptr:
+	lda (ptr1)
+	beq eos
+	INCPTR1
+	bra advance_ptr
+eos:
+	lda #40
+	sta lines
+scroll_loop:
+	WAITVSYNC 2
+	jsr sprite_scroll_up
+	dec lines
+	bne scroll_loop
+	jmp next_string
+done:
+	rts
+
+.endproc
 
 .proc do_cards
 	DISABLE_SPRITES
@@ -444,6 +532,12 @@ dir:
 	and #$0f
 	ora #$40
 	sta Vera::Reg::DCVideo
+	and #%00000011
+	cmp #1
+	beq :+
+	lda #%00001000 ; set 240p
+	tsb Vera::Reg::DCVideo
+:
 
 	; border = index 0
 	stz Vera::Reg::DCBorder
@@ -505,3 +599,204 @@ palette_f:
 	.word $0fff
 	.word $0fff
 	.word $0fff
+
+crawl_text:
+	.word $ca
+	.byte "Second Reality X16",0
+	EMPTY_LINE
+	.word $f3
+	.byte "by Team FX",0
+	EMPTY_LINE
+	.word $a1
+	.byte "Released September 2024",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $a8
+	.byte "Now, a few words from",0
+	.word $9e
+	.byte "the members of Team FX:",0
+	EMPTY_LINE
+	.word $e9
+	.byte "(MooingLemur)",0
+	EMPTY_LINE
+	.word $9a
+	.byte "This has been a long road.",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $b5
+	.byte "Porting Second Reality",0
+	.word $b4
+	.byte "to the Commander X16",0
+	.word $9e
+	.byte "was an idea that came to",0
+	.word $98
+	.byte "me during VCF Midwest 17",0
+	.word $111
+	.byte "in 2023.",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $101
+	.byte "VERA's FX",0
+	.word $c2
+	.byte "extensions had been",0
+	.word $d2
+	.byte "recently released.",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $7d
+	.byte "I pitched the idea to JeffreyH,",0
+	.word $ac
+	.byte "the author of VERA FX,",0
+	.word $7b
+	.byte "and he was certainly intrigued",0
+	.word $e7
+	.byte "by the idea. :)",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $9f
+	.byte "I would like to shout out:",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $eb
+	.byte "David Murray",0
+	.word $9c
+	.byte "for the original X16 vision",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $a4
+	.byte "Kevin and Sara Williams",0
+	.word $ce
+	.byte "for making it real",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $102
+	.byte "Joe Burks",0
+	.word $8f
+	.byte "for helping make it possible",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $f0
+	.byte "Adrian Black",0
+	.word $78
+	.byte "for feedback and moral support",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $108
+	.byte "nicco1690",0
+	.word $9b
+	.byte "for sound design feedback",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $10b
+	.byte "zerobyte",0
+	.word $78
+	.byte "for being the brainchild of .zsm",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $100
+	.byte "tildearrow",0
+	.word $d9
+	.byte "and the Furnace",0
+	.word $cc
+	.byte "community for the",0
+	.word $97
+	.byte "awesome tracker in which",0
+	.word $e2
+	.byte "this soundtrack",0
+	.word $ea
+	.byte "was arranged",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $ed
+	.byte "TeriosShadow",0
+	.word $10e
+	.byte "for help",0
+	.word $cf
+	.byte "with math related",0
+	.word $102
+	.byte "debugging",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $109
+	.byte "JeffreyH",0
+	.word $dc
+	.byte "for collaborating",0
+	.word $db
+	.byte "and for creating",0
+	.word $ef
+	.byte "the VERA FX",0
+	.word $100
+	.byte "extensions,",0
+	.word $e4
+	.byte "through which",0
+	.word $c2
+	.byte "many of this demo's",0
+	.word $ef
+	.byte "visualizations",0
+	.word $d0
+	.byte "are made possible",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $c2
+	.byte "The Commander X16",0
+	.word $115
+	.byte "Discord",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $d4
+	.byte "and Future Crew",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $a0
+	.byte "I hope this demo inspires",0
+	.word $ac
+	.byte "others to discover what",0
+	.word $8e
+	.byte "the X16 is really capable of.",0
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $5d
+	.byte "We've barely scratched the surface!",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $100
+	.byte "(JeffreyH)",0
+	EMPTY_LINE
+	.word $c2
+	.byte "text text text text",0
+	EMPTY_LINE
+	.word $c2
+	.byte "text text text text",0
+	EMPTY_LINE
+	.word $c2
+	.byte "text text text text",0
+	EMPTY_LINE
+	.word $c2
+	.byte "text text text text",0
+	EMPTY_LINE
+	.word $c2
+	.byte "text text text text",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $91
+	.byte "Thank you for experiencing",0
+	.word $ca
+	.byte "Second Reality X16",0
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	EMPTY_LINE
+	.word $ffff
