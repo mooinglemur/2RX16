@@ -264,13 +264,10 @@ after_autotx:
 	LOADFILE "CREDITS.BIN", 0, SCENE
 	jsr SCENE
 
-XXXEND:
 	; fade out song
 	ldy #0
 :	phy
-	WAITVSYNC
-	WAITVSYNC
-	WAITVSYNC
+	WAITVSYNC 3
 	ply
 	phy
 	tya

@@ -27,6 +27,12 @@
 
 .segment "CREW"
 entry:
+	stz Vera::Reg::Ctrl
+	lda Vera::Reg::DCVideo
+	pha ; preserve old video mode so that we can
+	; restore it to 240p if we had it set that way
+	; since this part of the demo is high res
+
 	; fade to deep blue
 
 	ldx #32
@@ -61,5 +67,8 @@ entry:
 	jsr setup_palette_fade4
 
 	PALETTE_FADE_FULL 1
+
+	pla
+	sta Vera::Reg::DCVideo
 
 	rts

@@ -110,18 +110,29 @@ loop:
 
 
 .proc do_crawl
+	; attempt to scroll on even fields on NTSC/RGB, imperfect check
 	WAITVSYNC
+	sta jiffy
 	lda #1
 	bit Vera::Reg::IEN
 	bvs :+
 	lda #0
-:	sta jiffy
+:	eor jiffy
+	and #1
+	sta jiffy
+	lda Vera::Reg::DCVideo
+	rol
+	rol
+	and #1
+	eor jiffy
+	sta jiffy
 
 	; load title font
 	LOADFILE "TITLEFONT.VTS", 0, $8000, 1
 
 	jsr blank
 
+	WAITVSYNC
 	lda Vera::Reg::DCVideo
 	and #%10000111 ; clear 240p
 	ora #%00010000 ; layer 0 only
@@ -139,7 +150,6 @@ loop:
 	lda #15
 	sta Vera::Reg::L0HScrollH
 
-	WAITVSYNC
 	; high res mode
 	stz Vera::Reg::Ctrl
 	lda #$80
@@ -575,12 +585,6 @@ dir:
 	and #$0f
 	ora #$40
 	sta Vera::Reg::DCVideo
-	and #%00000011
-	cmp #1
-	beq :+
-	lda #%00001000 ; set 240p
-	tsb Vera::Reg::DCVideo
-:
 
 	; border = index 0
 	stz Vera::Reg::DCBorder
