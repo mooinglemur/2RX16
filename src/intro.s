@@ -1052,7 +1052,7 @@ blackpal:
 	LOADFILE "TITLEBG.VTS", 0, $0000, 0
 
 	; load title font
-	LOADFILE "TITLEFONT.VTS", 0, $0000, 1
+	LOADFILE "TITLEFONT.VTS", 0, $8000, 1
 
 	; show no layers
 	stz Vera::Reg::Ctrl

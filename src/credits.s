@@ -14,7 +14,8 @@
 .import flush_palette4
 
 .import sprite_text_pos_y400
-.import sprite_scroll_up
+.import sprite_text_stamp
+.import bmp_scroll_up_2bpp
 
 .import target_palette
 .import target_palette2
@@ -36,7 +37,8 @@ MAX_EASE_ITER = 40
 .include "macros.inc"
 
 .macro EMPTY_LINE
-	.byte 0,0,0
+	.word 320
+	.byte 0
 .endmacro
 
 .macro EASE_ON
@@ -90,16 +92,52 @@ entry:
 
 	rts
 
+.proc blank
+	VERA_SET_ADDR $00000, 1
+	ldy #32
+	ldx #0
+loop:
+.repeat 8
+	stz Vera::Reg::Data0
+.endrepeat
+	dex
+	bne loop
+	dey
+	bne loop
+
+	rts
+.endproc
+
+
 .proc do_crawl
 	WAITVSYNC
-
-	DISABLE_SPRITES
+	lda #1
+	bit Vera::Reg::IEN
+	bvs :+
+	lda #0
+:	sta jiffy
 
 	; load title font
-	LOADFILE "TITLEFONT.VTS", 0, $0000, 1
+	LOADFILE "TITLEFONT.VTS", 0, $8000, 1
 
-	lda #%00001000 ; clear 240p
-	trb Vera::Reg::DCVideo
+	jsr blank
+
+	lda Vera::Reg::DCVideo
+	and #%10000111 ; clear 240p
+	ora #%00010000 ; layer 0 only
+	sta Vera::Reg::DCVideo
+
+	; bitmap mode, 2bpp
+	lda #%00000101
+	sta Vera::Reg::L0Config
+
+	; bitmap base, 640x480 (400)
+	lda #1
+	sta Vera::Reg::L0TileBase
+
+	; Palette offset 15
+	lda #15
+	sta Vera::Reg::L0HScrollH
 
 	WAITVSYNC
 	; high res mode
@@ -126,7 +164,7 @@ next_string:
 	ldx ptr1
 	ldy ptr1+1
 	lda #15
-	jsr sprite_text_do
+	jsr sprite_text_stamp
 
 advance_ptr:
 	lda (ptr1)
@@ -134,17 +172,22 @@ advance_ptr:
 	INCPTR1
 	bra advance_ptr
 eos:
-	lda #40
+	lda #32
 	sta lines
 scroll_loop:
-	WAITVSYNC 2
-	jsr sprite_scroll_up
+	WAITVSYNC
+	and #1
+	cmp jiffy
+	bne scroll_loop
+
+	jsr bmp_scroll_up_2bpp
 	dec lines
 	bne scroll_loop
 	jmp next_string
 done:
 	rts
-
+jiffy:
+	.byte 0
 .endproc
 
 .proc do_cards
@@ -603,190 +646,206 @@ palette_f:
 crawl_text:
 	.word $ca
 	.byte "Second Reality X16",0
-	EMPTY_LINE
 	.word $f3
 	.byte "by Team FX",0
-	EMPTY_LINE
 	.word $a1
 	.byte "Released September 2024",0
 	EMPTY_LINE
 	EMPTY_LINE
-	EMPTY_LINE
-	EMPTY_LINE
-	.word $a8
-	.byte "Now, a few words from",0
+	.word $ca
+	.byte "A few words from",0
 	.word $9e
 	.byte "the members of Team FX:",0
 	EMPTY_LINE
 	.word $e9
 	.byte "(MooingLemur)",0
 	EMPTY_LINE
-	.word $9a
-	.byte "This has been a long road.",0
+	.word $22
+	.byte "Porting Second Reality to the Commander X16",0
+	.word $57
+	.byte "was an idea that came to me during",0
+	.word $a9
+	.byte "VCF Midwest 17 in 2023.",0
 	EMPTY_LINE
-	EMPTY_LINE
-	EMPTY_LINE
-	.word $b5
-	.byte "Porting Second Reality",0
-	.word $b4
-	.byte "to the Commander X16",0
-	.word $9e
-	.byte "was an idea that came to",0
-	.word $98
-	.byte "me during VCF Midwest 17",0
-	.word $111
-	.byte "in 2023.",0
-	EMPTY_LINE
-	EMPTY_LINE
-	EMPTY_LINE
-	EMPTY_LINE
-	.word $101
-	.byte "VERA's FX",0
-	.word $c2
-	.byte "extensions had been",0
-	.word $d2
-	.byte "recently released.",0
-	EMPTY_LINE
+	.word $a0
+	.byte "VERA's FX extensions had",0
+	.word $b1
+	.byte "recently been released",0
 	EMPTY_LINE
 	.word $7d
 	.byte "I pitched the idea to JeffreyH,",0
-	.word $ac
-	.byte "the author of VERA FX,",0
-	.word $7b
-	.byte "and he was certainly intrigued",0
-	.word $e7
-	.byte "by the idea. :)",0
+	.word $5b
+	.byte "the author of VERA FX, and he was",0
+	.word $6c
+	.byte "certainly intrigued by the idea. :)",0
 	EMPTY_LINE
+	.word $7d
+	.byte "This has been a long road, and",0
+	.word $76
+	.byte "it was not always smooth, but I",0
+	.word $66
+	.byte "hope you have enjoyed the result.",0
 	EMPTY_LINE
 	EMPTY_LINE
 	.word $9f
 	.byte "I would like to shout out:",0
-	EMPTY_LINE
 	EMPTY_LINE
 	.word $eb
 	.byte "David Murray",0
 	.word $9c
 	.byte "for the original X16 vision",0
 	EMPTY_LINE
-	EMPTY_LINE
 	.word $a4
 	.byte "Kevin and Sara Williams",0
 	.word $ce
 	.byte "for making it real",0
-	EMPTY_LINE
 	EMPTY_LINE
 	.word $102
 	.byte "Joe Burks",0
 	.word $8f
 	.byte "for helping make it possible",0
 	EMPTY_LINE
-	EMPTY_LINE
 	.word $f0
 	.byte "Adrian Black",0
 	.word $78
 	.byte "for feedback and moral support",0
-	EMPTY_LINE
 	EMPTY_LINE
 	.word $108
 	.byte "nicco1690",0
 	.word $9b
 	.byte "for sound design feedback",0
 	EMPTY_LINE
-	EMPTY_LINE
 	.word $10b
 	.byte "zerobyte",0
 	.word $78
 	.byte "for being the brainchild of .zsm",0
 	EMPTY_LINE
-	EMPTY_LINE
 	.word $100
 	.byte "tildearrow",0
-	.word $d9
-	.byte "and the Furnace",0
-	.word $cc
-	.byte "community for the",0
-	.word $97
-	.byte "awesome tracker in which",0
-	.word $e2
-	.byte "this soundtrack",0
-	.word $ea
-	.byte "was arranged",0
-	EMPTY_LINE
+	.word $46
+	.byte "and the rest of the Furnace community",0
+	.word $49
+	.byte "for the awesome tracker in which this",0
+	.word $a9
+	.byte "soundtrack was arranged",0
 	EMPTY_LINE
 	.word $ed
 	.byte "TeriosShadow",0
-	.word $10e
-	.byte "for help",0
-	.word $cf
-	.byte "with math related",0
-	.word $102
-	.byte "debugging",0
-	EMPTY_LINE
+	.word $46
+	.byte "for help rooting out a math-related bug",0
 	EMPTY_LINE
 	.word $109
 	.byte "JeffreyH",0
-	.word $dc
-	.byte "for collaborating",0
-	.word $db
-	.byte "and for creating",0
-	.word $ef
-	.byte "the VERA FX",0
-	.word $100
-	.byte "extensions,",0
-	.word $e4
-	.byte "through which",0
-	.word $c2
-	.byte "many of this demo's",0
-	.word $ef
-	.byte "visualizations",0
+	.word $70
+	.byte "for collaborating and for creating",0
+	.word $45
+	.byte "the VERA FX extensions, through which",0
+	.word $6a
+	.byte "many of this demo's visualizations",0
 	.word $d0
 	.byte "are made possible",0
 	EMPTY_LINE
-	EMPTY_LINE
 	.word $c2
 	.byte "The Commander X16",0
-	.word $115
-	.byte "Discord",0
-	EMPTY_LINE
+	.word $ca
+	.byte "Discord Community",0
 	EMPTY_LINE
 	.word $d4
 	.byte "and Future Crew",0
 	EMPTY_LINE
 	EMPTY_LINE
-	EMPTY_LINE
-	EMPTY_LINE
-	.word $a0
-	.byte "I hope this demo inspires",0
-	.word $ac
-	.byte "others to discover what",0
-	.word $8e
-	.byte "the X16 is really capable of.",0
-	EMPTY_LINE
+	.word $75
+	.byte "I hope this demo inspires others",0
+	.word $a2
+	.byte "to discover what the X16",0
+	.word $c9
+	.byte "is truly capable of.",0
 	EMPTY_LINE
 	.word $5d
 	.byte "We've barely scratched the surface!",0
 	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE
-	EMPTY_LINE
-	EMPTY_LINE
 	.word $100
 	.byte "(JeffreyH)",0
 	EMPTY_LINE
-	.word $c2
-	.byte "text text text text",0
+	.word $6b
+	.byte "MooingLemur came to me with an",0
+	.word $90
+	.byte "intriguing idea: recreate the",0
+	.word $70
+	.byte "Second Reality demo for the X16.",0
 	EMPTY_LINE
-	.word $c2
-	.byte "text text text text",0
+	.word $b1
+	.byte "It was an absurd idea.",0
 	EMPTY_LINE
-	.word $c2
-	.byte "text text text text",0
+	.word $99
+	.byte "But man did it trigger me.",0
 	EMPTY_LINE
-	.word $c2
-	.byte "text text text text",0
+	.word $81
+	.byte "At first sight it felt impossible",0
+	.word $66
+	.byte "to accomplish it to the degree that",0
+	.word $6d
+	.byte "it would do credit to the original,",0
+	.word $4d
+	.byte "which runs smoothly only on a 486DX.",0
 	EMPTY_LINE
-	.word $c2
-	.byte "text text text text",0
+	.word $66
+	.byte "But thinking about it more I could",0
+	.word $31
+	.byte "see that with the new VERA FX firmware",0
+	.word $64
+	.byte "certain parts of the demo could be",0
+	.word $bd
+	.byte "recreated quite well.",0
+	EMPTY_LINE
+	.word $81
+	.byte "So we just started with those.",0
+	.word $64
+	.byte "And we mostly had fun recreating",0
+	.word $63
+	.byte "part after part. Each part required",0
+	.word $53
+	.byte "deep reverse engineering and unique",0
+	.word $6b
+	.byte "solutions to implement on the X16.",0
+	.word $c1
+	.byte "It was so much fun.",0
+	EMPTY_LINE
+	.word $7b
+	.byte "It took a long while but in the",0
+	.word $60
+	.byte "end we reached a point where we",0
+	.word $8b
+	.byte "were happy with the result.",0
+	EMPTY_LINE
+	.word $47
+	.byte "I want to thank everyone MooingLemur",0
+	.word $46
+	.byte "has thanked above. He said true words.",0
+	EMPTY_LINE
+	.word $6d
+	.byte "But I want to add one to the list:",0
+	EMPTY_LINE
+	.word $bc
+	.byte "MooingLemur himself.",0
+	EMPTY_LINE
+	.word $63
+	.byte "Not only did he do the majority of",0
+	.word $5a
+	.byte "the work on this demo, he has done",0
+	.word $75
+	.byte "soo much for the X16 project its",0
+	.word $61
+	.byte "unbelievable. Without him it would",0
+	.word $46
+	.byte "not have been a success and to me has",0
+	.word $5f
+	.byte "been an inspiration to push the X16",0
+	.word $c1
+	.byte "further and further.",0
+	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE
@@ -795,6 +854,7 @@ crawl_text:
 	.byte "Thank you for experiencing",0
 	.word $ca
 	.byte "Second Reality X16",0
+	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE

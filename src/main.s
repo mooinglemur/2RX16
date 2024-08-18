@@ -18,6 +18,8 @@
 .import apply_palette_fade_step
 .import setup_palette_fade
 
+.import sprite_init
+
 .macpack longbranch
 
 .scope SCROLLER
@@ -91,11 +93,17 @@ SCENE = $4800
 	ldy #0
 	jsr zsmkit::zsm_set_int_rate
 
+	jsr sprite_init
+
 	jsr zero_entire_target
 	lda #0
 	jsr setup_palette_fade
 
-	; set auto_tx if available (fast SD card reads!)
+	; set auto_tx if available (fast SD card reads!) if machine mhz is not too fast
+	lda machine_speed+2
+	cmp #$98 ; 10 MHz+
+	bcs after_autotx
+
 	lda #5
 	ldx #<auto_tx
 	ldy #>auto_tx
@@ -110,7 +118,7 @@ SCENE = $4800
 
 	lda #15
 	jsr X16::Kernal::CLOSE
-
+after_autotx:
 
 	PALETTE_FADE 2
 .ifndef SKIP_SONG0
