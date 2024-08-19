@@ -85,6 +85,63 @@ def load_city_object_file():
         files=[{"name":file_to_import, "name":file_to_import}], 
         forward_axis='Y', 
         up_axis='Z')
+        
+        
+def load_kdetail04_object_file():
+
+    # Removing the old/original object
+    objs = [bpy.context.scene.objects['KDETAIL04']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+        
+    # Importing the new object
+    file_to_import = "KDETAIL04.obj"
+    print('- Importing the obj file: ' + file_to_import)
+    bpy.ops.wm.obj_import(
+        filepath=file_to_import, 
+        directory=base_dir, 
+        files=[{"name":file_to_import, "name":file_to_import}], 
+        forward_axis='Y', 
+        up_axis='Z')
+        
+
+def load_logo_object_file():
+
+    # Removing the old/original object
+    objs = [bpy.context.scene.objects['logo']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+
+    objs = [bpy.context.scene.objects['fcirto']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+        
+    # Importing the new object
+    file_to_import = "X16_logo.obj"
+    print('- Importing the obj file: ' + file_to_import)
+    bpy.ops.wm.obj_import(
+        filepath=file_to_import, 
+        directory=base_dir, 
+        files=[{"name":file_to_import, "name":file_to_import}], 
+        forward_axis='Y', 
+        up_axis='Z')
+
+def load_kdetail12_object_file():
+
+    # Removing the old/original object
+    objs = [bpy.context.scene.objects['KDETAIL12']]
+    with bpy.context.temp_override(selected_objects=objs):
+        bpy.ops.object.delete()
+        
+    # Importing the new object
+    file_to_import = "KDETAIL12.obj"
+    print('- Importing the obj file: ' + file_to_import)
+    bpy.ops.wm.obj_import(
+        filepath=file_to_import, 
+        directory=base_dir, 
+        files=[{"name":file_to_import, "name":file_to_import}], 
+        forward_axis='Y', 
+        up_axis='Z')
 
 
 def load_object_names_file():
@@ -108,20 +165,25 @@ def load_animation_file():
     return objects_xyz_and_matrix_per_frame
 
 def create_animation_frames():
+    frame_multiplier = 5
     nr_of_frames = 1802
-    nr_of_frames_in_blender = nr_of_frames * 4
+    nr_of_frames_in_blender = nr_of_frames * frame_multiplier
     bpy.context.scene.frame_end = nr_of_frames_in_blender
+    
+    logo_was_turned_visible = False
+    
+    previous_frame_r_matrix_per_object_nr = {}
 
     for frame_nr in range(1,nr_of_frames+1):
-        frame_nr_in_blender = (frame_nr-1)*4 + 1
+        frame_nr_in_blender = (frame_nr-1)*frame_multiplier + 1
+        
+        current_frame_r_matrix_per_object_nr = {}
         
         # Camera
         object_nr = 0
         if (str(object_nr) in objects_xyz_and_matrix_per_frame[str(frame_nr)]):
             
             object_xyz_and_matrix = objects_xyz_and_matrix_per_frame[str(frame_nr)][str(object_nr)]
-            object_name = object_nr_to_name[str(object_nr)]
-            obj = bpy.data.objects[object_name]
 
             # https://help.autodesk.com/view/3DSMAX/2023/ENU/?guid=GUID-BEADCF00-3BBA-4722-9D7D-C07C15F8A33B
             r3_m = object_xyz_and_matrix['m']
@@ -139,13 +201,11 @@ def create_animation_frames():
                 [           0,           0,          -1,              0 ],
                 [           0,           0,           0,              1 ],
             ]
-            
-            
             r_matrix_corrected = np.matmul(r_rotate_180_x_matrix, r_matrix)
             
             r_inv = np.linalg.inv(r_matrix_corrected).tolist()
             
-            r_matrix = [
+            r_matrix_new = [
                 [ r_inv[0][0], r_inv[0][1], r_inv[0][2], r_inv[0][3] ],
                 [ r_inv[1][0], r_inv[1][1], r_inv[1][2], r_inv[1][3] ],
                 [ r_inv[2][0], r_inv[2][1], r_inv[2][2], r_inv[2][3] ],
@@ -153,27 +213,43 @@ def create_animation_frames():
             ]
             #r_matrix = r_inv
 
-            obj.matrix_world = mathutils.Matrix(r_matrix)
-            
-            #if (frame_nr == 10):
-            #    print(obj.matrix_world)
-            #    break
+            object_name = object_nr_to_name[str(object_nr)]
+            obj = bpy.data.objects[object_name]
 
-                    
+            current_frame_r_matrix_per_object_nr[str(object_nr)] = r_matrix_new
+            
+            
+            # Interpolated locations and rotations
+            if (str(object_nr) in previous_frame_r_matrix_per_object_nr):
+                from_r_matrix = np.array(previous_frame_r_matrix_per_object_nr[str(object_nr)])
+                to_r_matrix = np.array(current_frame_r_matrix_per_object_nr[str(object_nr)])
+                interpolated_r_matrices = np.linspace(from_r_matrix, to_r_matrix, frame_multiplier)
+                
+                for interpolation_index in range(1, frame_multiplier):
+                    interpolated_r_matrix = interpolated_r_matrices[interpolation_index]
+
+                    obj.matrix_world = mathutils.Matrix(interpolated_r_matrix)
+                    obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender - frame_multiplier + interpolation_index)
+                    obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender - frame_multiplier + interpolation_index)
+            
+            # We last of the frames is a direct copy (no need to interpolate)
+            obj.matrix_world = mathutils.Matrix(r_matrix_new)
             obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender)
             obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender)
+            
             
 
         # All other objects
         for object_nr in range(1,58):
 
-            #dump(objects_xyz_and_matrix_per_frame[str(frame_nr)])
-
-            object_name = object_nr_to_name[str(object_nr)]
-            obj = bpy.data.objects[object_name]
-            
             if (str(object_nr) not in objects_xyz_and_matrix_per_frame[str(frame_nr)]):
                 # There is no change for this object
+                
+                # We keep the same r_matrix for this object (if we had it) since it hasnt changed
+                if (str(object_nr) in previous_frame_r_matrix_per_object_nr):
+                    current_frame_r_matrix_per_object_nr[str(object_nr)] = previous_frame_r_matrix_per_object_nr[str(object_nr)]
+                    
+                # We dont change anything in blender, so we continue
                 continue
             
             object_xyz_and_matrix = objects_xyz_and_matrix_per_frame[str(frame_nr)][str(object_nr)]
@@ -188,17 +264,48 @@ def create_animation_frames():
                 [          0,          0,          0,          1 ],
             ]
             
-            obj.matrix_world = mathutils.Matrix(r_matrix)
+            object_name = object_nr_to_name[str(object_nr)]
+            
+            if (object_name == 'fcirto'):
+                object_name = 'logo'
+            
+            obj = bpy.data.objects[object_name]
             
             if object_xyz_and_matrix['visible']:
                 obj.hide_viewport = False
+                if object_name == 'logo':
+                    logo_was_turned_visible = True
             else:
-                obj.hide_viewport = True
-                
+                if (object_name != 'logo' or not logo_was_turned_visible):
+                    obj.hide_viewport = True
+            
             obj.keyframe_insert('hide_viewport', frame=frame_nr_in_blender)
+
+            current_frame_r_matrix_per_object_nr[str(object_nr)] = r_matrix
+            
+
+            # Interpolated locations and rotations
+            
+            if (str(object_nr) in previous_frame_r_matrix_per_object_nr):
+                from_r_matrix = np.array(previous_frame_r_matrix_per_object_nr[str(object_nr)])
+                to_r_matrix = np.array(current_frame_r_matrix_per_object_nr[str(object_nr)])
+                interpolated_r_matrices = np.linspace(from_r_matrix, to_r_matrix, frame_multiplier)
+                
+                for interpolation_index in range(1, frame_multiplier):
+                    interpolated_r_matrix = interpolated_r_matrices[interpolation_index]
+
+                    obj.matrix_world = mathutils.Matrix(interpolated_r_matrix)
+                    obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender - frame_multiplier + interpolation_index)
+                    obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender - frame_multiplier + interpolation_index)
+            
+            # We last of the frames is a direct copy (no need to interpolate)
+            obj.matrix_world = mathutils.Matrix(r_matrix)
             obj.keyframe_insert(data_path="location", frame=frame_nr_in_blender)
             obj.keyframe_insert(data_path="rotation_euler", frame=frame_nr_in_blender)
 
+            
+        # We remember the r_matrix from all the object of this frame (to interpolate towards the next frame)
+        previous_frame_r_matrix_per_object_nr = current_frame_r_matrix_per_object_nr
 
 
 cls()
@@ -206,6 +313,9 @@ cls()
 clean_scene()
 create_camera()
 load_city_object_file()
+load_logo_object_file()
+load_kdetail04_object_file()
+load_kdetail12_object_file()
 objects_xyz_and_matrix_per_frame = load_animation_file()
 object_nr_to_name = load_object_names_file()
 create_animation_frames()

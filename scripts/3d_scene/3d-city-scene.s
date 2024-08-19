@@ -218,10 +218,10 @@ draw_all_frames:
 
 ; FIXME: HARDCODED!
 ; FIXME when the 16-bit number goes negative we have detect the end, BUT this means the NR_OF_FRAMES should be initially filled with nr_of_frames-1 !
-; FIXME: shoulnt this be 1030?
-    lda #<(1029)
+; FIXME: shoulnt this be 1001?
+    lda #<(1000)
     sta NR_OF_FRAMES
-    lda #>(1029)
+    lda #>(1000)
     sta NR_OF_FRAMES+1
 
 ; FIXME: replace this with something proper!
@@ -961,14 +961,14 @@ setup_vera_for_layer0_bitmap_buffer_0:
     lda #0
     sta VERA_L0_TILEBASE
 
-    ; Setting VSTART/VSTOP so that we have 200 rows on screen (320x200 pixels on screen)
+    ; Setting VSTART/VSTOP so that we have 150 rows on screen (320x150 pixels on screen)
 
     lda #%00000010  ; DCSEL=1
     sta VERA_CTRL
    
-    lda #20
+    lda #45
     sta VERA_DC_VSTART
-    lda #400/2+20-1
+    lda #150+45-1
     sta VERA_DC_VSTOP
     
     rts
@@ -997,10 +997,10 @@ setup_vera_for_layer0_bitmap_buffer_1:
     lda #%00000010  ; DCSEL=1
     sta VERA_CTRL
    
-    lda #20-2  ; we show 2 lines of 'garbage' so the *actual* bitmap starts at 31*2048 + 640  (128 bytes after the *first* buffer ends)
+    lda #45-2  ; we show 2 lines of 'garbage' so the *actual* bitmap starts at 31*2048 + 640  (128 bytes after the *first* buffer ends)
     ; Note: we cover these 2 garbage-lines with five 64x64 black sprites (of which only the two last lines are actually black and have their sprite data pointed to the 128 bytes mentioned above)
     sta VERA_DC_VSTART
-    lda #400/2+20-1
+    lda #150+45-1
     sta VERA_DC_VSTOP
     
     rts
@@ -1292,7 +1292,7 @@ palette_data:
   .byte $53, $03
   .byte $53, $03
   .byte $53, $03
-  .byte $64, $03
+  .byte $64, $04
   .byte $64, $04
   .byte $64, $04
   .byte $74, $04
@@ -1316,102 +1316,102 @@ palette_data:
   .byte $d6, $05
   .byte $d6, $05
   .byte $d7, $05
-  .byte $33, $02
-  .byte $33, $02
-  .byte $43, $03
-  .byte $44, $03
-  .byte $44, $03
-  .byte $55, $04
-  .byte $55, $04
-  .byte $55, $04
-  .byte $66, $04
-  .byte $66, $05
+  .byte $23, $01
+  .byte $23, $01
+  .byte $34, $02
+  .byte $34, $02
+  .byte $34, $02
+  .byte $45, $03
+  .byte $45, $03
+  .byte $45, $03
+  .byte $56, $04
+  .byte $56, $04
+  .byte $56, $04
   .byte $67, $05
   .byte $67, $05
-  .byte $77, $05
-  .byte $78, $06
-  .byte $78, $06
+  .byte $67, $05
   .byte $79, $06
   .byte $79, $06
-  .byte $79, $07
+  .byte $79, $06
   .byte $7a, $07
-  .byte $8a, $07
-  .byte $8a, $08
+  .byte $7a, $07
+  .byte $7a, $07
+  .byte $8b, $08
   .byte $8b, $08
   .byte $8b, $08
   .byte $9c, $09
   .byte $9c, $09
-  .byte $9d, $0a
+  .byte $9c, $09
   .byte $ad, $0a
   .byte $ad, $0a
   .byte $ae, $0b
   .byte $ae, $0b
   .byte $bf, $0c
   .byte $bf, $0c
-  .byte $46, $03
-  .byte $56, $03
-  .byte $56, $03
-  .byte $57, $03
-  .byte $57, $04
-  .byte $57, $04
+  .byte $34, $02
+  .byte $45, $03
+  .byte $45, $03
+  .byte $45, $03
+  .byte $56, $04
+  .byte $56, $04
+  .byte $56, $04
   .byte $67, $04
-  .byte $68, $04
-  .byte $68, $05
-  .byte $68, $05
-  .byte $78, $05
-  .byte $79, $05
-  .byte $79, $06
-  .byte $89, $06
-  .byte $89, $06
-  .byte $8a, $07
-  .byte $8a, $07
-  .byte $9a, $07
-  .byte $9a, $08
-  .byte $9a, $08
-  .byte $ab, $09
-  .byte $ab, $09
-  .byte $ab, $09
-  .byte $ab, $0a
-  .byte $bc, $0a
-  .byte $bc, $0a
-  .byte $bc, $0b
+  .byte $67, $05
+  .byte $67, $05
+  .byte $78, $06
+  .byte $78, $06
+  .byte $78, $06
+  .byte $88, $07
+  .byte $88, $07
+  .byte $88, $07
+  .byte $99, $08
+  .byte $99, $08
+  .byte $99, $08
+  .byte $aa, $09
+  .byte $aa, $09
+  .byte $aa, $09
+  .byte $bb, $0a
+  .byte $bb, $0a
+  .byte $bb, $0a
   .byte $cc, $0b
-  .byte $cd, $0c
+  .byte $cc, $0b
+  .byte $cc, $0b
   .byte $dd, $0c
-  .byte $dd, $0d
+  .byte $dd, $0c
   .byte $de, $0d
-  .byte $34, $03
-  .byte $34, $03
-  .byte $44, $04
-  .byte $45, $04
-  .byte $45, $05
-  .byte $55, $05
-  .byte $56, $05
-  .byte $56, $06
-  .byte $56, $06
-  .byte $67, $06
-  .byte $67, $07
-  .byte $67, $07
-  .byte $78, $08
-  .byte $78, $08
-  .byte $78, $08
-  .byte $89, $09
-  .byte $89, $09
+  .byte $de, $0d
+  .byte $22, $03
+  .byte $22, $03
+  .byte $33, $04
+  .byte $33, $04
+  .byte $44, $05
+  .byte $44, $05
+  .byte $55, $06
+  .byte $55, $06
+  .byte $55, $06
+  .byte $66, $07
+  .byte $66, $07
+  .byte $66, $07
+  .byte $77, $08
+  .byte $77, $08
+  .byte $77, $08
+  .byte $88, $09
+  .byte $88, $09
+  .byte $88, $09
   .byte $99, $0a
-  .byte $9a, $0a
-  .byte $9a, $0a
-  .byte $aa, $0a
+  .byte $99, $0a
+  .byte $99, $0a
   .byte $aa, $0b
   .byte $aa, $0b
-  .byte $ab, $0c
   .byte $bb, $0c
   .byte $bb, $0c
-  .byte $bb, $0d
+  .byte $bb, $0c
+  .byte $cc, $0d
   .byte $cc, $0d
   .byte $cc, $0d
   .byte $dd, $0e
   .byte $dd, $0e
-  .byte $ed, $0f
+  .byte $ee, $0f
   .byte $40, $0a
   .byte $40, $0a
   .byte $50, $0a
@@ -1445,37 +1445,37 @@ palette_data:
   .byte $fc, $0f
   .byte $ff, $0f
   .byte $34, $03
-  .byte $44, $04
-  .byte $44, $04
   .byte $45, $04
-  .byte $55, $05
+  .byte $45, $04
+  .byte $45, $04
+  .byte $56, $05
   .byte $56, $05
   .byte $56, $05
   .byte $67, $06
   .byte $67, $06
-  .byte $77, $06
-  .byte $78, $07
-  .byte $78, $07
-  .byte $89, $07
-  .byte $89, $08
+  .byte $67, $06
+  .byte $79, $07
+  .byte $79, $07
+  .byte $79, $07
   .byte $8a, $08
-  .byte $9a, $08
-  .byte $9a, $09
-  .byte $ab, $09
-  .byte $ab, $09
+  .byte $8a, $08
+  .byte $8a, $08
+  .byte $9b, $09
+  .byte $9b, $09
+  .byte $9b, $09
   .byte $ac, $0a
   .byte $ac, $0a
-  .byte $bd, $0a
-  .byte $bd, $0a
+  .byte $ac, $0a
   .byte $be, $0b
-  .byte $ce, $0b
-  .byte $cf, $0b
-  .byte $df, $0b
-  .byte $df, $0c
-  .byte $ef, $0d
-  .byte $ef, $0d
+  .byte $be, $0b
+  .byte $bd, $0b
+  .byte $bd, $0b
+  .byte $ce, $0c
+  .byte $ce, $0c
+  .byte $df, $0d
+  .byte $df, $0d
   .byte $ef, $0e
-  .byte $ff, $0f
+  .byte $ef, $0e
   .byte $b5, $0e
   .byte $b5, $0e
   .byte $b5, $0e

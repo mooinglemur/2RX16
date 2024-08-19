@@ -27,8 +27,8 @@ from functools import cmp_to_key
 #  - change the SCENE variable below
 #  - run from root repo directory: python .\scripts\3d_scene\pygame-3d-scene.py
 
-#SCENE = 'U2E'
-SCENE = 'U2A'
+SCENE = 'U2E'
+#SCENE = 'U2A'
 
 
 polygon_data_file = 'scripts/3d_scene/' + SCENE + '-POLYGONS.DAT'
@@ -49,6 +49,11 @@ PRINT_PALETTE = False
 # FIXME!
 # FIXME!
 ALLOW_PAUSING_AND_REVERSE_PLAYBACK = False # When turned on, this will not automatically turn off playback so no output file will be written!
+# FIXME!
+PRINT_ERRORS = False
+PRINT_WARNINGS = False
+PRINT_PALETTE_FOR_MANUAL_EDIT = False
+
 PRINT_FRAME_TRIANGLES = True
 PRINT_PROGRESS = False
 DRAW_PALETTE = False
@@ -66,7 +71,7 @@ DEBUG_RESERSE_SORTING = False
 DRAW_INTERSECTION_POINTS = False
 
 screen_width = 320
-screen_height = 200
+screen_height = 150
 scale = 3          # this is only used to scale up the screen in pygame
 
 fx_state = {}
@@ -80,8 +85,8 @@ else:
 # We put the ASPECT RATIO in here for clipping against the camera sides
 LEFT_EDGE_X = -1
 RIGHT_EDGE_X = +1
-BOTTOM_EDGE_Y = -1 * (200/320)
-TOP_EDGE_Y = +1 * (200/320)
+BOTTOM_EDGE_Y = -1 * (150/320)
+TOP_EDGE_Y = +1 * (150/320)
 
 Z_EDGE = -1.0   # this is the near plane
 
@@ -235,6 +240,9 @@ def load_vertices_and_faces(frame_nr):
         elif line.startswith('usemtl '):
             line_parts = line.split()
             current_material_name = line_parts[1]
+            # FIXME: HACK to fix the material name when importing manually edited objects in Blender!
+            if (current_material_name == 'RED_HOUSE.001' or current_material_name == 'RED_HOUSE.002' or current_material_name == 'RED_HOUSE.003'):
+                current_material_name = 'RED_HOUSE'
             
         elif line.startswith('vn '):
             line_parts = line.split()
@@ -445,6 +453,8 @@ def transform_objects_into_view_space(world_objects, camera_info):
     
     up_dir = camera_info['up_dir']
     looking_dir = camera_info['looking_dir']
+    #print('====> LOOKING DIR:' + str(looking_dir))
+    #print('====> UP DIR:' + str(up_dir))
     new_forward = np.negative(looking_dir)  # I think we need to negate because we want the forward direction (of the camera) to be *negative* Z
     
     up_dot_forward = np.dot(np.array(up_dir), np.array(new_forward))
@@ -1029,7 +1039,7 @@ def slope2bytes(slope):
         x1 /= 32
         x32 = 0x80
     x1 *= 512 # move significant fractional part to whole number
-    print(round(x1))
+    #print(round(x1))
     b1 = bytearray(round(x1).to_bytes(2, 'little', signed=True))
     b1[1] &= 0x7f
     b1[1] |= x32
@@ -1129,7 +1139,7 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
     # Checking all pixels in the check_triangle_visibility_buffer and see which face_indexes are still in there. We should ONLY draw these!
     visible_face_indexes = {}
     
-    black_pixels = 320*200*[0]
+    black_pixels = 320*150*[0]
     
     check_pxarray = pygame.PixelArray(check_triangle_visibility_buffer)
     
@@ -1143,7 +1153,8 @@ def sort_faces_scale_to_screen_and_check_visibility(projected_vertices, faces):
                 black_pixels[y*320+x] = 1
                 
     if nr_of_black_pixels_found > 0:
-        print("WARNING: FOUND BLACK PIXELS: " + str(nr_of_black_pixels_found))
+        if (PRINT_WARNINGS):
+            print("WARNING: FOUND BLACK PIXELS: " + str(nr_of_black_pixels_found))
         
     check_pxarray.close()
     
@@ -1225,7 +1236,7 @@ def first_and_second_vertex_have_same_x_and_y(vertex_indices, screen_vertices):
     second_vertex = screen_vertices[vertex_indices[1]]
     
     if (first_vertex[0] == second_vertex[0] and first_vertex[1] == second_vertex[1]):
-        print(str(first_vertex) + '-->' + str(second_vertex))
+        #print(str(first_vertex) + '-->' + str(second_vertex))
         return True
     else:
         return False
@@ -1400,7 +1411,7 @@ def combine_faces (screen_vertices, sorted_faces):
                 vertex_is_lying_on_edges.append('RIGHT')
             if (y == 0):
                 vertex_is_lying_on_edges.append('TOP')
-            if (y == 200):
+            if (y == 150):
                 vertex_is_lying_on_edges.append('BOTTOM')
                 
             if (len(vertex_is_lying_on_edges) > 0):
@@ -1409,7 +1420,8 @@ def combine_faces (screen_vertices, sorted_faces):
                     lies_on_screen_edges_by_vertex_index[vertex_index][edge_name] = True
                     
         if (face_min_x == face_max_x) or (face_min_y == face_max_y):
-            print("ERROR: face is invalid because it has no width or height!")
+            if (PRINT_ERRORS):
+                print("ERROR: face is invalid because it has no width or height!")
             merged_face['invalid'] = True
     
     cleaned_merged_faces = []
@@ -1459,10 +1471,12 @@ def combine_faces (screen_vertices, sorted_faces):
                 if (second_vertex_can_be_removed(cleaned_vertex_indices, lies_on_screen_edges_by_vertex_index)):
                     cleaned_vertex_indices.pop(1)
                 elif (first_and_second_vertex_have_same_x_and_y(cleaned_vertex_indices, screen_vertices)):
-                    print("WARNING: screen vertices have the same x AND y coordinate!")
+                    if (PRINT_WARNINGS):
+                        print("WARNING: screen vertices have the same x AND y coordinate!")
                     cleaned_vertex_indices.pop(1)
                     if (len(cleaned_vertex_indices) < 3):
-                        print("ERROR: not enough vertices in face anymore!")
+                        if (PRINT_ERRORS):
+                            print("ERROR: not enough vertices in face anymore!")
                         cleaned_merged_face['invalid'] = True
                         break
                 else:
@@ -1546,7 +1560,8 @@ def draw_fx_polygon_part(fx_state, frame_buffer, line_color, y_start, nr_of_line
         x2 = int(fx_state['x2_pos'] / 512)
         
         if (x2-x1 < 0):
-            print("ERROR: NEGATIVE fill length!")
+            if (PRINT_ERRORS):
+                print("ERROR: NEGATIVE fill length!")
             return False
         
 # FIXME: what if x2 and x1 are the same? Wont that result in a draw -of one pixel- IN REVERSE?
@@ -1651,14 +1666,16 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
         nr_of_vertices_to_remove = len(top_vertex_indices) - 2
         #print(str(vertex_indices)+'>>'+str(top_vertex_indices))
         while nr_of_vertices_to_remove > 0:
-            print("WARNING: removing redundant top vertice!")
+            if (PRINT_WARNINGS):
+                print("WARNING: removing redundant top vertice!")
             vertex_indices.pop(1)
             nr_of_vertices_to_remove -= 1
             
         #print_vertices(vertex_indices, screen_vertices)
             
         if len(vertex_indices) < 3:
-            print("ERROR: less than 3 vertices left over.")
+            if (PRINT_ERRORS):
+                print("ERROR: less than 3 vertices left over.")
 # FIXME: can we fix/prevent this?
             return None
 
@@ -1803,7 +1820,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
         polygon_bytes.append(nr_of_lines_to_draw)
 
         if (not draw_fx_polygon_part(fx_state, draw_buffer, line_color, current_y_position, nr_of_lines_to_draw)):
-            print("ERROR: not adding polygon to polygon stream since it encountered an error during drawing!")
+            if (PRINT_ERRORS):
+                print("ERROR: not adding polygon to polygon stream since it encountered an error during drawing!")
 # FIXME: can we fix/prevent this?
             return None
         current_y_position += nr_of_lines_to_draw
@@ -1827,7 +1845,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
 
             polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
             
@@ -1853,7 +1872,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
                 
@@ -1879,7 +1899,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
 
             polygon_part_height = next_left_vertex[1] - current_left_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
                 
@@ -1902,7 +1923,8 @@ def fx_sim_draw_polygon(draw_buffer, line_color_index, vertex_indices, screen_ve
             
             polygon_part_height = next_right_vertex[1] - current_right_vertex[1]
             if (polygon_part_height <= 0):
-                print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
+                if (PRINT_ERRORS):
+                    print("ERROR: not adding polygon to polygon stream since has a part with a zero or negative height!")
 # FIXME: can we fix/prevent this?
                 return None
                 
@@ -1999,7 +2021,9 @@ def draw_and_export(screen_vertices, sorted_faces, polygon_type_stats):
                 polygon_bytes = fx_sim_draw_polygon(frame_buffer, color_idx, face['vertex_indices'], screen_vertices, polygon_type_stats, colors)
                 # FIXME: do something REAL with the file_data!
                 if polygon_bytes is None:
-                    print(face)
+                    if (PRINT_WARNINGS):
+                        print('WARNING: face did not result in polygon bytes!')
+                        print(face)
                 else:
                     nr_of_polygons_in_frame += 1
                     frame_bytes += polygon_bytes
@@ -2062,26 +2086,29 @@ running = True
 
 frame_nr = 1
 # FIXME: we need proper interpolation! (now just dropping every other frame!
-increment_frame_by = 2
+org_increment_frame_by = 2
 
 # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
 if SCENE == 'U2E':
-    max_frame_nr = 1802*4
-    increment_frame_by = 7
+    max_frame_nr = 1802*5
+    org_increment_frame_by = 9
+    
 else:
     max_frame_nr = 522*2
-    increment_frame_by = 7
+    org_increment_frame_by = 7
+    
+increment_frame_by = org_increment_frame_by
 
 if DEBUG_SORTING:
     #frame_nr = 1000
     #increment_frame_by = 1
 #    frame_nr = 421            #  frame 421 is showing a large overdraw due to a large building in the background
 #    frame_nr = 1      # ALWAYS *ODD*!!
-    frame_nr = 1001*4      # ALWAYS *ODD*!!
+    frame_nr = 944*17      # ALWAYS *ODD*!!
     # IMPORTANT: by taking every 7th frame (and exporting 4 times as much frames in Blender) we are effectively converting the 35fps frames to 20fps frames!
-    max_frame_nr = 1802*4
+    max_frame_nr = 1802*17
 #    max_frame_nr = 1802*4
-    increment_frame_by = 7
+#    increment_frame_by = 7
 
 material_info = load_material_info()
 mat_info = material_info['mat_info']
@@ -2160,20 +2187,41 @@ for clr_idx, rgb64 in enumerate(palette_colors):
             
             if (PATCH_COLORS_MANUALLY):
                 if (SCENE == 'U2E'):
-                    if (clr_idx == 7):
-                        r += 1
-                    if (clr_idx == 12):
-                        r += 1
-                    if (clr_idx == 14):
-                        r += 1
-                    if (clr_idx == 15):
-                        g -= 1
-                        b -= 1
+                
+                    manual_colors_raw = [
+                        # DEFAULT (32), BLACK (16),                             GREY (16)
+                        0x000, 0x433, 0x433, 0x433, 0x433, 0x544, 0x544, 0x655, 0x655, 0x655, 0x766, 0x766, 0x877, 0x877, 0x988, 0x988,
+                        # WHITE#NEON (16)
+                        0x999, 0x999, 0xaaa, 0xaaa, 0xaaa, 0xbbb, 0xbbb, 0xccc, 0xccc, 0xddd, 0xddd, 0xddd, 0xeee, 0xeee, 0xfff, 0xfff,
+                        # GREENGRASS (32)
+                        0x232, 0x232, 0x242, 0x343, 0x343, 0x353, 0x353, 0x353, 0x464, 0x464, 0x464, 0x474, 0x474, 0x474, 0x485, 0x485,
+                        0x485, 0x595, 0x595, 0x595, 0x5a5, 0x5a5, 0x5a5, 0x5b6, 0x5b6, 0x5b6, 0x5c6, 0x5c6, 0x5c6, 0x5d6, 0x5d6, 0x5d7,
+                        # BLUE#PLASTIC (32)
+                        0x123, 0x123, 0x234, 0x234, 0x234, 0x345, 0x345, 0x345, 0x456, 0x456, 0x456, 0x567, 0x567, 0x567, 0x679, 0x679,
+                        0x679, 0x77a, 0x77a, 0x77a, 0x88b, 0x88b, 0x88b, 0x99c, 0x99c, 0x99c, 0xaad, 0xaad, 0xbae, 0xbae, 0xcbf, 0xcbf,
+                        # TALO1 (32)
+                        0x234, 0x345, 0x345, 0x345, 0x456, 0x456, 0x456, 0x467, 0x567, 0x567, 0x678, 0x678, 0x678, 0x788, 0x788, 0x788,
+                        0x899, 0x899, 0x899, 0x9aa, 0x9aa, 0x9aa, 0xabb, 0xabb, 0xabb, 0xbcc, 0xbcc, 0xbcc, 0xcdd, 0xcdd, 0xdde, 0xdde,
+                        # RED_HOUSE (32)
+                        0x322, 0x322, 0x433, 0x433, 0x544, 0x544, 0x655, 0x655, 0x655, 0x766, 0x766, 0x766, 0x877, 0x877, 0x877, 0x988,
+                        0x988, 0x988, 0xa99, 0xa99, 0xa99, 0xbaa, 0xbaa, 0xcbb, 0xcbb, 0xcbb, 0xdcc, 0xdcc, 0xdcc, 0xedd, 0xedd, 0xfee,
+                        # ORANGE (32)
+                        0xa40, 0xa40, 0xa50, 0xa50, 0xa50, 0xb60, 0xb60, 0xb60, 0xb70, 0xc70, 0xc80, 0xc80, 0xc90, 0xc90, 0xd90, 0xda0,
+                        0xda0, 0xdb0, 0xdb0, 0xec0, 0xec0, 0xed0, 0xed0, 0xfe0, 0xfe0, 0xff0, 0xff2, 0xff5, 0xff7, 0xffa, 0xffc, 0xfff,
+                        # LIGHT_BLUE (32)
+                        0x334, 0x445, 0x445, 0x445, 0x556, 0x556, 0x556, 0x667, 0x667, 0x667, 0x779, 0x779, 0x779, 0x88a, 0x88a, 0x88a,
+                        # C_GROUND (16)
+                        0x99b, 0x99b, 0x99b, 0xaac, 0xaac, 0xaac, 0xbbe, 0xbbe, 0xbbd, 0xbbd, 0xcce, 0xcce, 0xddf, 0xddf, 0xeef, 0xeef,
                         
-# FIXME: add more manual patches! Especially for the SHIP!
-# FIXME: add more manual patches! Especially for the SHIP!
-# FIXME: add more manual patches! Especially for the SHIP!
-
+                        0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5,
+                        0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0xeb5, 0x000, 0xeb5,                
+                    ]
+                    
+                    manual_color_raw = manual_colors_raw[clr_idx]
+                    r = (manual_color_raw >> 8) % 16
+                    g = (manual_color_raw >> 4) % 16
+                    b = (manual_color_raw >> 0) % 16
+                        
                 else:
                     # TODO: are there any colors to patch for the U2A scene?
                     pass
@@ -2213,6 +2261,27 @@ for color_index in mat_info:
         }
 
 
+if (PRINT_PALETTE_FOR_MANUAL_EDIT):
+    # Printing out asm for palette:
+    palette_string = ""
+    for color_index, new_color in enumerate(colors_12bit):
+        red = new_color[0]
+        green = new_color[1]
+        blue = new_color[2]
+        
+        if (color_index % 16 == 0 and color_index != 0):
+            palette_string += "\n"
+
+        palette_string += "0x" + format(red,"01x")
+        palette_string += format(green,"01x")
+        palette_string += format(blue,"01x") + ", "
+        
+    print(palette_string)
+    
+    exit()
+
+
+
 if (PRINT_PALETTE):
     # Printing out asm for palette:
     palette_string = ""
@@ -2230,6 +2299,8 @@ if (PRINT_PALETTE):
 
     print(palette_string)
     
+    exit()
+    
 polygon_type_stats = {}
 
 
@@ -2244,15 +2315,11 @@ while running:
         if event.type == pygame.KEYDOWN:
             if ALLOW_PAUSING_AND_REVERSE_PLAYBACK:
                 if event.key == pygame.K_RIGHT:
-                    increment_frame_by = 1
+                    increment_frame_by = org_increment_frame_by
                 if event.key == pygame.K_LEFT:
-                    increment_frame_by = -1
+                    increment_frame_by = -org_increment_frame_by
                 if event.key == pygame.K_SPACE:
                     increment_frame_by = 0
-                if event.key == pygame.K_PERIOD:
-                    frame_nr += 100
-                if event.key == pygame.K_COMMA:
-                    frame_nr -= 100
                 if event.key == pygame.K_PERIOD:
                     frame_nr += 100
                 if event.key == pygame.K_COMMA:
@@ -2311,7 +2378,9 @@ while running:
             filtered_object_faces = []
             for object_face_index, object_face in enumerate(object_faces):
 
-                # FIXME: HARDCODED: Problematic face on ship
+# FIXME: HARDCODED: Problematic face on ship
+# FIXME: HARDCODED: Problematic face on ship
+# FIXME: HARDCODED: Problematic face on ship
                 if (object_face_index != 36):  
                     continue
                     
@@ -2329,6 +2398,7 @@ while running:
     camera_box = triangulated_world_objects['CameraBox']
     camera_info = get_camera_info_from_camera_box(camera_box)
     del triangulated_world_objects['CameraBox']
+
     
     if PRINT_PROGRESS: print("Transform into view space")
     # Rotate and translate all vertices in the world so camera position becomes 0,0,0 and forward direction becomes 0,0,-1 (+up = 0,1,0)
@@ -2522,7 +2592,7 @@ while running:
     
 
     if (DRAW_BLACK_PIXELS):
-        for y in range(200):
+        for y in range(150):
             for x in range(320):
                 if (black_pixels[y*320+x] == 1):
                     pixel_color = (0xFF, 0xFF, 0x00)

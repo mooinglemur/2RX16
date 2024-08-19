@@ -1,0 +1,9 @@
+CHANGES:
+- end text (X16)?
+  - fcirto (only ONE face??)  -> BECOMES visible FIRST! is removed LATER!
+  - logo                      -> BECOMES visible LATER!
+
+BUGs:
+- ship disappears during forest
+- wall has glitch after forest
+- colors high building 'roundabout' (+ glitches?)
