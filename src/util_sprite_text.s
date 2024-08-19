@@ -582,12 +582,14 @@ done:
 	sbc xpos+1
 	sta xpos+1
 
+.if 0
 	lda #10
 	sta $9fbb
 	lda xpos
 	sta $9fb9
 	lda xpos+1
 	sta $9fba
+.endif
 end:
 	rts
 

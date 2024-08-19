@@ -83,6 +83,9 @@ entry:
 	lda #$ff
 	sta Vera::Reg::L1VScrollH
 
+	stz Vera::Reg::L1HScrollL
+	stz Vera::Reg::L1HScrollH
+
 	lda #0
 	jsr setup_palette_fade
 	lda #64
