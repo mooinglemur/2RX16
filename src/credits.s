@@ -578,6 +578,10 @@ dir:
 .endproc
 
 .proc setup_vera
+	DISABLE_SPRITES
+
+	WAITVSYNC
+
 	; set VERA layers up
 	; show only sprites
 	stz Vera::Reg::Ctrl
@@ -668,8 +672,8 @@ crawl_text:
 	.byte "Porting Second Reality to the Commander X16",0
 	.word $57
 	.byte "was an idea that came to me during",0
-	.word $a9
-	.byte "VCF Midwest 17 in 2023.",0
+	.word $aa
+	.byte "VCF Midwest 18 in 2023.",0
 	EMPTY_LINE
 	.word $a0
 	.byte "VERA's FX extensions had",0

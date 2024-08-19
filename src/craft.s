@@ -932,7 +932,7 @@ continue:
 	sbc CURRENT_RAM_BANK
 	bcs :+
 	adc #(LAST_RING_BANK+1)-POLYGON_DATA_RAM_BANK
-:	sta $9fba
+:	;sta $9fba
 	cmp #3
 	bcc stream_pump ; dangerously low
 
