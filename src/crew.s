@@ -18,9 +18,15 @@
 .import target_palette3
 .import target_palette4
 
+.import graceful_fail
 
 .macpack longbranch
 
+TILES0 = $00000
+TILES1 = $08000
+
+MAP0 = $10000
+MAP1 = $18000
 
 .include "x16.inc"
 .include "macros.inc"
@@ -33,21 +39,60 @@ entry:
 	; restore it to 240p if we had it set that way
 	; since this part of the demo is high res
 
-	; fade to deep blue
+	jsr blank_upper
 
-	ldx #32
-:	lda #$02
-	sta target_palette-1,x
-	dex
-	lda #$28
-	sta target_palette-1,x
-	dex
-	bne :-
+	LOADFILE "CREW.PAL", 0, target_palette
+	LOADFILE "CREWTILES0.DAT", 0, .loword(TILES0), ^TILES0
+	LOADFILE "CREWTILES1.DAT", 0, .loword(TILES1), ^TILES1
+	LOADFILE "CREWMAP0.DAT", 0, .loword(MAP0), ^MAP0
+	LOADFILE "CREWMAP1.DAT", 0, .loword(MAP1), ^MAP1
+
+	WAITVSYNC
+
+	; Disable 240p, activate layers 0 and 1
+	lda Vera::Reg::DCVideo
+	and #%00000111
+	ora #%00110000
+	sta Vera::Reg::DCVideo
+
+	; Set scale
+	lda #$80
+	sta Vera::Reg::DCVScale
+	sta Vera::Reg::DCHScale
+
+	; Setup L0/L1
+	lda #%01100010
+	sta Vera::Reg::L0Config
+	sta Vera::Reg::L1Config
+
+	lda #((TILES0 >> 11) << 2)
+	sta Vera::Reg::L0TileBase
+
+	lda #((TILES1 >> 11) << 2)
+	sta Vera::Reg::L1TileBase
+
+	lda #(MAP0 >> 9)
+	sta Vera::Reg::L0MapBase
+
+	lda #(MAP1 >> 9)
+	sta Vera::Reg::L1MapBase
+
+	lda #$38
+	sta Vera::Reg::L1VScrollL
+
+	lda #$ff
+	sta Vera::Reg::L1VScrollH
 
 	lda #0
 	jsr setup_palette_fade
+	lda #64
+	jsr setup_palette_fade2
+	lda #128
+	jsr setup_palette_fade3
+	lda #192
+	jsr setup_palette_fade4
 
-	PALETTE_FADE 1
+	PALETTE_FADE_FULL 1
 
 	MUSIC_SYNC $E0
 
@@ -71,4 +116,20 @@ entry:
 	pla
 	sta Vera::Reg::DCVideo
 
+	stz Vera::Reg::L1VScrollL
+	stz Vera::Reg::L1VScrollH
+
 	rts
+
+.proc blank_upper
+	VERA_SET_ADDR $10000, 1
+
+	ldy #$f9
+	ldx #0
+:	stz Vera::Reg::Data0
+	dex
+	bne :-
+	dey
+	bne :-
+	rts
+.endproc
