@@ -582,7 +582,7 @@ done:
 	sbc xpos+1
 	sta xpos+1
 
-.if 0
+.if 1
 	lda #10
 	sta $9fbb
 	lda xpos

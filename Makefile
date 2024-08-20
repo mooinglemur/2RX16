@@ -18,11 +18,11 @@ SDCARD	:= ./sdcard.img
 SDCARD2	:= ./sdcard2.img
 MAPFILE := ./$(PROJECT).map
 SYMFILE := ./$(PROJECT).sym
+GIT_REV_BIN := ./ROOT/GIT-REV.BIN
 
 ifdef ASSETBLOB
 	ASFLAGS += -D ASSETBLOB=1
 endif
-
 
 default: all
 
@@ -47,14 +47,19 @@ $(EXE2):
 	done
 	rm -f blob.tmp
 	mv -v $(EXE) $(EXE2)
-	
+
 $(EXE): $(OBJS) $(CONFIG)
-	$(LD) $(LDFLAGS) $(OBJS) -m $(MAPFILE) -Ln $(SYMFILE) extern/zsmkit.lib -o $@ 
+	$(LD) $(LDFLAGS) $(OBJS) -m $(MAPFILE) -Ln $(SYMFILE) extern/zsmkit.lib -o $@
 ifndef ASSETBLOB
 	cp -v $(EXE) ROOT/
 endif
 
-$(OBJ)/%.o: $(SRC)/%.s $(SRC)/*.inc | $(OBJ)
+$(GIT_REV_BIN):
+	/bin/echo -n '.byte "' > $@
+	git diff --quiet && /bin/echo -n $$(git rev-parse --short=8 HEAD || /bin/echo "00000000") || /bin/echo -n $$(/bin/echo -n $$(git rev-parse --short=7 HEAD || /bin/echo "0000000"); /bin/echo -n '+') >> $@
+	/bin/echo '",0' >> $@
+
+$(OBJ)/%.o: $(SRC)/%.s $(SRC)/*.inc | $(OBJ) $(GIT_REV_BIN)
 	$(AS) $(ASFLAGS) $< -o $@
 
 $(OBJ):
@@ -83,7 +88,7 @@ box: $(EXE) $(SDCARD)
 
 run: $(EXE) $(SDCARD)
 	x16emu -sdcard $(SDCARD) -prg $(EXE) -debug -scale 2 -run
-	
+
 blobbox: $(EXE2) $(SDCARD2)
 	box16 -sdcard $(SDCARD2) -prg $(EXE2) -run
 

@@ -94,6 +94,19 @@ entry:
 
 	MUSIC_SYNC $FA
 
+	ldx #54
+	stx cur_x
+	ldy #24
+	sty cur_y
+
+	ldx #<git_rev
+	ldy #>git_rev
+	lda #0
+	jsr do_bios_text
+
+	stz cur_x
+	stz cur_y
+
 	; write first line banner
 	BIOS_WRITE_TEXT "     VERA VGA BIOS v"
 
@@ -681,3 +694,6 @@ bottom:
 textpalette:
 	.word $0000,$000a,$00a0,$00aa,$0a00,$0a0a,$0a50,$0aaa
 	.word $0555,$055f,$05f5,$05ff,$0f55,$0f5f,$0ff5,$0fff
+
+git_rev:
+	.include "../ROOT/GIT-REV.BIN"

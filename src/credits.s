@@ -725,8 +725,8 @@ crawl_text:
 	EMPTY_LINE
 	.word $10b
 	.byte "zerobyte",0
-	.word $78
-	.byte "for being the brainchild of .zsm",0
+	.word $59
+	.byte "for being in the X16 audio vanguard",0
 	EMPTY_LINE
 	.word $100
 	.byte "tildearrow",0
