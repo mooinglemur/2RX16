@@ -6,6 +6,8 @@
 
 .import target_palette
 
+.import mhz
+
 .import scenevector
 
 .macpack longbranch
@@ -35,12 +37,22 @@ cont:
 .endmacro
 
 .segment "DOSBOOT_ZP": zeropage
-cur_x: .res 1
-cur_y: .res 1
-cur_blink: .res 1
+cur_x:
+	.res 1
+cur_y:
+	.res 1
+cur_blink:
+	.res 1
 
-txtptr: .res 2
-memtmp: .res 2
+txtptr:
+	.res 2
+memtmp:
+	.res 2
+color:
+	.res 1
+warn:
+	.res 1
+
 .segment "DOSBOOT"
 entry:
 	stz Vera::Reg::Ctrl
@@ -75,6 +87,10 @@ entry:
 	; load energy star tiles into VRAM
 	LOADFILE "DOS-ESTAR.VTS", 0, $4000, 0
 
+	lda #7
+	sta color
+
+	stz warn
 
 	MUSIC_SYNC $FA
 
@@ -179,11 +195,34 @@ finalramtest:
 	; or a NOP NOP on older "broken" emulators
 	bcc c816
 
-	BIOS_WRITE_TEXT "CPU: Western Design Center 65C02\n"
-	bra soundchip
+	BIOS_WRITE_TEXT "CPU: Western Design Center 65C02 @"
+	bra outmhz
 
 c816:
-	BIOS_WRITE_TEXT "CPU: Western Design Center 65C816\n"
+	BIOS_WRITE_TEXT "CPU: Western Design Center 65C816 @"
+outmhz:
+	ldx mhz
+	cpx #8
+	bcs :+
+	lda #12
+	sta color
+	inc warn
+:	cpx #14
+	bcc okmhz
+	inc warn
+	lda #14
+	sta color
+	BIOS_WRITE_TEXT "UNKNOWN MHz\n"
+	bra aftermhz
+okmhz:
+	ldy #0
+	jsr bios_output_number
+
+	BIOS_WRITE_TEXT "MHz\n"
+aftermhz:
+	lda #7
+	sta color
+
 soundchip:
 
 	JSRFAR ym_get_chip_type, $0A
@@ -221,6 +260,31 @@ endsoundchk:
 
 	BIOS_WRITE_TEXT "OK\n"
 
+	lda warn
+	beq after_warn
+
+	lda #14
+	sta color
+
+	BIOS_WRITE_TEXT "\n!!! UNSUPPORTED CPU CONFIG, DEMO MAY RUN IMPROPERLY OR NOT AT ALL !!!\n"
+
+	VERA_SET_ADDR ((Vera::VRAM_psg)+60), 1
+
+	lda #<200
+	sta Vera::Reg::Data0
+
+	lda #>200
+	sta Vera::Reg::Data0
+
+	lda #$f8
+	sta Vera::Reg::Data0
+
+	lda #$3f
+	sta Vera::Reg::Data0
+
+	lda #7
+	sta color
+after_warn:
 
 	MUSIC_SYNC $FD
 
@@ -362,6 +426,8 @@ start:
 	beq lf
 	cmp #9
 	beq bs
+	sta Vera::Reg::Data0
+	lda color
 	sta Vera::Reg::Data0
 	inc cur_x
 	iny

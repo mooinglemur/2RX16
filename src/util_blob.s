@@ -24,7 +24,10 @@
 	jsr X16::Kernal::SETNAM
 
 	jsr X16::Kernal::OPEN
-	rts
+
+	bcc :+
+	jmp graceful_fail
+:	rts
 fn:
 	.byte "REALITY.X16"
 FNLEN = * - fn
@@ -83,7 +86,7 @@ vreadmax:
 memory:
 	stx blob_target_ptr
 	sty blob_target_ptr+1
-	
+
 	ldx #1
 	jsr X16::Kernal::CHKIN
 readloop:

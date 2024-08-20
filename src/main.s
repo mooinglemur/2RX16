@@ -9,6 +9,8 @@
 .export scenevector
 .export graceful_fail
 
+.export mhz
+
 .import zero_entire_palette_and_target
 .import zero_entire_target
 
@@ -44,6 +46,8 @@
 start:
 	jmp main
 .segment "BSS"
+mhz:
+	.res 1
 
 .segment "ZEROPAGE"
 blob_to_read:
@@ -119,6 +123,12 @@ SCENE = $4800
 	lda #15
 	jsr X16::Kernal::CLOSE
 after_autotx:
+	; disable mouse
+	lda #0
+	tax
+	tay
+
+	jsr X16::Kernal::MOUSE_CONFIG
 
 	PALETTE_FADE 2
 .ifndef SKIP_SONG0
@@ -625,7 +635,7 @@ tmp3:
 
 ; comment this out (or uncomment) if the assert below triggers due to
 ; unfortunate page alignment
-.res 10
+;.res 10
 
 .proc measure_machine_speed: near
 	WAITVSYNC
@@ -643,8 +653,8 @@ busyloop:
 	bne busyloop
 	dec
 	bne busyloop
-
-.assert (<busyloop) < 246, error, "measure_machine_speed busyloop crosses a page boundary within the loop, it must be moved"
+endbusyloop:
+.assert (>busyloop) = (>endbusyloop), error, "measure_machine_speed busyloop crosses a page boundary within the loop, it must be moved"
 
 	jsr X16::Kernal::RDTIM
 	sec
@@ -660,12 +670,14 @@ busyloop:
 	bcc mhz8
 	cmp #18
 	bcc mhz6
-	cmp #28
-	bcc mhz4
-	cmp #56
-	bcc mhz2
+	cmp #32
+	jcc mhz4
+	cmp #64
+	jcc mhz2
 
 mhz1:
+	lda #1
+	sta mhz
 	lda #<1000000
 	sta machine_speed
 	lda #>1000000
@@ -674,6 +686,8 @@ mhz1:
 	sta machine_speed+2
 	rts
 mhz14:
+	lda #14
+	sta mhz
 	lda #<14000000
 	sta machine_speed
 	lda #>14000000
@@ -682,6 +696,8 @@ mhz14:
 	sta machine_speed+2
 	rts
 mhz12:
+	lda #12
+	sta mhz
 	lda #<12000000
 	sta machine_speed
 	lda #>12000000
@@ -690,6 +706,8 @@ mhz12:
 	sta machine_speed+2
 	rts
 mhz10:
+	lda #10
+	sta mhz
 	lda #<10000000
 	sta machine_speed
 	lda #>10000000
@@ -698,6 +716,8 @@ mhz10:
 	sta machine_speed+2
 	rts
 mhz8:
+	lda #8
+	sta mhz
 	lda #<8000000
 	sta machine_speed
 	lda #>8000000
@@ -706,6 +726,8 @@ mhz8:
 	sta machine_speed+2
 	rts
 mhz6:
+	lda #6
+	sta mhz
 	lda #<6000000
 	sta machine_speed
 	lda #>6000000
@@ -714,6 +736,8 @@ mhz6:
 	sta machine_speed+2
 	rts
 mhz4:
+	lda #4
+	sta mhz
 	lda #<4000000
 	sta machine_speed
 	lda #>4000000
@@ -722,6 +746,8 @@ mhz4:
 	sta machine_speed+2
 	rts
 mhz2:
+	lda #2
+	sta mhz
 	lda #<2000000
 	sta machine_speed
 	lda #>2000000

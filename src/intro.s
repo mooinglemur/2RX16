@@ -1181,7 +1181,7 @@ prebgloop:
 	rts
 card1:
 	SPRITE_TEXT 65, 60, 1, "A showcase by"
-	SPRITE_TEXT 103, 85, 1, "TEAM FX"
+	SPRITE_TEXT 103, 85, 1, "Team FX"
 	jmp docolor
 card2:
 	SPRITE_TEXT 82, 60, 1, "Presented at"

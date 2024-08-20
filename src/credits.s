@@ -858,6 +858,7 @@ crawl_text:
 	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE
+	EMPTY_LINE
 	.word $91
 	.byte "Thank you for experiencing",0
 	.word $ca

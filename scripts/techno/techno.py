@@ -418,7 +418,28 @@ def run():
                         sc = 1.5
                         bu = 1
                         a -= su/384 * math.pi * 2
+                        sp = 0
+                    elif s > 850:
+                        sc *= 1/(bv**0.18)
+                        bu = 1
+                        a -= su/256 * math.pi * 2
+                        su /= 1.01
+                        sp = 0
+                        xoff += 3
+                    elif s > 640:
+                        sc = 1
+                        bu = 1
+                        a -= su/256 * math.pi * 2
+                        su *= 1.008
+                        sp += math.pi/1000
+                        xoff += 1
+                    elif s > 639:
+                        sc *= 1/(bv**0.18)
+                        bu = 1
+                        a -= su/256 * math.pi * 2
+                        sp = 0 #(-1)*math.pi/8
                         su = 2
+                        xoff += 3
                     elif s > 500:
                         sc *= 1/(bv**0.18)
                         bu = 1

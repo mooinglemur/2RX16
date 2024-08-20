@@ -406,8 +406,6 @@ creature_crt_fadeout:
 
 	stz slide_off_pos
 
-	stz old_syncval
-
 	stz kbflash
 
 	lda #CHOREO_BANK
@@ -416,6 +414,8 @@ creature_crt_fadeout:
 	stz ptr
 	lda #$a0
 	sta ptr+1
+
+	WAITVSYNC
 
 	; set up screen
 	; set VERA layers up
@@ -461,6 +461,10 @@ creature_crt_fadeout:
 	; mainly for reset of cache index
 	stz Vera::Reg::FXMult
 	stz Vera::Reg::Ctrl
+
+	lda #$47
+	jsr flashit
+	stz old_syncval
 
 	ldy #0
 newframe:
@@ -1112,15 +1116,15 @@ DIMLIGHT = $0788
 DIMWHITE = $0888
 
 brightpalsm1:
-	.word technopal_bright0-1, technopal_bright01-1, technopal_bright012-1, technopal_bright0123-1
+	.word technopal_bright02-1, technopal_bright01-1, technopal_bright23-1, technopal_bright0123-1
 dimpalsm1:
-	.word technopal_dim0-1, technopal_dim01-1, technopal_dim012-1, technopal_dim0123-1
+	.word technopal_dim02-1, technopal_dim01-1, technopal_dim23-1, technopal_dim0123-1
 
-technopal_bright0:
+technopal_bright02:
 	.word BLACK, DARK, BLACK, DARK
+	.word DARK, MED, DARK, MED
 	.word BLACK, DARK, BLACK, DARK
-	.word BLACK, DARK, BLACK, DARK
-	.word BLACK, DARK, BLACK, DARK
+	.word DARK, MED, DARK, MED
 
 technopal_bright01:
 	.word BLACK, DARK, DARK, MED
@@ -1128,11 +1132,11 @@ technopal_bright01:
 	.word BLACK, DARK, DARK, MED
 	.word BLACK, DARK, DARK, MED
 
-technopal_bright012:
-	.word BLACK, DARK, DARK, MED
-	.word DARK, MED, MED, LIGHT
-	.word BLACK, DARK, DARK, MED
-	.word DARK, MED, MED, LIGHT
+technopal_bright23:
+	.word BLACK, BLACK, BLACK, BLACK
+	.word DARK, DARK, DARK, DARK
+	.word DARK, DARK, DARK, DARK
+	.word MED, MED, MED, MED
 
 technopal_bright0123:
 	.word BLACK, DARK, DARK, MED
@@ -1140,11 +1144,11 @@ technopal_bright0123:
 	.word DARK, MED, MED, LIGHT
 	.word MED, LIGHT, LIGHT, WHITE
 
-technopal_dim0:
+technopal_dim02:
 	.word BLACK, DIMDARK, BLACK, DIMDARK
+	.word DIMDARK, DIMMED, DIMDARK, DIMMED
 	.word BLACK, DIMDARK, BLACK, DIMDARK
-	.word BLACK, DIMDARK, BLACK, DIMDARK
-	.word BLACK, DIMDARK, BLACK, DIMDARK
+	.word DIMDARK, DIMMED, DIMDARK, DIMMED
 
 technopal_dim01:
 	.word BLACK, DIMDARK, DIMDARK, DIMMED
@@ -1152,11 +1156,11 @@ technopal_dim01:
 	.word BLACK, DIMDARK, DIMDARK, DIMMED
 	.word BLACK, DIMDARK, DIMDARK, DIMMED
 
-technopal_dim012:
-	.word BLACK, DIMDARK, DIMDARK, DIMMED
-	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
-	.word BLACK, DIMDARK, DIMDARK, DIMMED
-	.word DIMDARK, DIMMED, DIMMED, DIMLIGHT
+technopal_dim23:
+	.word BLACK, BLACK, BLACK, BLACK
+	.word DIMDARK, DIMDARK, DIMDARK, DIMDARK
+	.word DIMDARK, DIMDARK, DIMDARK, DIMDARK
+	.word DIMMED, DIMMED, DIMMED, DIMMED
 
 technopal_dim0123:
 	.word BLACK, DIMDARK, DIMDARK, DIMMED
