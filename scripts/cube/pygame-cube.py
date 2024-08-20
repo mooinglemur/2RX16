@@ -139,16 +139,18 @@ def calculate_texture_increments(vertices):
 
 def rotate_cube(step):
     global scale
-    # Temporary rotation choreography
-    # This will eventually determine the entire sequence
-    # based on the step (frame) number
-    angle_x = step*2*math.pi/360/5
+    # WARNING: changing these values could lead to the choreo exceeding the max of 256K!
+
+    sx = math.sin(step/280)*259
+    sy = math.sin(step/360)*330
+
+    angle_x = sx*2*math.pi/360
 #    angle_x = 0
-    angle_y = step*2*math.pi/360
+    angle_y = sy*2*math.pi/360
 #    angle_y = 0
 #    angle_x = angle_y
     if step > 64:
-        angle_z = (step-64)*2*math.pi/360/17
+        angle_z = (step-64)*2*math.pi/360/21
     else:
         angle_z = 0
 #    angle_z = 0
