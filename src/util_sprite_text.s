@@ -16,6 +16,9 @@
 .import addrm_per_hrow_8bit
 .import addrh_per_hrow_8bit
 
+.import erasejmp
+.importzp scroll_jiffy
+
 .include "x16.inc"
 
 .macpack longbranch
@@ -26,6 +29,12 @@ zptmp1:
 zptmp2:
 	.res 1
 scroll_step:
+	.res 1
+stamp_yoff:
+	.res 2
+stamp_start_frame:
+	.res 1
+stamp_adv_lines:
 	.res 1
 
 .segment "BSS"
@@ -157,28 +166,12 @@ loop:
 	adc #%00010000
 	sta Vera::Reg::AddrH
 
-	ldy zptmp2
-	cpy #9
-	bcc eraseloop0
-.repeat 8
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	stz Vera::Reg::Data0
-.endrepeat
-	tya
-	sec
-	sbc #8
-	tay
-eraseloop0:
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	stz Vera::Reg::Data0
-	dey
-	bne eraseloop0
+	phx
+	lda zptmp2
+	asl
+	tax
+	jsr erasejmp
+	plx
 
 	stz Vera::Reg::Ctrl
 
@@ -207,29 +200,12 @@ eraseloop0:
 	adc #%00010000
 	sta Vera::Reg::AddrH
 
-	ldy zptmp2
-	cpy #9
-	bcc eraseloop1
-.repeat 8
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	stz Vera::Reg::Data0
-.endrepeat
-	tya
-	sec
-	sbc #8
-	tay
-eraseloop1:
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	lda Vera::Reg::Data1
-	stz Vera::Reg::Data0
-	dey
-	bne eraseloop1
-
+	phx
+	lda zptmp2
+	asl
+	tax
+	jsr erasejmp
+	plx
 next:
 	lda scroll_step
 	beq after_step
@@ -385,6 +361,39 @@ SAH = * - 1
 	sta Vera::Reg::Data0
 	jmp incidx
 done:
+.if 0
+	lda xpos
+	sec
+	sbc start_xpos
+	sta xpos
+	lda xpos+1
+	sbc start_xpos+1
+	lsr
+	sta xpos+1
+	lda xpos
+	ror
+	sta xpos
+
+	lda xpos
+	ora xpos+1
+	beq end
+
+	lda #<160
+	sec
+	sbc xpos
+	sta xpos
+	lda #>160
+	sbc xpos+1
+	sta xpos+1
+
+	lda #10
+	sta $9fbb
+	lda xpos
+	sta $9fb9
+	lda xpos+1
+	sta $9fba
+.endif
+end:
 	rts
 .endproc
 
@@ -398,7 +407,27 @@ done:
 
 	stx SPRTXT
 	sty SPRTXT+1
+
+	lda #<(64000 + 160)
+	sta stamp_yoff
+	lda #>(64000 + 160)
+	sta stamp_yoff+1
+
+	stz stamp_adv_lines
+
 	bra mainloop
+punct1:
+	sbc #$20 ; +1 for carry clear
+	tax
+	lda punct1tbl,x
+	beq nochar
+	jmp char
+punct2:
+	sbc #$39 ; +1 for carry clear
+	tax
+	lda punct2tbl,x
+	beq nochar
+	jmp char
 nochar:
 	lda xpos
 	clc
@@ -410,20 +439,19 @@ nochar:
 	beq mainloop
 	tya
 	ldy #0
-	bra char
-punct1:
-	sbc #$20 ; +1 for carry clear
-	tax
-	lda punct1tbl,x
-	beq nochar
-	bra char
-punct2:
-	sbc #$39 ; +1 for carry clear
-	tax
-	lda punct2tbl,x
-	beq nochar
-	bra char
+	jmp char
+frame_adv:
+	inc stamp_adv_lines
+	lda scroll_jiffy
+	adc #1 ; plus carry = 2
+	sta scroll_jiffy
+	jsr bmp_scroll_up_2bpp
 mainloop:
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc scroll_jiffy
+	cmp #2
+	bcs frame_adv
 	lda #13
 	sta pitch
 	ldy #0
@@ -456,9 +484,9 @@ SPRTXT = * - 2
 	ldy #74
 	bra char
 :   cmp #$61
-	bcc nochar ; temporarily skip ASCII in between upper and lower
+	jcc nochar ; temporarily skip ASCII in between upper and lower
 	cmp #$7b
-	bcs nochar ; anything above the lowercase is null
+	jcs nochar ; anything above the lowercase is null
 	sec
 	sbc #$47 ; shift down into sprite range
 	cmp #38 ; letter m has second part
@@ -498,9 +526,9 @@ char:
 	lsr tmp1
 	ror
 	clc
-	adc #<64000
+	adc stamp_yoff
 	sta Vera::Reg::AddrL
-	lda #>64000
+	lda stamp_yoff+1
 	adc tmp1
 	sta Vera::Reg::AddrM
 
@@ -555,9 +583,10 @@ done:
 	lda zptmp2
 	sta row_end,x
 	inx
-	cpx #210
+	cpx #211
 	bne :-
 
+.if 0
 	lda xpos
 	sec
 	sbc start_xpos
@@ -582,7 +611,6 @@ done:
 	sbc xpos+1
 	sta xpos+1
 
-.if 1
 	lda #10
 	sta $9fbb
 	lda xpos
@@ -590,6 +618,7 @@ done:
 	lda xpos+1
 	sta $9fba
 .endif
+	lda stamp_adv_lines
 end:
 	rts
 

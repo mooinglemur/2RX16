@@ -1180,17 +1180,17 @@ prebgloop:
 	jne nosync
 	rts
 card1:
-	SPRITE_TEXT 65, 60, 1, "A showcase by"
-	SPRITE_TEXT 103, 85, 1, "Team FX"
+	SPRITE_TEXT $42, 60, 1, "A showcase by"
+	SPRITE_TEXT $6a, 85, 1, "Team FX"
 	jmp docolor
 card2:
-	SPRITE_TEXT 82, 60, 1, "Presented at"
-	SPRITE_TEXT 60, 85, 1, "VCF Midwest 19"
-	SPRITE_TEXT 60, 110, 1, "September 2024"
+	SPRITE_TEXT $53, 60, 1, "Presented at"
+	SPRITE_TEXT $3f, 85, 1, "VCF Midwest 19"
+	SPRITE_TEXT $3d, 110, 1, "September 2024"
 	bra docolor
 card3:
-	SPRITE_TEXT 150, 70, 1, "in"
-	SPRITE_TEXT 50, 100, 1, "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e"
+	SPRITE_TEXT $95, 70, 1, "in"
+	SPRITE_TEXT $30, 100, 1, "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e"
 	bra docolor
 docolor:
 	lda #$55
@@ -1303,22 +1303,22 @@ noscroll:
 	bne tbgscrollloop
 	rts
 card4:
-	SPRITE_TEXT 40, 70, 1, "Second Reality X16"
+	SPRITE_TEXT $2a, 70, 1, "Second Reality X16"
 	jmp docolor1
 card5:
-	SPRITE_TEXT 128, 40, 1, "Music"
-	SPRITE_TEXT 82, 70, 1, "arranged by"
-	SPRITE_TEXT 80, 100, 1, "MooingLemur"
+	SPRITE_TEXT $80, 40, 1, "Music"
+	SPRITE_TEXT $53, 70, 1, "arranged by"
+	SPRITE_TEXT $52, 100, 1, "MooingLemur"
 	jmp docolor1
 card6:
-	SPRITE_TEXT 130, 40, 1, "Code"
-	SPRITE_TEXT 100, 70, 1, "JeffreyH"
-	SPRITE_TEXT 80, 100, 1, "MooingLemur"
+	SPRITE_TEXT $84, 40, 1, "Code"
+	SPRITE_TEXT $69, 70, 1, "JeffreyH"
+	SPRITE_TEXT $52, 100, 1, "MooingLemur"
 	jmp docolor1
 card7:
-	SPRITE_TEXT 90, 40, 1,    "Inspired by"
-	SPRITE_TEXT 75, 70, 1,  "Second Reality"
-	SPRITE_TEXT 60, 97, 1,  "by Future Crew"
+	SPRITE_TEXT $58, 40, 1,    "Inspired by"
+	SPRITE_TEXT $45, 70, 1,  "Second Reality"
+	SPRITE_TEXT $3a, 97, 1,  "by Future Crew"
 	bra docolor1
 docolor1:
 	lda #$55

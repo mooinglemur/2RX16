@@ -126,6 +126,7 @@ POS_AND_ROTATE_BANK: .res 1
 
 TEMP_VAR: .res 1
 
+jiffy: .res 1
 
 .segment "CREATURE_BSS"
 
@@ -200,7 +201,7 @@ entry:
 	jsr clear_bitmap_memory   ; SLOW!
 
 	; load the background into VRAM
-	LOADFILE "LENS-BACKGROUND.DAT", 0, .loword(BITMAP_VRAM_ADDRESS), <(.hiword(BITMAP_VRAM_ADDRESS))
+	LOADFILE "LENS-BACKGROUND.DAT", 0, .loword(BITMAP_VRAM_ADDRESS), ^BITMAP_VRAM_ADDRESS
 
 	; set up VERA params
 	jsr setup_vera_for_layer0_bitmap
@@ -256,6 +257,9 @@ entry:
 	LOADFILE "ROTAZOOM-POS-ROTATE.DAT", POS_AND_ROTATE_START_BANK, POS_AND_ROTATE_RAM_ADDRESS
 
 	MUSIC_SYNC $62
+
+	jsr X16::Kernal::RDTIM
+	sta jiffy
 
 	; If set the first 4 sprites will be enabled, the others not
 	lda #%00001000  ; Z-depth = 2
@@ -324,7 +328,7 @@ move_lens:
 	jsr download_and_upload_quadrants
 
 	lda PREFADE
-	beq dofade	
+	beq dofade
 	dec PREFADE
 	bra nofade
 dofade:
@@ -335,7 +339,14 @@ nofade:
 	lda syncval
 	cmp #$64
 	bcs bail_lens
-	WAITVSYNC
+:	WAITVSYNC
+	sec
+	sbc jiffy
+	cmp #2
+	bcc :-
+	lda jiffy
+	adc #1 ; plus carry
+	sta jiffy
 
 	jsr flush_palette2
 	jsr flush_palette3

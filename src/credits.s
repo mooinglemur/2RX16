@@ -24,6 +24,10 @@
 
 .import graceful_fail
 
+.export erasejmp
+
+.exportzp scroll_jiffy
+
 .macpack longbranch
 
 SCREENSHOT_BASE = $00000
@@ -56,6 +60,8 @@ ptr1:
 	.res 2
 lines:
 	.res 1
+scroll_jiffy:
+	.byte 0
 
 .segment "CREDITS"
 entry:
@@ -110,22 +116,7 @@ loop:
 
 
 .proc do_crawl
-	; attempt to scroll on even fields on NTSC/RGB, imperfect check
 	WAITVSYNC
-	sta jiffy
-	lda #1
-	bit Vera::Reg::IEN
-	bvs :+
-	lda #0
-:	eor jiffy
-	and #1
-	sta jiffy
-	lda Vera::Reg::DCVideo
-	rol
-	rol
-	and #1
-	eor jiffy
-	sta jiffy
 
 	; load title font
 	LOADFILE "TITLEFONT.VTS", 0, $8000, 1
@@ -133,6 +124,8 @@ loop:
 	jsr blank
 
 	WAITVSYNC
+	sta scroll_jiffy
+
 	lda Vera::Reg::DCVideo
 	and #%10000111 ; clear 240p
 	ora #%00010000 ; layer 0 only
@@ -160,7 +153,33 @@ loop:
 	sta ptr1
 	lda #>(crawl_text-1)
 	sta ptr1+1
-next_string:
+
+	lda #1
+	sta lines
+wai_scroll_loop:
+	wai
+scroll_loop:
+	jsr X16::Kernal::RDTIM
+	sec
+	sbc scroll_jiffy
+	cmp #2
+	bcc wai_scroll_loop
+	lda scroll_jiffy
+	adc #1 ; plus 1 for carry
+	sta scroll_jiffy
+
+scroll:
+	jsr bmp_scroll_up_2bpp
+	dec lines
+	bne scroll_loop
+do_next_string:
+	jsr next_string
+	bcc scroll_loop
+done:
+	rts
+.endproc
+
+.proc next_string
 	INCPTR1
 	lda (ptr1)
 	tax
@@ -175,6 +194,11 @@ next_string:
 	ldy ptr1+1
 	lda #15
 	jsr sprite_text_stamp
+	sta lines
+	lda #31
+	sec
+	sbc lines
+	sta lines
 
 advance_ptr:
 	lda (ptr1)
@@ -182,22 +206,11 @@ advance_ptr:
 	INCPTR1
 	bra advance_ptr
 eos:
-	lda #32
-	sta lines
-scroll_loop:
-	WAITVSYNC
-	and #1
-	cmp jiffy
-	bne scroll_loop
-
-	jsr bmp_scroll_up_2bpp
-	dec lines
-	bne scroll_loop
-	jmp next_string
-done:
+	clc
 	rts
-jiffy:
-	.byte 0
+done:
+	sec
+	rts
 .endproc
 
 .proc do_cards
@@ -619,6 +632,256 @@ palloop:
 	rts
 .endproc
 
+.proc erasejmp
+	jmp (erasetbl, x)
+.endproc
+
+erasetbl:
+	.word erase0
+	.word erase1
+	.word erase2
+	.word erase3
+	.word erase4
+	.word erase5
+	.word erase6
+	.word erase7
+	.word erase8
+	.word erase9
+	.word erase10
+	.word erase11
+	.word erase12
+	.word erase13
+	.word erase14
+	.word erase15
+	.word erase16
+	.word erase17
+	.word erase18
+	.word erase19
+	.word erase20
+	.word erase21
+	.word erase22
+	.word erase23
+	.word erase24
+	.word erase25
+	.word erase26
+	.word erase27
+	.word erase28
+	.word erase29
+	.word erase30
+	.word erase31
+	.word erase32
+	.word erase33
+	.word erase34
+	.word erase35
+	.word erase36
+	.word erase37
+	.word erase38
+	.word erase39
+	.word erase40
+
+erase40:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase39:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase38:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase37:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase36:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase35:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase34:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase33:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase32:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase31:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase30:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase29:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase28:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase27:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase26:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase25:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase24:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase23:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase22:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase21:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase20:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase19:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase18:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase17:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase16:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase15:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase14:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase13:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase12:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase11:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase10:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase9:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase8:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase7:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase6:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase5:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase4:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase3:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase2:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase1:
+.repeat 4
+	lda Vera::Reg::Data1
+.endrepeat
+	stz Vera::Reg::Data0
+erase0:
+	rts
+
 
 v_ease_on:
 	.byte $c8,$c5,$c2,$be,$bb,$b8,$b5,$b2,$af,$ac,$a9,$a6,$a3,$a0,$9d,$9a,$98,$95,$93,$90,$8e,$8c,$8a,$88,$86,$84,$82,$80,$7f,$7e,$7c,$7b,$7a,$79,$78,$78,$77,$77,$76,$76
@@ -853,6 +1116,7 @@ crawl_text:
 	.byte "been an inspiration to push the X16",0
 	.word $c1
 	.byte "further and further.",0
+	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE
 	EMPTY_LINE
