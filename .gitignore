@@ -8,5 +8,6 @@ assets/3d_scene/U2A_anim/
 assets/3d_scene/U2E_anim/
 src/blob_loadfile.inc
 src/blob_openfile.inc
+src/git_rev.inc
 sdcard.img
 sdcard2.img

@@ -696,4 +696,4 @@ textpalette:
 	.word $0555,$055f,$05f5,$05ff,$0f55,$0f5f,$0ff5,$0fff
 
 git_rev:
-	.include "../ROOT/GIT-REV.BIN"
+	.include "git_rev.inc"

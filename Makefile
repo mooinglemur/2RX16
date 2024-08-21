@@ -18,7 +18,7 @@ SDCARD	:= ./sdcard.img
 SDCARD2	:= ./sdcard2.img
 MAPFILE := ./$(PROJECT).map
 SYMFILE := ./$(PROJECT).sym
-GIT_REV_BIN := ./ROOT/GIT-REV.BIN
+GIT_REV_INC := ./src/git_rev.inc
 
 ifdef ASSETBLOB
 	ASFLAGS += -D ASSETBLOB=1
@@ -54,12 +54,17 @@ ifndef ASSETBLOB
 	cp -v $(EXE) ROOT/
 endif
 
-$(GIT_REV_BIN):
+$(GIT_REV_INC):
 	/bin/echo -n '.byte "' > $@
-	git diff --quiet && /bin/echo -n $$(git rev-parse --short=8 HEAD || /bin/echo "00000000") || /bin/echo -n $$(/bin/echo -n $$(git rev-parse --short=7 HEAD || /bin/echo "0000000"); /bin/echo -n '+') >> $@
+	if git diff --quiet; then\
+		/bin/echo -n $$(git rev-parse --short=8 HEAD || /bin/echo "00000000") >> $@;\
+	else\
+		/bin/echo -n $$(/bin/echo -n $$(git rev-parse --short=7 HEAD || /bin/echo "0000000"); /bin/echo -n '+') >> $@;\
+	fi
 	/bin/echo '",0' >> $@
+	cat $@
 
-$(OBJ)/%.o: $(SRC)/%.s $(SRC)/*.inc | $(OBJ) $(GIT_REV_BIN)
+$(OBJ)/%.o: $(SRC)/%.s $(SRC)/*.inc | $(GIT_REV_INC) $(OBJ)
 	$(AS) $(ASFLAGS) $< -o $@
 
 $(OBJ):
@@ -81,7 +86,7 @@ $(SDCARD2): $(EXE2)
 
 .PHONY: clean run blobrun box blobbox
 clean:
-	$(RM) $(EXE) $(EXE2) $(OBJS) $(SDCARD) $(SDCARD2) $(MAPFILE) $(SYMFILE) ROOT/*.BIN ROOT/*.PRG
+	$(RM) $(EXE) $(EXE2) $(OBJS) $(SDCARD) $(SDCARD2) $(MAPFILE) $(SYMFILE) $(GIT_REV_INC) ROOT/*.BIN ROOT/*.PRG
 
 box: $(EXE) $(SDCARD)
 	box16 -sdcard $(SDCARD) -prg $(EXE) -run
