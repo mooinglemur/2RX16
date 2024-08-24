@@ -9,6 +9,7 @@ from shapely import equals
 import math
 import numpy as np
 from PIL import Image
+import pprint
 
 BLACK = (0, 0, 0)
 BLUE  = (64, 64, 255)
@@ -31,122 +32,86 @@ step = 0
 maxpx = 0
 minpx = 255
 
+lowy = 400
+highy = 0
+
+tiles = []
+
 with open("SINUSTILES.DAT", mode="wb") as file:
     while running:
         for event in pygame.event.get():
             if event.type == QUIT:
                 running = False
 
-        screen.fill(BLACK)
+        # Define wave parameters
+        amplitude = 27      # Wave height
+        frequency = 2*math.pi/640    # Wave frequency
+        phase_shift = 0     # Wave phase shift
+        base_height = height // 2  # Base height of the wave
+        wave_speed = 0.20
 
-        for ys in range(-1000,1000):
-            for xx in range(-31,129):
-                yy = ys/10
-                sval = math.sin(yy*math.pi/32)*math.sin(xx*math.pi/32)*math.sin(step*math.pi/30)
-                if sval < 0:
-                    color = (255*-sval/3, 0, 127)
-                else:
-                    color = (255*sval/3, 255*sval/3, 127+(128*sval/3))
+        for p in range(16):
+            screen.fill(BLACK)
 
-                height = ((sval+6)/8)*254
-                height -= 14
-                height = round(height)
-                color = (height, height, height)
+            ps = math.sin(1+(p*math.pi*2/16))
+            amp = amplitude*ps
 
-                zz = sval * 20
-                camera = -100
-                angle_x = 0
-                angle_y = 0
-                angle_z = 0
+            # Draw the wave
+            points = []
+            for x in range(width):
+                ms = (math.sin(frequency * x + phase_shift * math.pi*2) + 0.1) ** 2 / 4
+                if ms < 0:
+                    ms /= 2
+                y = base_height + amp * ms
+                if y < lowy:
+                    lowy = y
+                if y > highy:
+                    highy = y
+                points.append((x, y))
 
-                angle_x = math.radians(60)
+            # Add points for filling the area below the wave
+            points.append((width, height))  # Bottom-right corner
+            points.append((0, height))      # Bottom-left corner
 
-                # Rotate around the x-axis
-                new_y = yy * math.cos(angle_x) - zz * math.sin(angle_x)
-                new_z = yy * math.sin(angle_x) + zz * math.cos(angle_x)
+            # Draw filled wave
+            pygame.draw.polygon(screen, BLUE, points)
 
-                # Rotate around the y-axis
-                new_x = xx * math.cos(angle_y) - new_z * math.sin(angle_y)
-                new_z = xx * math.sin(angle_y) + new_z * math.cos(angle_y)
+            # Update the display
+            pygame.display.flip()
 
-                # Rotate around the z-axis
-                tmp_x = new_x * math.cos(angle_z) - new_y * math.sin(angle_z)
-                new_y = new_x * math.sin(angle_z) + new_y * math.cos(angle_z)
-                new_x = tmp_x
+            # Update the wave's phase shift to animate
+            #phase_shift += wave_speed
 
-                z_ratio = camera / (new_z + camera) # camera position
+            for trow in range(2):
+                for tcol in range(16):
+                    tile = []
+                    for crow in range(8):
+                        for ccol in range(8):
+                            xx = round(((tcol * 8) + ccol) * (width/128))
+                            yy = round((height//2)-8) + (trow * 8) + crow
+                            color = screen.get_at([xx, yy])
+                            if color == BLACK:
+                                p = 0
+                            else:
+                                p = yy
+                            tile.append(p)
+                    tiles.append(tile)
 
-                #new_x *= z_ratio
-                #new_y *= z_ratio
+            clock.tick(6)
+        running = False
 
-                new_y += 100
-                new_x += 320
+pprint.pprint(tiles, width=26, compact=True)
+unique_lists = set(tuple(lst) for lst in tiles)
 
-                # remove X projection, align y projection
-                new_x = xx+31
-                new_y -= 36
+# Count of unique lists
+unique_count = len(unique_lists)
 
-                if new_y < 8*7:
-                    screen.set_at((int(new_x), int(new_y)), color)
-
-        # duplicate rows
-        rect = pygame.Rect(0,3*8,64,32)
-        sub = screen.subsurface(rect).copy()
-        screen.blit(sub,(0,7*8))
-        screen.blit(sub,(0,11*8))
-        screen.blit(sub,(0,15*8))
-
-        # output tiles
-        # output zero tile first
-        file.write(bytes([0] * 64))
-
-        for trow in range(7):
-            for tcol in range(8):
-                for crow in range(8):
-                    for ccol in range(8):
-                        yy = (trow*8)+crow
-                        xx = (tcol*8)+ccol
-                        px = screen.get_at((xx, yy))[0]
-                        if px > 0:
-                            px -= 161
-                        if minpx > px and px > 0:
-                            minpx = px
-                        if maxpx < px:
-                            maxpx = px
-                        file.write(bytes([px]))
-
-        # output 7 more zero tiles for padding
-        file.write(bytes([0] * 64 * 7))
-
-        pygame.display.flip()
-        clock.tick(60)
-
-        step += 1
-
-        if step >= 15:
-            running = False
-
-with open("SINUSMAP.DAT", mode="wb") as file:
-    # output 16 rows of zero tiles
-    file.write(bytes([0] * 16 * 32))
-
-    for r in range(3): # first 3 rows are normal
-        for c in range(32):
-            t = (r * 8) + (c % 8) + 1
-            file.write(bytes([t]))
-
-    # now repeat lines 3-6 four times
-
-    for rpt in range(4):
-        for r in range(3,7):
-            for c in range(32):
-                t = (r * 8) + (c % 8) + 1
-                file.write(bytes([t]))
+print(lowy)
+print(highy)
+print(f"Unique count: {unique_count} out of {len(tiles)}")
 
 
 
-print(minpx)
-print(maxpx)
 
 sintbl = []
 

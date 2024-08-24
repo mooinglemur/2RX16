@@ -116,9 +116,6 @@ DEBUG = 0
 
 VSYNC_BIT         = $01
 
-; FIXME: TURN this OFF in PRODUCTION!
-DEBUG_SHOW_THREE_FRAMES_MISSES = 1 ; If we exceed 3 frames, we missed a frame (or more) and we mark this (for now) by changing the border color
-
 ; ^^ end battle scene constants
 ; vv other constants
 

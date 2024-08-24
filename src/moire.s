@@ -458,8 +458,6 @@ creature_crt_fadeout:
 	lda #((TECHNO_MAPBASE >> 9) & $FC) | $02
 	sta Vera::Reg::FXMapBase
 
-	; mainly for reset of cache index
-	stz Vera::Reg::FXMult
 	stz Vera::Reg::Ctrl
 
 	lda #$47
@@ -473,6 +471,9 @@ newframe:
 
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
+
+	; mainly for reset of cache index
+	stz Vera::Reg::FXMult
 
 	; Set up FX TileBase, tile set changes every frame and loops every 8
 	lda choreo_frames

@@ -1613,7 +1613,12 @@ rota_vsync:
 ;	where it was losing writes to the VERA, but it turned out to be a problem
 ;	related to the U16 bodge for dev boards that hadn't been done yet
 ;
+;   update - 2024-08-21
+;   workaround for it happening on David's board with a 65C816
+;
 ;	stz VERA_FX_MULT
+;
+;   2024-08-21 moved it to a per-row reset in the function below
 
 	jsr draw_rotated_tilemap
 	
@@ -1736,6 +1741,11 @@ bail_rota:
 	ldx #0
 
 rotate_copy_next_row_1:
+	; 2024-08-21 reset cache index on each row to mitigate glitches on 65C816 + VERA 47.0.x
+	lda #%00000100 ; DCSEL = 2
+	sta VERA_CTRL
+	stz VERA_FX_MULT
+
 	lda #%00000110           ; DCSEL=3, ADDRSEL=0
 	sta VERA_CTRL
 

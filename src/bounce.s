@@ -52,6 +52,7 @@ VERA_DC_VSTOP     = $9F2C  ; DCSEL=1
 VERA_FX_CTRL      = $9F29  ; DCSEL=2
 VERA_FX_TILEBASE  = $9F2A  ; DCSEL=2
 VERA_FX_MAPBASE   = $9F2B  ; DCSEL=2
+VERA_FX_MULT      = $9F2C  ; DCSEL=2
 
 VERA_FX_X_INCR_L  = $9F29  ; DCSEL=3
 VERA_FX_X_INCR_H  = $9F2A  ; DCSEL=3
@@ -587,6 +588,9 @@ bend_copy_next_row_1:
 
     lda #%00000100           ; DCSEL=2, ADDRSEL=0
     sta VERA_CTRL
+
+	; mainly for reset of cache index
+	stz VERA_FX_MULT
 
     lda Y_SUB_PIXEL+1
     and #%11000000    ; we want to know the y_pos % 64, so we take the top 2 bits
