@@ -8,11 +8,11 @@
 
 .macpack longbranch
 
-FXMAP = $1F000
-FXTILES = $10000
+FXMAP = $10000
+FXTILES = $18000
 BMP = $00000
 
-FX_Y_START = $8400
+FX_Y_START = $0000
 FX_Y_INCR_START = $0100
 FX_Y_INCR_STEP = $0002
 FX_X_STARTING_INCR = $0100 << 1
@@ -89,13 +89,13 @@ loop:
 	lda #(2 << 1)
 	sta Vera::Reg::Ctrl
 
-	lda #((FXMAP >> 9) & $FC) | $02 ; 32x32 map
-	sta Vera::Reg::FXMapBase
+	lda #((FXTILES >> 9) & $FC)
+	sta Vera::Reg::FXTileBase
 
 	; mainly for reset of cache index
 	stz Vera::Reg::FXMult
 
-	lda #%01100011 ; cache writes and reads, affine mode
+	lda #%01100111 ; cache writes and reads, affine mode, 4 bit
 	sta Vera::Reg::FXCtrl
 
 	lda #(4 << 1)
@@ -109,8 +109,8 @@ new_frame:
 	sta Vera::Reg::Ctrl
 
 	ldx anim_nr
-	lda fx_anim_tilebases,x
-	sta Vera::Reg::FXTileBase
+	lda fx_anim_mapbases,x
+	sta Vera::Reg::FXMapBase
 
 	lda #(3 << 1)
 	sta Vera::Reg::Ctrl
@@ -175,20 +175,32 @@ new_frame:
 	eor #$ff
 :	sta fx_x_row_step
 
-	VERA_SET_ADDR (BMP+((200-66)*320)), 3
+	VERA_SET_ADDR (BMP+((100-66)*320)), 3
 
 	WAITVSYNC
 
 	ldy #66
 row:
 
-.repeat 80
+.repeat 20
+	lda Vera::Reg::Data1
+	lda Vera::Reg::Data1
+	lda Vera::Reg::Data1
+	lda Vera::Reg::Data1
 	lda Vera::Reg::Data1
 	lda Vera::Reg::Data1
 	lda Vera::Reg::Data1
 	lda Vera::Reg::Data1
 	stz Vera::Reg::Data0
 .endrepeat
+
+	lda Vera::Reg::AddrL
+	clc
+	adc #80
+	sta Vera::Reg::AddrL
+	bcc :+
+	inc Vera::Reg::AddrM
+:
 
 ; end of row
 	sec
@@ -301,7 +313,7 @@ scroll_off:
 :	lda palette,x
 	sta Vera::Reg::Data0
 	inx
-	cpx #96
+	cpx #32
 	bcc :-
 
 	rts
@@ -329,7 +341,7 @@ scroll_off:
 	; border = index 0
 	stz Vera::Reg::DCBorder
 
-	; letterbox for 320x~200
+	; letterbox for 160x~100
 	lda #$02
 	sta Vera::Reg::Ctrl
 	lda #100 ; slide in
@@ -338,13 +350,13 @@ scroll_off:
 	sta Vera::Reg::DCVStop
 	stz Vera::Reg::Ctrl
 
-	; 2:1 scale
-	lda #$40
+	; 4:1 scale
+	lda #$20
 	sta Vera::Reg::DCHScale
 	sta Vera::Reg::DCVScale
 
-	; bitmap mode, 8bpp
-	lda #%00000111
+	; bitmap mode, 4bpp
+	lda #%00000110
 	sta Vera::Reg::L0Config
 
 	; bitmap base, 320x240
@@ -356,67 +368,26 @@ scroll_off:
 
 palette:
 	.word $000
-	.word $71a
-	.word $70b
-	.word $71b
-	.word $70c
-	.word $71c
-	.word $60c
-	.word $60d
-
-	.word $61d
-	.word $51d
-	.word $50e
-	.word $41e
-	.word $40e
-	.word $41e
-	.word $40e
-	.word $31e
-
-	.word $30e
-	.word $21f
-	.word $20f
-	.word $20f
-	.word $10f
-	.word $10f
-	.word $00f
-	.word $00f
-
-	.word $00f
-	.word $01f
-	.word $11f
-	.word $12f
-
-	.word $22f
-	.word $23f
-	.word $33f
-	.word $34f
-	.word $44f
-	.word $45f
-	.word $55f
-	.word $56f
-
-	.word $66f
-	.word $67f
-	.word $77f
-	.word $78f
+	.word $ccf
+	.word $aaf
 	.word $88f
-	.word $89f
-	.word $99f
-	.word $9af
+	.word $66f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
+	.word $44f
 
-	.word $9af
-	.word $a9f
-	.word $9af
-	.word $a9e
-
-fx_anim_tilebases:
+fx_anim_mapbases:
 .repeat 2
 .repeat 15, i
-	.byte ((FXTILES >> 11) + 2*i) << 2
-.endrepeat
-.repeat 15, i
-	.byte ((FXTILES >> 11) + 2*(14-i)) << 2
+	.byte (((FXMAP >> 11) + i) << 2) | $02
 .endrepeat
 .endrepeat
 
