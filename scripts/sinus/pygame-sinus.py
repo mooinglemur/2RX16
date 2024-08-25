@@ -11,6 +11,17 @@ import numpy as np
 from PIL import Image
 import pprint
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+def list_to_dotbyte_strings(lst):
+    result = []
+    for chunk in chunks(lst, 16):
+        result.append("\t.byte " + ','.join(['${:02x}'.format(int(x)) for x in chunk]) + "\n")
+    return result
+
 BLACK = (0, 0, 0)
 BLUE  = (64, 64, 255)
 RED  = (255, 64, 64)
@@ -167,46 +178,49 @@ print(f"Unique count: {unique_count} out of {len(tiles)}")
 
 
 
-sintbl = []
+print("sintbls:")
+for section in range(6):
+    sintbl = []
 
-for i in range(256):
-    s = 1+math.cos((i*math.pi/256)+math.pi)
-    s /= 2
-    s *= 256
-    sintbl.append(s)
+    for i in range(256):
+        s = 1+math.cos((i*math.pi/256)+math.pi)
+        s /= 2
+        s *= (256 * ((section+1)/6))
+        sintbl.append(s)
 
-print(".byte ", end="")
+    print("".join(list_to_dotbyte_strings([int(i * 2048) & 0xff for i in sintbl])))
 
-for i in sintbl:
-    print(f"${int(i * 1024) & 0xff:02x},", end="")
+    print("".join(list_to_dotbyte_strings([int(i * 8) & 0xff for i in sintbl])))
 
-print("")
 
-print(".byte ", end="")
+print("addr_l_start:")
 
-for i in sintbl:
-    print(f"${int(i * 4) & 0xff:02x},", end="")
+for section in range(6):
+    tbl = []
+    for i in range(16):
+        s = math.sin(i*math.pi*2/16 + math.pi)
+        if section < 4:
+            s *= (section/3+1)
+        else:
+            s = 13
+        y = 50+(section * 6)+s+(4-section * 4)
+        tbl.append(round(y))
 
-print("")
+    print("".join(list_to_dotbyte_strings([int(i * 160) & 0xff for i in tbl])))
 
-print(".byte ", end="")
 
-for i in range(64):
-    n = 63-i
-    s = 1+math.cos((n*math.pi/64)+math.pi)
-    s /= 2
-    s *= 128
+print("addr_m_start:")
 
-    print(f"${int(s) & 0xff:02x},", end="")
+for section in range(6):
+    tbl = []
+    for i in range(16):
+        s = math.sin(i*math.pi*2/16 + math.pi)
+        if section < 4:
+            s *= (section/3+1)
+        else:
+            s = 13
+        y = 50+(section * 6)+s+(4-section * 4)
+        tbl.append(round(y))
 
-for i in range(128):
-    print("$00,", end="")
+    print("".join(list_to_dotbyte_strings([int((i * 160) >> 8) & 0xff for i in tbl])))
 
-for i in range(64):
-    s = 1+math.cos((i*math.pi/64)+math.pi)
-    s /= 2
-    s *= 128
-
-    print(f"${int(s) & 0xff:02x},", end="")
-
-print("")
