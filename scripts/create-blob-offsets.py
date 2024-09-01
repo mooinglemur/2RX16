@@ -16,7 +16,7 @@ with open(output_file, 'wb') as output:
     offset_lengths = []
 
     # Iterate through each file in the directory
-    for file_name in files:
+    for file_name in sorted(files):
         file_path = os.path.join(input_dir, file_name)
 
         # Record the offset for the current file
