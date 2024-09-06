@@ -2,10 +2,10 @@
 
 Second Reality X16, a port/remake of the Second Reality PC demo by Future Crew.
 
-Requirements: Commander X16
-ROM: version R47 or later
-CPU: 65C02 or 65C816
-RAM: 512KB or higher
+Requirements: Commander X16  
+ROM: version R47 or later  
+CPU: 65C02 or 65C816  
+RAM: 512KB or higher  
 
 When using the emulator, running this demo from SD card is recommended for
 best results, so an sdcard image has been provided in this zip file. 
